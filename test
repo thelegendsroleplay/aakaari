@@ -1,3 +1,380 @@
+{% comment %}
+  Home Page Template for Shopify using core Liquid tags
+  Replace `{% section 'your-section-name' %}` with your theme’s actual section names/snippets.
+{% endcomment %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ shop.name }} — Home</title>
+  <link rel="stylesheet" href="{{ 'header.css' | asset_url }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  {{ 'style.css' | asset_url | stylesheet_tag }}
+  {{ 'featured-fetch.js' | asset_url | script_tag }}
+  {{ 'newarrivals-fetch.js' | asset_url | script_tag }}
+  {{ 'script.js' | asset_url | script_tag }}
+  <style>
+    /* Desktop only static image */
+    .desktop-only { display: block; }
+    @media (max-width: 820px) {
+      .desktop-only { display: none; }
+    }
+  </style>
+</head>
+<body>
+  
+<main class="page">
+  <!-- HERO SECTION -->
+  <section class="section hero-wrap" id="section-hero" aria-label="Hero">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="hero-eyebrow">New • Summer Drop</div>
+        <h1 class="hero-title">Minimal cuts. Bold prints.<br>Made to last.</h1>
+        <p class="hero-sub">
+          Premium hoodies and tees crafted for comfort and clarity of print.
+          On desktop: see our featured design below.
+        </p>
+        <div class="hero-features" role="list">
+          <div class="feature">Premium fabric</div>
+          <div class="feature">Free shipping</div>
+          <div class="feature">Easy returns</div>
+        </div>
+      </div>
+      <div class="showcase" id="showcase">
+        <img 
+          src="{{ 'design.png' | asset_url }}" 
+          alt="Featured product image" 
+          style="max-width:350px;margin:0 auto; display:block;" 
+          class="desktop-only"
+        />
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- CATEGORIES SECTION -->
+  <!-- CATEGORIES SECTION -->
+<!-- CATEGORIES SECTION -->
+<section id="section-categories" class="section categories-section" aria-label="Shop categories">
+  <div class="categories-inner">
+    <div class="categories-header">
+      <div>
+        <h2 class="categories-title">Shop by category</h2>
+        <p class="categories-sub muted">Hand-picked silhouettes — hoodies and tees made for prints and comfort.</p>
+      </div>
+      <a href="/pages/shop" class="btn-primary small">Shop all</a>
+    </div>
+    <div class="categories-grid">
+      {% assign tshirts = collections['tshirts'] | default: collections['t-shirts'] %}
+      {% assign hoodies = collections['hoodies'] %}
+      
+      {% if hoodies %}
+      <article class="cat-card" tabindex="0" aria-labelledby="cat-hoodies" data-category="hoodies">
+        <div class="cat-media" aria-hidden="true">
+          {% if hoodies.image %}
+            <img src="{{ hoodies.image | img_url: '800x800' }}" alt="{{ hoodies.title }}">
+          {% else %}
+            <img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&h=800&fit=crop" alt="Hoodies">
+          {% endif %}
+        </div>
+        <div class="cat-content">
+          <div class="cat-top">
+            <span class="cat-badge">Best seller</span>
+            <span class="cat-count">{{ hoodies.products_count }} styles</span>
+          </div>
+          <h3 id="cat-hoodies" class="cat-name">{{ hoodies.title | default: "Hoodies" }}</h3>
+          <p class="cat-desc muted">{{ hoodies.description | strip_html | truncate: 60 | default: "Premium hoodies with bold prints" }}</p>
+          <div class="cat-footer">
+            <a class="btn-ghost cat-explore-btn" href="/pages/shop?category=hoodies">Explore</a>
+          </div>
+        </div>
+      </article>
+      {% endif %}
+
+      {% if tshirts %}
+      <article class="cat-card" tabindex="0" aria-labelledby="cat-tshirts" data-category="tshirts">
+        <div class="cat-media" aria-hidden="true">
+          {% if tshirts.image %}
+            <img src="{{ tshirts.image | img_url: '800x800' }}" alt="{{ tshirts.title }}">
+          {% else %}
+            <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=800&fit=crop" alt="T-Shirts">
+          {% endif %}
+        </div>
+        <div class="cat-content">
+          <div class="cat-top">
+            <span class="cat-badge">New</span>
+            <span class="cat-count">{{ tshirts.products_count }} styles</span>
+          </div>
+          <h3 id="cat-tshirts" class="cat-name">{{ tshirts.title | default: "T-Shirts" }}</h3>
+          <p class="cat-desc muted">{{ tshirts.description | strip_html | truncate: 60 | default: "Comfortable tees for everyday wear" }}</p>
+          <div class="cat-footer">
+            <a class="btn-ghost cat-explore-btn" href="/pages/shop?category=tshirts">Explore</a>
+          </div>
+        </div>
+      </article>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+  <!-- FEATURED PRODUCTS SLIDER -->
+<!-- FEATURED PRODUCTS SLIDER -->
+<section class="section featured-section" aria-label="Featured products">
+  <div class="page-inner">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">Featured</h2>
+        <p class="section-lead">Hand-picked pieces — trending now.</p>
+      </div>
+      <div class="section-controls">
+        <div class="dots" id="featuredDots" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="slider-container">
+      <button class="arrow-btn prev-btn" id="featuredPrev" aria-label="Previous">◀</button>
+      <div class="slider-wrapper" id="featuredSlider">
+        {% assign featured_collection = collections['featured'] | default: collections.all %}
+        {% for product in featured_collection.products limit: 12 %}
+          {% if product.featured_image %}
+        <article class="product-card" data-id="{{ product.id }}">
+          <a href="{{ product.url }}" class="product-link">
+            <div class="product-media">
+              {% if product.images[0] %}
+                <img src="{{ product.images[0] | image_url: width: 800 }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% else %}
+                <img src="{{ 'placeholder.svg' | asset_url }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% endif %}
+              <span class="product-badge featured">Featured</span>
+            </div>
+            <div class="product-body">
+              <h3 class="product-title">{{ product.title }}</h3>
+              <div class="product-foot">
+                <div class="product-price">{{ product.price | money }}</div>
+                <button class="btn-add" type="button" data-product-id="{{ product.id }}" data-variant-id="{{ product.variants.first.id }}" onclick="addToCartShopify(event, {{ product.variants.first.id }})">Add to cart</button>
+              </div>
+            </div>
+          </a>
+        </article>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button class="arrow-btn next-btn" id="featuredNext" aria-label="Next">▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- NEW ARRIVALS SLIDER -->
+<section class="section newarrivals-section" aria-label="New arrivals">
+  <div class="page-inner">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">New Arrivals</h2>
+        <p class="section-lead">Fresh drops — limited quantities. Grab them before they're gone.</p>
+      </div>
+      <div class="section-controls">
+        <div class="dots" id="newArrivalsDots" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="slider-container">
+      <button class="arrow-btn prev-btn" id="newArrivalsPrev" aria-label="Previous">◀</button>
+      <div class="slider-wrapper" id="newArrivalsSlider">
+        {% assign new_collection = collections['new-arrivals'] | default: collections.all %}
+        {% for product in new_collection.products limit: 12 %}
+          {% if product.featured_image %}
+        {% assign is_new = false %}
+        {% assign now_timestamp = 'now' | date: '%s' | times: 1 %}
+        {% assign product_timestamp = product.created_at | date: '%s' | times: 1 %}
+        {% assign seconds_old = now_timestamp | minus: product_timestamp %}
+        {% assign days_old = seconds_old | divided_by: 86400 %}
+        {% if days_old <= 30 %}{% assign is_new = true %}{% endif %}
+        
+        <article class="product-card" data-id="{{ product.id }}">
+          <a href="{{ product.url }}" class="product-link">
+            <div class="product-media">
+              {% if product.images[0] %}
+                <img src="{{ product.images[0] | image_url: width: 800 }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% else %}
+                <img src="{{ 'placeholder.svg' | asset_url }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% endif %}
+              {% if is_new %}
+              <span class="product-badge new">New</span>
+              {% endif %}
+            </div>
+            <div class="product-body">
+              <h3 class="product-title">{{ product.title }}</h3>
+              <div class="product-foot">
+                <div class="product-price">{{ product.price | money }}</div>
+                <button class="btn-add" type="button" data-product-id="{{ product.id }}" data-variant-id="{{ product.variants.first.id }}" onclick="addToCartShopify(event, {{ product.variants.first.id }})">Add to cart</button>
+              </div>
+            </div>
+          </a>
+        </article>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button class="arrow-btn next-btn" id="newArrivalsNext" aria-label="Next">▶</button>
+    </div>
+  </div>
+</section>
+
+  
+  <!-- MISSION SECTION -->
+  <!-- MISSION SECTION -->
+<section id="section-mission" class="section mission-section" aria-label="Our mission and values">
+  <div class="page-inner">
+    <div class="mission-head">
+      <div>
+        <h2 class="section-title">What we believe</h2>
+        <p class="section-lead muted">Design-first garments built for print clarity — honest policies, real quality, and sustainable choices where possible.</p>
+      </div>
+    </div>
+    <div class="mission-grid" role="list">
+      <!-- Quality First -->
+      <div class="mission-card" role="listitem" tabindex="0">
+        <div class="m-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <h3 class="m-title">Quality-First</h3>
+        <p class="m-text muted">We test fabrics and prints to preserve color and detail wash after wash. Small-batch QC before shipping.</p>
+      </div>
+
+      <!-- Responsible Choices -->
+      <div class="mission-card" role="listitem" tabindex="0">
+        <div class="m-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <h3 class="m-title">Responsible choices</h3>
+        <p class="m-text muted">We minimise waste in production and partner with printers who follow safer chemical practices.</p>
+      </div>
+
+      <!-- Honest Policies -->
+      <div class="mission-card" role="listitem" tabindex="0">
+        <div class="m-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h3 class="m-title">Honest policies</h3>
+        <p class="m-text muted">30-day returns, secure checkout, and friendly support — we answer within one business day.</p>
+      </div>
+    </div>
+    <div class="trust-row" aria-hidden="false">
+      <div class="trust-stats" role="group" aria-label="Key metrics">
+        <div class="stat">
+          <div class="stat-num" data-target="12000" aria-live="polite">12000</div>
+          <div class="stat-label muted">Happy customers</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" data-target="3500" aria-live="polite">3500</div>
+          <div class="stat-label muted">Orders shipped</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" data-target="99" aria-live="polite">99</div>
+          <div class="stat-label muted">Countries served</div>
+        </div>
+      </div>
+      <div class="trust-badges" aria-hidden="true">
+        <!-- payment/trust icons can go here -->
+      </div>
+    </div>
+  </div>
+</section>
+
+  <!-- INSTAGRAM (manual or via Shopify app integration) -->
+<!-- INSTAGRAM SECTION -->
+<section id="section-instagram" class="section instagram-section" aria-label="Instagram feed">
+  <div class="page-inner">
+    <div class="insta-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px">
+      <div>
+        <h2 class="section-title">From our Instagram</h2>
+        <p class="section-lead muted">Real photos from customers and behind-the-scenes drops.</p>
+      </div>
+      <div>
+        <a href="https://instagram.com/yourhandle" target="_blank" rel="noopener noreferrer" class="btn-ghost">Follow @yourhandle</a>
+      </div>
+    </div>
+    
+    <!-- Elfsight Instagram Feed Widget -->
+    <div class="elfsight-app-WIDGET-ID-PLACEHOLDER"></div>
+    
+    <!-- Fallback: Manual Instagram Grid -->
+    <div class="insta-grid manual-grid" id="instaGrid" role="list" aria-label="Instagram images" style="display:none;">
+      <!-- These will be hidden when Elfsight widget loads -->
+      <button class="insta-tile" data-index="0" aria-label="Instagram post 1">
+        <img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&h=600&fit=crop" alt="Instagram post" loading="lazy">
+      </button>
+      <button class="insta-tile" data-index="1" aria-label="Instagram post 2">
+        <img src="https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&h=600&fit=crop" alt="Instagram post" loading="lazy">
+      </button>
+      <button class="insta-tile" data-index="2" aria-label="Instagram post 3">
+        <img src="https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=600&h=600&fit=crop" alt="Instagram post" loading="lazy">
+      </button>
+      <button class="insta-tile" data-index="3" aria-label="Instagram post 4">
+        <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop" alt="Instagram post" loading="lazy">
+      </button>
+      <button class="insta-tile" data-index="4" aria-label="Instagram post 5">
+        <img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&h=600&fit=crop" alt="Instagram post" loading="lazy">
+      </button>
+      <button class="insta-tile" data-index="5" aria-label="Instagram post 6">
+        <img src="https://images.unsplash.com/photo-1503341960582-b45751874cf0?w=600&h=600&fit=crop" alt="Instagram post" loading="lazy">
+      </button>
+    </div>
+  </div>
+</section>
+</main>
+
+
+<!-- Elfsight Instagram Feed Script -->
+<script src="https://static.elfsight.com/platform/platform.js" data-use-service-core defer></script>
+
+<script>
+// Hide manual grid when Elfsight loads
+document.addEventListener('DOMContentLoaded', function() {
+  const checkElfsight = setInterval(function() {
+    const elfsightWidget = document.querySelector('.elfsight-app-WIDGET-ID-PLACEHOLDER .eapps-instagram-feed');
+    if (elfsightWidget) {
+      document.querySelector('.manual-grid').style.display = 'none';
+      clearInterval(checkElfsight);
+    }
+  }, 500);
+  
+  // Show manual grid after 5 seconds if Elfsight doesn't load
+  setTimeout(function() {
+    const elfsightWidget = document.querySelector('.elfsight-app-WIDGET-ID-PLACEHOLDER .eapps-instagram-feed');
+    if (!elfsightWidget) {
+      document.querySelector('.manual-grid').style.display = 'grid';
+    }
+    clearInterval(checkElfsight);
+  }, 5000);
+});
+</script>
+</body>
+</html>
+}
+
+
 /* ===================================================================
    PRODUCT SLIDERS (Featured & New Arrivals)
    Add this to your existing style.css file
