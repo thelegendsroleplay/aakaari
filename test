@@ -1,0 +1,327 @@
+{% comment %}
+  sections/new-arrivals-horizontal.liquid
+  - Dynamically shows products created within the last `max_age_days` days (default 7)
+  - Horizontal, scrollable list with autoplay
+  - Settings: days limit, max items, autoplay (ms per tick), tick px, show price, show vendor
+{% endcomment %}
+
+<section id="new-arrivals-horizontal-{{ section.id }}" class="new-arrivals-horizontal-section">
+  <style>
+    /* Basic styling - tweak to match your theme */
+    #new-arrivals-horizontal-{{ section.id }} {
+      padding: 24px 0;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-wrapper {
+      position: relative;
+      overflow: hidden;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-scroller {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      padding: 8px 16px;
+      scrollbar-width: thin;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-card {
+      flex: 0 0 auto;
+      width: calc(var(--nah-item-width, 220px));
+      border-radius: 8px;
+      background: var(--card-bg, #fff);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      padding: 8px;
+      text-align: left;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-card a { color: inherit; text-decoration: none; display:block; }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-image {
+      width: 100%;
+      padding-top: 100%;
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #f6f6f6;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-image img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-meta {
+      margin-top: 8px;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #new-arrivals-horizontal-{{ section.id }} .nah-vendor, .nah-price {
+      font-size: 13px;
+      color: #666;
+    }
+
+    /* optional arrows */
+    #new-arrivals-horizontal-{{ section.id }} .nah-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 3;
+      background: rgba(255,255,255,0.9);
+      border-radius: 999px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+      cursor: pointer;
+    }
+    #new-arrivals-horizontal-{{ section.id }} .nah-arrow--left { left: 8px; }
+    #new-arrivals-horizontal-{{ section.id }} .nah-arrow--right { right: 8px; }
+
+    /* Hide scrollbar in webkit but keep scrollable */
+    #new-arrivals-horizontal-{{ section.id }} .nah-scroller::-webkit-scrollbar { height: 8px; }
+    #new-arrivals-horizontal-{{ section.id }} .nah-scroller::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 8px; }
+
+    @media (max-width: 740px) {
+      #new-arrivals-horizontal-{{ section.id }} .nah-card { width: calc(var(--nah-item-width-mobile, 160px)); }
+    }
+  </style>
+
+  <div class="container">
+    {% if section.settings.heading != blank %}
+      <h2 class="section-heading">{{ section.settings.heading }}</h2>
+    {% endif %}
+    <div class="nah-wrapper" data-section-id="{{ section.id }}">
+      <button class="nah-arrow nah-arrow--left" aria-label="Scroll left" type="button">
+        &lt;
+      </button>
+      <div class="nah-scroller" role="list" aria-label="New arrivals">
+        {%- comment -%}
+          Build list of recent products:
+          - We iterate over collections.all.products sorted by created_at descending
+          - Keep products with age <= max_age_days
+          - Limit to max_items
+        {%- endcomment -%}
+
+        {% assign max_age_days = section.settings.max_age_days | default: 7 %}
+        {% assign max_items = section.settings.max_items | default: 20 %}
+
+        {%- assign now_ts = 'now' | date: '%s' -%}
+        {%- assign matched_count = 0 -%}
+
+        {%- comment -%}
+          Try to get products sorted by created_at (newest first). 
+          Note: Shopify's Liquid supports sort: 'created_at' then reverse to make newest first.
+        {%- endcomment -%}
+        {% assign all_sorted = collections.all.products | sort: 'created_at' | reverse %}
+
+        {% for product in all_sorted %}
+          {% if matched_count >= max_items %}
+            {% break %}
+          {% endif %}
+
+          {% assign created_ts = product.created_at | date: '%s' %}
+          {% assign age_seconds = now_ts | minus: created_ts %}
+          {% assign age_days = age_seconds | divided_by: 86400 %}
+
+          {% if age_days <= max_age_days %}
+            <div class="nah-card" role="listitem">
+              <a href="{{ product.url }}">
+                <div class="nah-image">
+                  {% if product.featured_image %}
+                    <img src="{{ product.featured_image | img_url: '400x' }}" alt="{{ product.title | escape }}">
+                  {% else %}
+                    <img src="{{ 'no-image.svg' | asset_url }}" alt="{{ product.title | escape }}">
+                  {% endif %}
+                </div>
+
+                <div class="nah-meta">
+                  <div class="nah-title">{{ product.title }}</div>
+                  {% if section.settings.show_vendor %}
+                    <div class="nah-vendor">{{ product.vendor }}</div>
+                  {% endif %}
+                  {% if section.settings.show_price %}
+                    <div class="nah-price">
+                      {% if product.price_varies %}
+                        {{ product.price_min | money }} - {{ product.price_max | money }}
+                      {% else %}
+                        {{ product.price | money }}
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              </a>
+            </div>
+            {% assign matched_count = matched_count | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+
+        {% if matched_count == 0 %}
+          <div class="nah-card">
+            <div class="nah-meta">
+              <div class="nah-title">No new arrivals in the last {{ max_age_days }} days.</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      <button class="nah-arrow nah-arrow--right" aria-label="Scroll right" type="button">
+        &gt;
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var sectionId = {{ section.id | json }};
+      var root = document.querySelector('#new-arrivals-horizontal-' + sectionId);
+      if (!root) return;
+
+      var scroller = root.querySelector('.nah-scroller');
+      var leftBtn = root.querySelector('.nah-arrow--left');
+      var rightBtn = root.querySelector('.nah-arrow--right');
+
+      // Settings from section
+      var autoplay = {{ section.settings.autoplay | default: true | json }};
+      var tickPx = {{ section.settings.tick_px | default: 1 }};
+      var tickInterval = {{ section.settings.tick_interval_ms | default: 16 }}; // ms
+      var pauseOnHover = true;
+      var autoTimer = null;
+
+      // Small helper for arrow clicks
+      leftBtn.addEventListener('click', function() {
+        scroller.scrollBy({ left: -scroller.offsetWidth * 0.6, behavior: 'smooth' });
+      });
+      rightBtn.addEventListener('click', function() {
+        scroller.scrollBy({ left: scroller.offsetWidth * 0.6, behavior: 'smooth' });
+      });
+
+      // Autoscroll implementation: increment scrollLeft by tickPx every tickInterval ms
+      function startAuto() {
+        if (!autoplay) return;
+        if (autoTimer) return;
+        autoTimer = setInterval(function() {
+          // if reached end, loop back to start smoothly
+          if (scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 2) {
+            // small smooth jump back to start
+            scroller.scrollTo({ left: 0, behavior: 'smooth' });
+          } else {
+            scroller.scrollLeft += tickPx;
+          }
+        }, tickInterval);
+      }
+      function stopAuto() {
+        if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      }
+
+      // Pause on hover or touch
+      root.addEventListener('mouseenter', stopAuto);
+      root.addEventListener('mouseleave', function() { if (pauseOnHover) startAuto(); });
+
+      // Pause while user scrolls (touch)
+      var isPointerDown = false;
+      scroller.addEventListener('pointerdown', function() { isPointerDown = true; stopAuto(); });
+      scroller.addEventListener('pointerup', function() { isPointerDown = false; if (pauseOnHover) startAuto(); });
+      scroller.addEventListener('pointercancel', function() { isPointerDown = false; if (pauseOnHover) startAuto(); });
+
+      // Start when content is ready
+      window.addEventListener('load', function(){ if (!isPointerDown) startAuto(); });
+      // Also start immediately if load has already happened
+      if (document.readyState === 'complete') startAuto();
+
+      // Accessibility: keyboard arrows when focused
+      scroller.tabIndex = 0;
+      scroller.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight') { scroller.scrollBy({ left: 160, behavior: 'smooth' }); }
+        if (e.key === 'ArrowLeft') { scroller.scrollBy({ left: -160, behavior: 'smooth' }); }
+      });
+    })();
+  </script>
+
+  {% schema %}
+  {
+    "name": "New arrivals — horizontal",
+    "settings": [
+      {
+        "type": "text",
+        "id": "heading",
+        "label": "Heading",
+        "default": "New arrivals"
+      },
+      {
+        "type": "number",
+        "id": "max_age_days",
+        "label": "Max product age (days)",
+        "min": 1,
+        "max": 30,
+        "default": 7
+      },
+      {
+        "type": "number",
+        "id": "max_items",
+        "label": "Max items to show",
+        "min": 1,
+        "max": 50,
+        "default": 20
+      },
+      {
+        "type": "checkbox",
+        "id": "autoplay",
+        "label": "Enable auto-scroll",
+        "default": true
+      },
+      {
+        "type": "number",
+        "id": "tick_px",
+        "label": "Auto-scroll: pixels per tick",
+        "min": 1,
+        "max": 10,
+        "default": 1
+      },
+      {
+        "type": "number",
+        "id": "tick_interval_ms",
+        "label": "Auto-scroll interval (ms)",
+        "min": 8,
+        "max": 100,
+        "default": 16
+      },
+      {
+        "type": "checkbox",
+        "id": "show_price",
+        "label": "Show price",
+        "default": true
+      },
+      {
+        "type": "checkbox",
+        "id": "show_vendor",
+        "label": "Show vendor",
+        "default": false
+      }
+    ],
+    "blocks": [],
+    "presets": [
+      {
+        "name": "New arrivals — horizontal",
+        "category": "Products"
+      }
+    ]
+  }
+  {% endschema %}
+</section>
