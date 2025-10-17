@@ -1,98 +1,634 @@
-<!-- FEATURED PRODUCTS SLIDER -->
-<section id="section-featured" class="section featured-section" aria-label="Featured products">
-  <div class="page-inner">
-    <div class="featured-head">
-      <div>
-        <h2 class="section-title">Featured</h2>
-        <p class="section-lead muted">Hand-picked pieces — trending now.</p>
-      </div>
-      <div class="featured-controls">
-        <div class="dots" aria-hidden="true"></div>
-        <div class="arrows">
-          <button class="prev" aria-label="Previous featured">◀</button>
-          <button class="next" aria-label="Next featured">▶</button>
-        </div>
-      </div>
-    </div>
-    <div id="featuredSlider" class="featured-slider" tabindex="0"
-      aria-roledescription="carousel" aria-live="polite">
-      <div class="slides">
-        {% assign featured_collection = collections['featured'] | default: collections.all %}
-        {% for product in featured_collection.products limit: 8 %}
-        <article class="featured-item" role="group" tabindex="0" 
-          data-sku="{{ product.variants.first.sku }}" 
-          data-slug="{{ product.handle }}"
-          data-variant-id="{{ product.variants.first.id }}"
-          data-product-id="{{ product.id }}">
-          <a href="{{ product.url }}" class="fi-link">
-            <div class="fi-media" aria-hidden="true">
-              <img src="{{ product.featured_image | img_url: '800x800' }}" alt="{{ product.title }}" loading="lazy" width="800" height="800">
-            </div>
-            <div class="fi-body">
-              <h3 class="fi-title">{{ product.title }}</h3>
-              <div class="fi-foot">
-                <div class="fi-price">{{ product.price | money }}</div>
-                <button class="btn-primary fi-add" type="button" data-variant-id="{{ product.variants.first.id }}">Add to cart</button>
-              </div>
-            </div>
-          </a>
-        </article>
-        {% else %}
-        <div class="featured-placeholder">No featured products available</div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-</section>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Sliders</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  <!-- NEW ARRIVALS -->
-  <section id="section-newarrivals" class="section newarrivals-section" aria-label="New arrivals">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f8f9fa;
+      padding: 40px 20px;
+    }
+
+    .section {
+      margin-bottom: 60px;
+      background: white;
+      border-radius: 16px;
+      padding: 40px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .page-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+
+    .section-lead {
+      font-size: 15px;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    .section-controls {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d1d5db;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dot:hover {
+      background: #9ca3af;
+    }
+
+    .dot.active {
+      background: #2563eb;
+      width: 24px;
+      border-radius: 4px;
+    }
+
+    .arrow-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid #e5e7eb;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      font-size: 18px;
+      color: #374151;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .arrow-btn.prev-btn {
+      left: 10px;
+    }
+
+    .arrow-btn.next-btn {
+      right: 10px;
+    }
+
+    .arrow-btn:hover:not(:disabled) {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+      transform: translateY(-50%) scale(1.05);
+      box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+    }
+
+    .arrow-btn:disabled {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .btn-primary {
+      padding: 10px 24px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .slider-container {
+      position: relative;
+      overflow: hidden;
+      padding: 0 20px;
+    }
+
+    .slider-wrapper {
+      display: flex;
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      gap: 24px;
+    }
+
+    .product-card {
+      min-width: calc(25% - 18px);
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .product-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.15);
+      border-color: #2563eb;
+    }
+
+    .product-media {
+      position: relative;
+      width: 100%;
+      padding-bottom: 100%;
+      overflow: hidden;
+      background: #f9fafb;
+    }
+
+    .product-media img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .product-card:hover .product-media img {
+      transform: scale(1.1);
+    }
+
+    .product-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 6px 12px;
+      background: #2563eb;
+      color: white;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 2;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .product-badge.new {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .product-badge.featured {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .product-body {
+      padding: 20px;
+    }
+
+    .product-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 44px;
+    }
+
+    .product-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .product-price {
+      font-size: 22px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+
+    .btn-add {
+      padding: 10px 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover {
+      background: #1d4ed8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+
+    .btn-add:active {
+      transform: translateY(0);
+    }
+
+    /* Tablet and below */
+    @media (max-width: 1200px) {
+      .product-card {
+        min-width: calc(33.333% - 16px);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .product-card {
+        min-width: calc(50% - 12px);
+      }
+
+      .section-title {
+        font-size: 28px;
+      }
+
+      .page-inner {
+        padding: 0 30px;
+      }
+
+      .slider-container {
+        padding: 0 15px;
+      }
+
+      .arrow-btn {
+        width: 44px;
+        height: 44px;
+      }
+
+      .arrow-btn.prev-btn {
+        left: 8px;
+      }
+
+      .arrow-btn.next-btn {
+        right: 8px;
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 640px) {
+      body {
+        padding: 20px 10px;
+      }
+
+      .section {
+        padding: 30px 0;
+        border-radius: 12px;
+      }
+
+      .page-inner {
+        padding: 0 20px;
+      }
+
+      .section-head {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 24px;
+      }
+
+      .section-title {
+        font-size: 24px;
+        margin-bottom: 4px;
+      }
+
+      .section-lead {
+        font-size: 14px;
+      }
+
+      .section-controls {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .product-card {
+        min-width: calc(100% - 0px);
+      }
+
+      .slider-container {
+        padding: 0 10px;
+      }
+
+      .slider-wrapper {
+        gap: 16px;
+      }
+
+      .arrow-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+      }
+
+      .arrow-btn.prev-btn {
+        left: 5px;
+      }
+
+      .arrow-btn.next-btn {
+        right: 5px;
+      }
+
+      .product-body {
+        padding: 16px;
+      }
+
+      .product-title {
+        font-size: 15px;
+        min-height: 40px;
+        margin-bottom: 10px;
+      }
+
+      .product-price {
+        font-size: 20px;
+      }
+
+      .btn-add {
+        padding: 8px 16px;
+        font-size: 13px;
+      }
+    }
+
+    /* Extra small mobile */
+    @media (max-width: 380px) {
+      .arrow-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+      }
+
+      .product-foot {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .btn-add {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- FEATURED PRODUCTS SLIDER -->
+  <section class="section featured-section" aria-label="Featured products">
     <div class="page-inner">
-      <div class="new-head" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px">
+      <div class="section-head">
         <div>
-          <h2 class="section-title">New arrivals</h2>
-          <p class="section-lead muted">Fresh drops — limited quantities. Grab them before they're gone.</p>
+          <h2 class="section-title">Featured</h2>
+          <p class="section-lead">Hand-picked pieces — trending now.</p>
         </div>
-        <div>
-          <a href="/collections/all?sort_by=created-descending" class="btn-primary small">See all new</a>
-        </div>
-      </div>
-<div class="na-grid" id="naGrid" role="list" aria-live="polite" aria-label="New arrivals">
-  {% assign new_collection = collections['new-arrivals'] | default: collections.all %}
-  {% for product in new_collection.products limit: 6 %}
-  {% assign is_new = false %}
-  {% assign days_old = 'now' | date: '%s' | minus: product.created_at | date: '%s' | divided_by: 86400 %}
-  {% if days_old <= 7 %}{% assign is_new = true %}{% endif %}
-  
-  <article class="na-card" role="listitem" tabindex="0" 
-    data-sku="{{ product.variants.first.sku }}" 
-    data-name="{{ product.title | escape }}" 
-    data-price="{{ product.price | money_without_currency }}"
-    data-images='{{ product.images | map: "src" | json }}'>
-    <a class="na-inner-link" href="{{ product.url }}">
-      <div class="na-media">
-        <img src="{{ product.featured_image | img_url: '600x600' }}" alt="{{ product.title }}" loading="lazy">
-        {% if is_new %}
-        <span class="na-badge">New</span>
-        {% elsif product.tags contains 'featured' %}
-        <span class="na-badge">Featured</span>
-        {% endif %}
-      </div>
-      <div class="na-body">
-      <h3 class="na-title">{{ product.title }}</h3>
-      <div class="na-foot">
-          <div class="na-price">{{ product.price | money }}</div>
-          <div class="na-actions">
-            <button class="btn-ghost na-quick" type="button">Quick view</button>
-            <button class="btn-primary na-add" type="button">Add</button>
-          </div>
+        <div class="section-controls">
+          <div class="dots" id="featuredDots" aria-hidden="true"></div>
         </div>
       </div>
-    </a>
-  </article>
-  {% else %}
-  <div class="na-placeholder">No new arrivals available</div>
-  {% endfor %}
-</div>
+      <div class="slider-container">
+        <button class="arrow-btn prev-btn" id="featuredPrev" aria-label="Previous">◀</button>
+        <div class="slider-wrapper" id="featuredSlider">
+          <!-- Featured Products -->
+        </div>
+        <button class="arrow-btn next-btn" id="featuredNext" aria-label="Next">▶</button>
+      </div>
     </div>
   </section>
+
+  <!-- NEW ARRIVALS SLIDER -->
+  <section class="section newarrivals-section" aria-label="New arrivals">
+    <div class="page-inner">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">New Arrivals</h2>
+          <p class="section-lead">Fresh drops — limited quantities. Grab them before they're gone.</p>
+        </div>
+        <div class="section-controls">
+          <div class="dots" id="newArrivalsDots" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="slider-container">
+        <button class="arrow-btn prev-btn" id="newArrivalsPrev" aria-label="Previous">◀</button>
+        <div class="slider-wrapper" id="newArrivalsSlider">
+          <!-- New Arrivals Products -->
+        </div>
+        <button class="arrow-btn next-btn" id="newArrivalsNext" aria-label="Next">▶</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Sample product data
+    const featuredProducts = [
+      { id: 1, title: 'Premium Leather Jacket', price: 299.99, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 2, title: 'Classic Denim Jeans', price: 89.99, image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 3, title: 'Cotton Blend T-Shirt', price: 29.99, image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 4, title: 'Running Sneakers Pro', price: 149.99, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 5, title: 'Wool Winter Coat', price: 349.99, image: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 6, title: 'Designer Sunglasses', price: 199.99, image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 7, title: 'Leather Backpack', price: 159.99, image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&h=800&fit=crop', badge: 'featured' },
+      { id: 8, title: 'Smart Watch Ultra', price: 399.99, image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&h=800&fit=crop', badge: 'featured' }
+    ];
+
+    const newArrivals = [
+      { id: 9, title: 'Summer Floral Dress', price: 79.99, image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 10, title: 'Minimalist Watch', price: 249.99, image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 11, title: 'Canvas Tote Bag', price: 39.99, image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 12, title: 'Athletic Shorts', price: 44.99, image: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 13, title: 'Wireless Earbuds', price: 129.99, image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 14, title: 'Yoga Mat Premium', price: 59.99, image: 'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 15, title: 'Stainless Steel Bottle', price: 34.99, image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&h=800&fit=crop', badge: 'new' },
+      { id: 16, title: 'Reading Glasses', price: 89.99, image: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=800&h=800&fit=crop', badge: 'new' }
+    ];
+
+    function createProductCard(product) {
+      const badgeClass = product.badge === 'new' ? 'new' : 'featured';
+      const badgeText = product.badge === 'new' ? 'New' : 'Featured';
+      
+      return `
+        <article class="product-card" data-id="${product.id}">
+          <div class="product-media">
+            <img src="${product.image}" alt="${product.title}" loading="lazy">
+            <span class="product-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="product-body">
+            <h3 class="product-title">${product.title}</h3>
+            <div class="product-foot">
+              <div class="product-price">$${product.price.toFixed(2)}</div>
+              <button class="btn-add" onclick="addToCart(${product.id})">Add to cart</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function initSlider(sliderId, products, dotsId, prevId, nextId) {
+      const slider = document.getElementById(sliderId);
+      const dotsContainer = document.getElementById(dotsId);
+      const prevBtn = document.getElementById(prevId);
+      const nextBtn = document.getElementById(nextId);
+
+      slider.innerHTML = products.map(createProductCard).join('');
+
+      let currentIndex = 0;
+      const getVisibleCards = () => {
+        const width = window.innerWidth;
+        if (width <= 640) return 1;
+        if (width <= 900) return 2;
+        if (width <= 1200) return 3;
+        return 4;
+      };
+
+      let visibleCards = getVisibleCards();
+      let totalPages = Math.ceil(products.length / visibleCards);
+
+      function createDots() {
+        dotsContainer.innerHTML = '';
+        totalPages = Math.ceil(products.length / visibleCards);
+        for (let i = 0; i < totalPages; i++) {
+          const dot = document.createElement('div');
+          dot.className = `dot ${i === currentIndex ? 'active' : ''}`;
+          dot.addEventListener('click', () => goToSlide(i));
+          dotsContainer.appendChild(dot);
+        }
+      }
+
+      function updateSlider() {
+        const cardWidth = slider.querySelector('.product-card').offsetWidth;
+        const gap = window.innerWidth <= 640 ? 16 : 24;
+        const offset = currentIndex * visibleCards * (cardWidth + gap);
+        slider.style.transform = `translateX(-${offset}px)`;
+
+        document.querySelectorAll(`#${dotsId} .dot`).forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentIndex);
+        });
+
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex >= totalPages - 1;
+      }
+
+      function goToSlide(index) {
+        currentIndex = Math.max(0, Math.min(index, totalPages - 1));
+        updateSlider();
+      }
+
+      function nextSlide() {
+        if (currentIndex < totalPages - 1) {
+          currentIndex++;
+          updateSlider();
+        }
+      }
+
+      function prevSlide() {
+        if (currentIndex > 0) {
+          currentIndex--;
+          updateSlider();
+        }
+      }
+
+      prevBtn.addEventListener('click', prevSlide);
+      nextBtn.addEventListener('click', nextSlide);
+
+      // Touch/Swipe support
+      let touchStartX = 0;
+      let touchEndX = 0;
+      
+      slider.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      });
+      
+      slider.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      });
+      
+      function handleSwipe() {
+        if (touchEndX < touchStartX - 50) nextSlide();
+        if (touchEndX > touchStartX + 50) prevSlide();
+      }
+
+      // Keyboard navigation
+      slider.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'ArrowRight') nextSlide();
+      });
+
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          const newVisibleCards = getVisibleCards();
+          if (newVisibleCards !== visibleCards) {
+            visibleCards = newVisibleCards;
+            currentIndex = Math.min(currentIndex, Math.ceil(products.length / visibleCards) - 1);
+            createDots();
+            updateSlider();
+          }
+        }, 250);
+      });
+
+      createDots();
+      updateSlider();
+    }
+
+    function addToCart(productId) {
+      console.log('Adding product to cart:', productId);
+      
+      // Visual feedback
+      const card = document.querySelector(`[data-id="${productId}"]`);
+      const btn = card.querySelector('.btn-add');
+      const originalText = btn.textContent;
+      
+      btn.textContent = '✓ Added';
+      btn.style.background = '#10b981';
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 2000);
+    }
+
+    // Initialize both sliders
+    initSlider('featuredSlider', featuredProducts, 'featuredDots', 'featuredPrev', 'featuredNext');
+    initSlider('newArrivalsSlider', newArrivals, 'newArrivalsDots', 'newArrivalsPrev', 'newArrivalsNext');
+  </script>
+</body>
+</html>
