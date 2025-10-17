@@ -15,10 +15,23 @@
       <div class="slider-wrapper" id="featuredSlider">
         {% assign featured_collection = collections['featured'] | default: collections.all %}
         {% for product in featured_collection.products limit: 12 %}
+          {% if product.featured_image %}
         <article class="product-card" data-id="{{ product.id }}">
           <a href="{{ product.url }}" class="product-link">
             <div class="product-media">
-              <img src="{{ product.featured_image | img_url: '800x800' }}" alt="{{ product.title }}" loading="lazy">
+              {% if product.images[0] %}
+                <img src="{{ product.images[0] | image_url: width: 800 }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% else %}
+                <img src="{{ 'placeholder.svg' | asset_url }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% endif %}
               <span class="product-badge featured">Featured</span>
             </div>
             <div class="product-body">
@@ -30,6 +43,7 @@
             </div>
           </a>
         </article>
+          {% endif %}
         {% endfor %}
       </div>
       <button class="arrow-btn next-btn" id="featuredNext" aria-label="Next">▶</button>
@@ -54,14 +68,30 @@
       <div class="slider-wrapper" id="newArrivalsSlider">
         {% assign new_collection = collections['new-arrivals'] | default: collections.all %}
         {% for product in new_collection.products limit: 12 %}
+          {% if product.featured_image %}
         {% assign is_new = false %}
-        {% assign days_old = 'now' | date: '%s' | minus: product.created_at | date: '%s' | divided_by: 86400 %}
+        {% assign now_timestamp = 'now' | date: '%s' | times: 1 %}
+        {% assign product_timestamp = product.created_at | date: '%s' | times: 1 %}
+        {% assign seconds_old = now_timestamp | minus: product_timestamp %}
+        {% assign days_old = seconds_old | divided_by: 86400 %}
         {% if days_old <= 30 %}{% assign is_new = true %}{% endif %}
         
         <article class="product-card" data-id="{{ product.id }}">
           <a href="{{ product.url }}" class="product-link">
             <div class="product-media">
-              <img src="{{ product.featured_image | img_url: '800x800' }}" alt="{{ product.title }}" loading="lazy">
+              {% if product.images[0] %}
+                <img src="{{ product.images[0] | image_url: width: 800 }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% else %}
+                <img src="{{ 'placeholder.svg' | asset_url }}" 
+                     alt="{{ product.title | escape }}" 
+                     loading="lazy"
+                     width="800"
+                     height="800">
+              {% endif %}
               {% if is_new %}
               <span class="product-badge new">New</span>
               {% endif %}
@@ -75,6 +105,7 @@
             </div>
           </a>
         </article>
+          {% endif %}
         {% endfor %}
       </div>
       <button class="arrow-btn next-btn" id="newArrivalsNext" aria-label="Next">▶</button>
@@ -83,13 +114,8 @@
 </section>
 
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  .section {
+  .featured-section,
+  .newarrivals-section {
     margin-bottom: 60px;
     background: white;
     border-radius: 16px;
@@ -200,6 +226,7 @@
     position: relative;
     overflow: hidden;
     padding: 0 20px;
+    min-height: 400px;
   }
 
   .slider-wrapper {
@@ -210,6 +237,7 @@
 
   .product-card {
     min-width: calc(25% - 18px);
+    max-width: calc(25% - 18px);
     background: white;
     border-radius: 12px;
     overflow: hidden;
@@ -217,13 +245,16 @@
     transition: all 0.3s ease;
     position: relative;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .product-link {
     text-decoration: none;
     color: inherit;
-    display: block;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
 
   .product-card:hover {
@@ -279,6 +310,9 @@
 
   .product-body {
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
   }
 
   .product-title {
@@ -299,12 +333,14 @@
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    margin-top: auto;
   }
 
   .product-price {
     font-size: 22px;
     font-weight: 700;
     color: #2563eb;
+    white-space: nowrap;
   }
 
   .btn-add {
@@ -334,12 +370,14 @@
   @media (max-width: 1200px) {
     .product-card {
       min-width: calc(33.333% - 16px);
+      max-width: calc(33.333% - 16px);
     }
   }
 
   @media (max-width: 900px) {
     .product-card {
       min-width: calc(50% - 12px);
+      max-width: calc(50% - 12px);
     }
 
     .section-title {
@@ -370,9 +408,11 @@
 
   /* Mobile */
   @media (max-width: 640px) {
-    .section {
+    .featured-section,
+    .newarrivals-section {
       padding: 30px 0;
       border-radius: 12px;
+      margin-bottom: 40px;
     }
 
     .page-inner {
@@ -400,11 +440,13 @@
     }
 
     .product-card {
-      min-width: calc(100% - 0px);
+      min-width: 100%;
+      max-width: 100%;
     }
 
     .slider-container {
       padding: 0 10px;
+      min-height: 450px;
     }
 
     .slider-wrapper {
@@ -534,7 +576,10 @@
     if (!slider || !dotsContainer || !prevBtn || !nextBtn) return;
 
     const cards = slider.querySelectorAll('.product-card');
-    if (cards.length === 0) return;
+    if (cards.length === 0) {
+      console.warn('No product cards found for slider:', sliderId);
+      return;
+    }
 
     let currentIndex = 0;
     
@@ -610,12 +655,6 @@
       if (touchEndX > touchStartX + 50) prevSlide();
     });
 
-    // Keyboard navigation
-    slider.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') prevSlide();
-      if (e.key === 'ArrowRight') nextSlide();
-    });
-
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
@@ -631,12 +670,17 @@
     });
 
     createDots();
-    updateSlider();
+    setTimeout(() => updateSlider(), 100);
   }
 
   // Initialize both sliders when DOM is ready
-  document.addEventListener('DOMContentLoaded', function() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      initSlider('featuredSlider', 'featuredDots', 'featuredPrev', 'featuredNext');
+      initSlider('newArrivalsSlider', 'newArrivalsDots', 'newArrivalsPrev', 'newArrivalsNext');
+    });
+  } else {
     initSlider('featuredSlider', 'featuredDots', 'featuredPrev', 'featuredNext');
     initSlider('newArrivalsSlider', 'newArrivalsDots', 'newArrivalsPrev', 'newArrivalsNext');
-  });
+  }
 </script>
