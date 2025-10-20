@@ -5,15 +5,13 @@
  * Custom admin login template for Aakaari
  */
 
-// Redirect if already logged in and is admin
+// FIXED: Only redirect to admindashboard if logged in as admin
 if (is_user_logged_in() && current_user_can('manage_options')) {
-    $dashboard_page_id = get_option('aakaari_dashboard_page_id');
-    $dashboard_url = $dashboard_page_id ? get_permalink($dashboard_page_id) : admin_url('admin.php?page=aakaari-admin-dashboard');
-    wp_redirect($dashboard_url);
+    wp_redirect(home_url('/admindashboard/'));
     exit;
 }
 
-get_header('minimal'); // Use a minimal header or create one
+get_header('minimal');
 ?>
 
 <div class="aakaari-admin-login-container">
@@ -34,7 +32,7 @@ get_header('minimal'); // Use a minimal header or create one
             </div>
 
             <form id="aakaari-admin-login-form">
-                <?php wp_nonce_field('aakaari_admin_login', 'aakaari_admin_login_nonce'); ?>
+                <?php wp_nonce_field('aakaari_admin_login_ajax', 'aakaari_admin_login_nonce'); ?>
                 
                 <div class="aakaari-form-group">
                     <label for="admin_email">Admin Email or Username</label>
@@ -62,12 +60,15 @@ get_header('minimal'); // Use a minimal header or create one
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shield-icon-small">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
-                    Access Admin Panel
+                    Access Custom Dashboard
                 </button>
 
                 <div class="aakaari-admin-login-footer">
                     <a href="<?php echo esc_url(home_url('/')); ?>" class="aakaari-admin-login-back">
                         ← Back to Homepage
+                    </a>
+                    <a href="<?php echo esc_url(wp_login_url()); ?>" class="aakaari-admin-login-wp-admin">
+                        WP Admin Login →
                     </a>
                 </div>
             </form>

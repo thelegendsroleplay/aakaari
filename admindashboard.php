@@ -7,7 +7,7 @@
 
 // Redirect if not admin
 if (!is_user_logged_in() || !current_user_can('manage_options')) {
-    wp_redirect(home_url('/admin-login/'));
+    wp_redirect(home_url('/adminlogin/'));
     exit;
 }
 

@@ -30,15 +30,40 @@ function aakaari_admin_dashboard_enqueue_assets() {
 add_action('wp_enqueue_scripts', 'aakaari_admin_dashboard_enqueue_assets');
 
 /**
- * Restrict access to admin dashboard to administrators only
+ * Restrict access to custom admin dashboard to administrators only
  */
 function aakaari_restrict_admin_dashboard_access() {
-    if (is_page_template('admindashboard.php') && !current_user_can('manage_options')) {
-        wp_redirect(home_url('/adminlogin/'));
-        exit;
+    if (is_page_template('admindashboard.php')) {
+        if (!is_user_logged_in()) {
+            // Not logged in at all, redirect to custom admin login
+            wp_redirect(home_url('/adminlogin/'));
+            exit;
+        } elseif (!current_user_can('manage_options')) {
+            // Logged in but not an admin, redirect to homepage
+            wp_redirect(home_url('/'));
+            exit;
+        }
+        // If they are logged in and an admin, continue to show the dashboard
     }
 }
 add_action('template_redirect', 'aakaari_restrict_admin_dashboard_access');
+
+/**
+ * Add a link to the custom dashboard in the admin bar
+ */
+function aakaari_add_custom_dashboard_to_admin_bar($wp_admin_bar) {
+    if (current_user_can('manage_options')) {
+        $wp_admin_bar->add_node(array(
+            'id'    => 'aakaari-custom-dashboard',
+            'title' => 'Aakaari Dashboard',
+            'href'  => home_url('/admindashboard/'),
+            'meta'  => array(
+                'title' => 'Access Aakaari Custom Dashboard',
+            ),
+        ));
+    }
+}
+add_action('admin_bar_menu', 'aakaari_add_custom_dashboard_to_admin_bar', 100);
 
 /**
  * Get mock data for testing the dashboard

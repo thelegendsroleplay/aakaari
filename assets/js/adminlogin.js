@@ -62,13 +62,13 @@
                         // Error
                         showAlert(response.data.message);
                         submitButton.prop('disabled', false);
-                        submitButton.html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shield-icon-small"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Access Admin Panel');
+                        submitButton.html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shield-icon-small"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Access Custom Dashboard');
                     }
                 },
                 error: function() {
                     showAlert('Server error. Please try again later.');
                     submitButton.prop('disabled', false);
-                    submitButton.html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shield-icon-small"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Access Admin Panel');
+                    submitButton.html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shield-icon-small"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Access Custom Dashboard');
                 }
             });
         });
@@ -81,7 +81,7 @@
         
         // Helper function to show alert message
         function showAlert(message, type = 'error') {
-            alertBox.removeClass('success').addClass(type).text(message).show();
+            alertBox.removeClass('success error').addClass(type).text(message).show();
         }
         
         // Helper function to hide alert message
@@ -119,14 +119,6 @@
                     '</svg>');
             }
         });
-        
-        // Add loading spinner styles
-        $('<style>.loading-spinner{display:inline-block;width:1rem;height:1rem;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:white;animation:spin 1s linear infinite;margin-right:0.5rem;}@keyframes spin{to{transform:rotate(360deg)}}</style>')
-            .appendTo('head');
-            
-        // Add alert styles
-        $('<style>.aakaari-admin-login-alert{padding:0.75rem 1rem;border-radius:0.375rem;margin-bottom:1rem;}.aakaari-admin-login-alert.error{background-color:#fef2f2;color:#dc2626;border-left:4px solid #dc2626;}.aakaari-admin-login-alert.success{background-color:#ecfdf5;color:#059669;border-left:4px solid #059669;}</style>')
-            .appendTo('head');
     });
     
 })(jQuery);
