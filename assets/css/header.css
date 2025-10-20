@@ -414,3 +414,44 @@
     padding: 12px 16px;
   }
 }
+
+/* Add this to your existing header-styles.php */
+
+/* Logout Button Styling */
+.aakaari-header .btn-logout {
+  background-color: #ef4444; /* Red color for logout button */
+  color: #ffffff;
+}
+
+.aakaari-header .btn-logout:hover {
+  background-color: #dc2626; /* Darker red on hover */
+}
+
+/* Dashboard button styling */
+.aakaari-header .dashboard-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.aakaari-header .dashboard-btn:hover {
+  color: var(--primary-dark);
+}
+
+/* Adjust mobile menu for authenticated state */
+@media (max-width: 991px) {
+  .aakaari-header .auth-buttons {
+    justify-content: space-between;
+  }
+  
+  .aakaari-header .btn-logout {
+    width: 100%;
+    text-align: center;
+  }
+}

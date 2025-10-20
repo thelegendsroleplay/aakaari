@@ -43,29 +43,42 @@
 
             <!-- Auth buttons (inside navigation for mobile menu) -->
             <div class="auth-buttons">
-                <a href="<?php echo esc_url(home_url('/login/')); ?>" class="login-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path fill-rule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/>
-                        <path fill-rule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
-                    </svg>
-                    <span>Reseller Login</span>
-                </a>
-                <?php
-$reseller_page_id = get_option('reseller_page_id');
-$reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/'); // Fallback
-$login_link = home_url('/login/');
-$dashboard_link = home_url('/dashboard/');
-
-if (is_user_logged_in()) {
-    // User is logged in, send them to the dashboard.
-    $final_reseller_href = $dashboard_link;
-} else {
-    // User is not logged in. Send them to the login page.
-    // We'll pass a redirect so they land on the application page after login.
-    $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
-}
-?>
-<a href="<?php echo esc_url($final_reseller_href); ?>" class="btn-reseller-header">Become a Reseller</a>
+                <?php if (is_user_logged_in()): ?>
+                    <!-- User is logged in: Show Dashboard and Logout buttons -->
+                    <a href="<?php echo esc_url(home_url('/dashboard/')); ?>" class="login-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 4a.5.5 0 0 1 .5.5V6H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V7H6a.5.5 0 0 1 0-1h1.5V4.5A.5.5 0 0 1 8 4z"/>
+                            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="btn-reseller-header btn-logout">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0v-2A1.5 1.5 0 0 1 6.5 2h8A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z"/>
+                            <path fill-rule="evenodd" d="M.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L1.707 7.5H10.5a.5.5 0 0 1 0 1H1.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
+                        </svg>
+                        Logout
+                    </a>
+                <?php else: ?>
+                    <!-- User is not logged in: Show Login and Become Reseller buttons -->
+                    <a href="<?php echo esc_url(home_url('/login/')); ?>" class="login-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/>
+                            <path fill-rule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
+                        </svg>
+                        <span>Reseller Login</span>
+                    </a>
+                    <?php
+                    $reseller_page_id = get_option('reseller_page_id');
+                    $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/'); // Fallback
+                    $login_link = home_url('/login/');
+                    
+                    // User is not logged in, send to login with redirect
+                    $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
+                    ?>
+                    <a href="<?php echo esc_url($final_reseller_href); ?>" class="btn-reseller-header">Become a Reseller</a>
+                <?php endif; ?>
             </div>
         </nav>
 

@@ -1,131 +1,259 @@
 <?php
 /**
- * OTP (One-Time Password) Service
- * * Handles generation, storage, sending, and verification of OTPs.
+ * OTP Service
+ * Handles OTP generation, validation, and related functions
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// --- OTP Configuration ---
-define('OTP_EXPIRY_TIME', 10 * MINUTE_IN_SECONDS); // 10 minutes
-define('OTP_MAX_VERIFY_ATTEMPTS', 3);
-define('OTP_MAX_RESEND_ATTEMPTS', 5);
+// OTP configuration
+define('AAKAARI_OTP_LENGTH', 6);  // 6-digit OTP
+define('AAKAARI_OTP_EXPIRY', 15 * MINUTE_IN_SECONDS);  // 15 minutes expiry
+define('AAKAARI_OTP_RESEND_DELAY', 60);  // 60 seconds between resends
 
 /**
- * Generate a secure 6-digit OTP.
- * @return string
+ * Generate a random OTP
+ *
+ * @return string The generated OTP
  */
 function aakaari_generate_otp() {
-    return (string)rand(100000, 999999);
-}
-
-/**
- * Encrypts the OTP for database storage.
- * @param string $otp
- * @return string
- */
-function aakaari_encrypt_otp($otp) {
-    // Simple reversible encryption. For production, consider a more robust method.
-    // This is NOT secure hashing, as we need to compare the plain text.
-    // Using wp_hash_password is one-way. We'll use a simple method for this example.
-    // A better way would be to hash the OTP and store the hash, then hash the user input and compare.
-    // But for expiry, we often store the hash *and* the timestamp.
-    
-    // Let's store a hash instead.
-    return wp_hash_password($otp);
-}
-
-/**
- * Verifies a user-submitted OTP against the stored hash.
- * @param string $submitted_otp
- * @param string $stored_hash
- * @return bool
- */
-function aakaari_verify_otp($submitted_otp, $stored_hash) {
-    global $wp_hasher;
-    if (empty($wp_hasher)) {
-        require_once ABSPATH . WPINC . '/class-phpass.php';
-        $wp_hasher = new PasswordHash(8, true);
+    $otp = '';
+    for ($i = 0; $i < AAKAARI_OTP_LENGTH; $i++) {
+        $otp .= rand(0, 9);
     }
-    return $wp_hasher->CheckPassword($submitted_otp, $stored_hash);
-}
-
-
-/**
- * Send the OTP email to the user.
- * @param string $email
- * @param string $otp
- * @return bool
- */
-function aakaari_send_otp_email($email, $otp) {
-    $subject = 'Your Verification Code for Aakaari';
-    $message = "Your Aakaari verification code is: $otp\n\n";
-    $message .= "This code will expire in 10 minutes.\n\n";
-    $message .= "If you did not request this, please ignore this email.";
-    
-    $headers = array('Content-Type: text/plain; charset=UTF-8');
-    
-    return wp_mail($email, $subject, $message, $headers);
+    return $otp;
 }
 
 /**
- * Generates and stores a new OTP for a user.
- * Resets attempts and updates timestamp.
+ * Generate and send OTP to user email
  *
- * @param int $user_id
- * @param string $email
- * @return bool True on success, false on failure (e.g., email failed to send)
+ * @param int $user_id User ID
+ * @param string $email User email
+ * @return bool Whether OTP was sent successfully
  */
 function aakaari_generate_and_send_otp($user_id, $email) {
+    // Check for resend delay
+    $last_sent = get_user_meta($user_id, 'otp_generated_at', true);
+    if ($last_sent && (time() - $last_sent) < AAKAARI_OTP_RESEND_DELAY) {
+        return false; // Too soon to resend
+    }
+
+    // Generate OTP
     $otp = aakaari_generate_otp();
-    $otp_hash = aakaari_encrypt_otp($otp);
     
-    update_user_meta($user_id, 'otp_code', $otp_hash);
+    // Store OTP in user meta with timestamp
+    update_user_meta($user_id, 'email_verification_otp', $otp);
     update_user_meta($user_id, 'otp_generated_at', time());
-    update_user_meta($user_id, 'otp_verify_attempts', 0); // Reset verify attempts
     
-    // Send the plain text OTP via email
-    return aakaari_send_otp_email($email, $otp);
+    // Send email with OTP
+    $subject = 'Your Verification Code - Aakaari';
+    $message = "Hello,\n\n";
+    $message .= "Your verification code for Aakaari is: $otp\n\n";
+    $message .= "This code will expire in 15 minutes.\n\n";
+    $message .= "If you didn't request this code, please ignore this email.\n\n";
+    $message .= "Thank you,\nAakaari Team";
+    
+    $sent = wp_mail($email, $subject, $message);
+    
+    return $sent;
 }
 
 /**
- * Checks if a user is allowed to request a resend.
- * @param int $user_id
- * @return array ['allowed' => bool, 'message' => string]
+ * Validate OTP submitted by user
+ *
+ * @param int $user_id User ID
+ * @param string $submitted_otp OTP submitted by user
+ * @return bool|WP_Error True if valid, WP_Error if invalid
  */
-function aakaari_check_otp_resend_limit($user_id) {
-    $resend_count = (int)get_user_meta($user_id, 'otp_resend_count', true);
+function aakaari_validate_otp($user_id, $submitted_otp) {
+    // Get stored OTP
+    $stored_otp = get_user_meta($user_id, 'email_verification_otp', true);
+    $generated_at = get_user_meta($user_id, 'otp_generated_at', true);
     
-    if ($resend_count >= OTP_MAX_RESEND_ATTEMPTS) {
-        return [
-            'allowed' => false,
-            'message' => 'You have exceeded the maximum number of resend requests. Please contact support.'
-        ];
+    // Check if OTP exists
+    if (empty($stored_otp)) {
+        return new WP_Error('invalid_otp', 'No verification code found. Please request a new code.');
     }
     
-    return ['allowed' => true, 'message' => ''];
+    // Check if OTP has expired
+    if (time() - $generated_at > AAKAARI_OTP_EXPIRY) {
+        return new WP_Error('expired_otp', 'Verification code has expired. Please request a new code.');
+    }
+    
+    // Check if OTP matches
+    if ($submitted_otp !== $stored_otp) {
+        return new WP_Error('incorrect_otp', 'Incorrect verification code. Please try again.');
+    }
+    
+    // OTP is valid
+    return true;
 }
 
 /**
- * Checks if the stored OTP for a user is expired.
- * @param int $user_id
- * @return bool
+ * Mark user as verified after successful OTP validation
+ *
+ * @param int $user_id User ID
  */
-function aakaari_is_otp_expired($user_id) {
-    $generated_at = (int)get_user_meta($user_id, 'otp_generated_at', true);
-    return (time() - $generated_at) > OTP_EXPIRY_TIME;
-}
-
-/**
- * Clears all OTP meta from a user profile.
- * Call this after successful verification.
- * @param int $user_id
- */
-function aakaari_clear_otp_meta($user_id) {
-    delete_user_meta($user_id, 'otp_code');
+function aakaari_mark_user_verified($user_id) {
+    update_user_meta($user_id, 'email_verified', true);
+    
+    // Clean up OTP data
+    delete_user_meta($user_id, 'email_verification_otp');
     delete_user_meta($user_id, 'otp_generated_at');
-    delete_user_meta($user_id, 'otp_verify_attempts');
-    delete_user_meta($user_id, 'otp_resend_count');
+    
+    // Clear verification session
+    if (function_exists('WC') && WC()->session) {
+        WC()->session->set('aakaari_user_verifying', null);
+    }
+    
+    // Remove any verification cookies
+    if (isset($_COOKIE['aakaari_pending_verification'])) {
+        setcookie('aakaari_pending_verification', '', time() - 3600, COOKIEPATH, COOKIE_DOMAIN);
+    }
+    
+    // Send welcome email now that the user is verified
+    aakaari_send_verified_welcome_email($user_id);
 }
+
+/**
+ * Send welcome email to verified users
+ *
+ * @param int $user_id User ID
+ */
+function aakaari_send_verified_welcome_email($user_id) {
+    $user = get_user_by('id', $user_id);
+    if (!$user) return;
+    
+    $subject = 'Welcome to Aakaari!';
+    $message = "Hello " . get_user_meta($user_id, 'full_name', true) . ",\n\n";
+    $message .= "Thank you for verifying your email address. Your Aakaari reseller account is now active!\n\n";
+    $message .= "Login here: " . home_url('/login/') . "\n\n";
+    $message .= "Thank you for joining us!\n";
+    $message .= "The Aakaari Team";
+    
+    wp_mail($user->user_email, $subject, $message);
+}
+
+/**
+ * AJAX handler for OTP verification
+ */
+function aakaari_handle_otp_verification() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(['message' => 'Security check failed.']);
+        exit;
+    }
+    
+    // Get user ID from session
+    $user_id = null;
+    if (function_exists('WC') && WC()->session) {
+        $user_id = WC()->session->get('aakaari_user_verifying');
+    }
+    
+    // Try to get user ID from email if not in session
+    if (!$user_id && isset($_POST['email'])) {
+        $email = sanitize_email($_POST['email']);
+        $user = get_user_by('email', $email);
+        if ($user) {
+            $user_id = $user->ID;
+            // Save to session
+            if (function_exists('WC') && WC()->session) {
+                WC()->session->set('aakaari_user_verifying', $user_id);
+            }
+        }
+    }
+    
+    // Check if we have a user ID
+    if (!$user_id) {
+        wp_send_json_error(['message' => 'No verification process found. Please register again.']);
+        exit;
+    }
+    
+    // Get OTP from POST
+    $submitted_otp = sanitize_text_field($_POST['otp']);
+    if (empty($submitted_otp)) {
+        wp_send_json_error(['message' => 'Please enter a verification code.']);
+        exit;
+    }
+    
+    // Validate OTP
+    $validation_result = aakaari_validate_otp($user_id, $submitted_otp);
+    
+    if (is_wp_error($validation_result)) {
+        wp_send_json_error(['message' => $validation_result->get_error_message()]);
+        exit;
+    }
+    
+    // Mark user as verified
+    aakaari_mark_user_verified($user_id);
+    
+    // Send success response
+    wp_send_json_success([
+        'message' => 'Email verified successfully!',
+        'redirect_url' => home_url('/login/?verification=success')
+    ]);
+    exit;
+}
+add_action('wp_ajax_nopriv_verify_otp', 'aakaari_handle_otp_verification');
+add_action('wp_ajax_verify_otp', 'aakaari_handle_otp_verification');
+
+/**
+ * AJAX handler for OTP resend
+ */
+function aakaari_handle_otp_resend() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(['message' => 'Security check failed.']);
+        exit;
+    }
+    
+    // Get user ID from session
+    $user_id = null;
+    if (function_exists('WC') && WC()->session) {
+        $user_id = WC()->session->get('aakaari_user_verifying');
+    }
+    
+    // Try to get user ID from email if not in session
+    if (!$user_id && isset($_POST['email'])) {
+        $email = sanitize_email($_POST['email']);
+        $user = get_user_by('email', $email);
+        if ($user) {
+            $user_id = $user->ID;
+            // Save to session
+            if (function_exists('WC') && WC()->session) {
+                WC()->session->set('aakaari_user_verifying', $user_id);
+            }
+        }
+    }
+    
+    // Check if we have a user ID
+    if (!$user_id) {
+        wp_send_json_error(['message' => 'User not found.']);
+        exit;
+    }
+    
+    $user = get_user_by('id', $user_id);
+    
+    // Send new OTP
+    $sent = aakaari_generate_and_send_otp($user_id, $user->user_email);
+    
+    if (!$sent) {
+        $last_sent = get_user_meta($user_id, 'otp_generated_at', true);
+        $wait_time = AAKAARI_OTP_RESEND_DELAY - (time() - $last_sent);
+        if ($wait_time > 0) {
+            wp_send_json_error([
+                'message' => "Please wait {$wait_time} seconds before requesting a new code."
+            ]);
+        } else {
+            wp_send_json_error(['message' => 'Failed to send verification code.']);
+        }
+        exit;
+    }
+    
+    wp_send_json_success(['message' => 'A new verification code has been sent to your email.']);
+    exit;
+}
+add_action('wp_ajax_nopriv_resend_otp', 'aakaari_handle_otp_resend');
+add_action('wp_ajax_resend_otp', 'aakaari_handle_otp_resend');

@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Check if jQuery is available - we'll use it for AJAX calls
+    const useJQuery = (typeof jQuery !== 'undefined');
+    
+    // Get DOM elements
     const regFormContainer = document.getElementById('registration-form-container');
     const otpFormContainer = document.getElementById('otp-verification-container');
     const regForm = document.getElementById('reseller-registration-form');
@@ -197,7 +201,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     showToast(data.data.message, 'success');
                     if (data.data.otp_required) {
                         // Switch to OTP form
-                        document.getElementById('otp-email-display').textContent = data.data.email || 'your email';
+                        const emailDisplay = document.getElementById('otp-email-display');
+                        if (emailDisplay) {
+                            emailDisplay.textContent = data.data.email || 'your email';
+                        }
                         regFormContainer.style.display = 'none';
                         otpFormContainer.style.display = 'block';
                         startOtpTimer();
@@ -227,24 +234,44 @@ document.addEventListener('DOMContentLoaded', function () {
     const otpTimerEl = document.getElementById('otp-timer');
     let otpTimerInterval;
 
-    function startOtpTimer(duration = 60) {
-        let timer = duration;
-        resendOtpBtn.disabled = true;
+    // Global OTP Timer function
+    function startOtpTimer(seconds = 60) {
+        let timer = seconds;
+        if (resendOtpBtn) {
+            resendOtpBtn.disabled = true;
+        }
+        
+        // Clear any existing timer
+        if (window.otpTimerInterval) {
+            clearInterval(window.otpTimerInterval);
+        }
         
         otpTimerInterval = setInterval(() => {
-            otpTimerEl.textContent = `Resend code in ${timer}s`;
+            if (otpTimerEl) {
+                const minutes = Math.floor(timer / 60);
+                const secs = timer % 60;
+                otpTimerEl.textContent = `Resend available in ${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            }
+            
             timer--;
 
             if (timer < 0) {
                 clearInterval(otpTimerInterval);
-                otpTimerEl.textContent = '';
-                resendOtpBtn.disabled = false;
+                if (otpTimerEl) {
+                    otpTimerEl.textContent = '';
+                }
+                if (resendOtpBtn) {
+                    resendOtpBtn.disabled = false;
+                }
             }
         }, 1000);
+        
+        // Store reference globally
+        window.otpTimerInterval = otpTimerInterval;
     }
     
     // Start timer on page load if OTP form is visible
-    if (otpFormContainer.style.display === 'block') {
+    if (otpFormContainer && otpFormContainer.style.display !== 'none') {
         startOtpTimer();
     }
 
@@ -252,14 +279,22 @@ document.addEventListener('DOMContentLoaded', function () {
         otpForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             
-            otpSubmitBtn.disabled = true;
-            otpSubmitBtn.textContent = 'Verifying...';
-            otpValidationMsg.style.display = 'none';
+            if (otpSubmitBtn) {
+                otpSubmitBtn.disabled = true;
+                otpSubmitBtn.textContent = 'Verifying...';
+            }
+            
+            if (otpValidationMsg) {
+                otpValidationMsg.style.display = 'none';
+            }
+            
+            const email = document.getElementById('otp-email-display')?.textContent.trim() || '';
             
             const formData = new FormData();
-            formData.append('action', 'verify_registration_otp');
+            formData.append('action', 'verify_otp'); // Changed to use our new handler
             formData.append('nonce', registration_ajax_object.nonce);
             formData.append('otp', otpCodeInput.value);
+            formData.append('email', email);
 
             try {
                 const response = await fetch(registration_ajax_object.ajax_url, {
@@ -270,24 +305,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (data.success) {
                     showToast(data.data.message, 'success');
-                    // Redirect to dashboard
-                    window.location.href = registration_ajax_object.dashboard_url;
+                    // Redirect after a delay
+                    setTimeout(() => {
+                        window.location.href = data.data.redirect_url || registration_ajax_object.login_url;
+                    }, 1500);
                 } else {
-                    otpValidationMsg.textContent = data.data.message;
-                    otpValidationMsg.style.display = 'block';
-                    otpSubmitBtn.disabled = false;
-                    otpSubmitBtn.textContent = 'Verify Account';
+                    if (otpValidationMsg) {
+                        otpValidationMsg.textContent = data.data.message;
+                        otpValidationMsg.style.display = 'block';
+                    }
+                    if (otpSubmitBtn) {
+                        otpSubmitBtn.disabled = false;
+                        otpSubmitBtn.textContent = 'Verify Account';
+                    }
                     if (data.data.expired) {
                         clearInterval(otpTimerInterval);
-                        otpTimerEl.textContent = 'Code expired.';
-                        resendOtpBtn.disabled = false;
+                        if (otpTimerEl) {
+                            otpTimerEl.textContent = 'Code expired.';
+                        }
+                        if (resendOtpBtn) {
+                            resendOtpBtn.disabled = false;
+                        }
                     }
                 }
             } catch (error) {
-                otpValidationMsg.textContent = 'A network error occurred.';
-                otpValidationMsg.style.display = 'block';
-                otpSubmitBtn.disabled = false;
-                otpSubmitBtn.textContent = 'Verify Account';
+                if (otpValidationMsg) {
+                    otpValidationMsg.textContent = 'A network error occurred.';
+                    otpValidationMsg.style.display = 'block';
+                }
+                if (otpSubmitBtn) {
+                    otpSubmitBtn.disabled = false;
+                    otpSubmitBtn.textContent = 'Verify Account';
+                }
             }
         });
     }
@@ -296,11 +345,16 @@ document.addEventListener('DOMContentLoaded', function () {
         resendOtpBtn.addEventListener('click', async function () {
             this.disabled = true;
             this.textContent = 'Sending...';
-            otpValidationMsg.style.display = 'none';
+            if (otpValidationMsg) {
+                otpValidationMsg.style.display = 'none';
+            }
+            
+            const email = document.getElementById('otp-email-display')?.textContent.trim() || '';
             
             const formData = new FormData();
             formData.append('action', 'resend_otp');
             formData.append('nonce', registration_ajax_object.nonce);
+            formData.append('email', email);
 
             try {
                 const response = await fetch(registration_ajax_object.ajax_url, {
