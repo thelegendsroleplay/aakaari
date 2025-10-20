@@ -1,0 +1,627 @@
+/* Pricing Page Styles - Enhanced Version */
+
+:root {
+  --primary-color: #2563EB;
+  --primary-dark: #1D4ED8;
+  --primary-light: #EFF6FF;
+  --success-color: #10B981;
+  --success-light: #DCF5E6;
+  --text-dark: #111827;
+  --text-medium: #4B5563;
+  --text-light: #6B7280;
+  --text-muted: #9CA3AF;
+  --border-color: #E5E7EB;
+  --bg-light: #F8FAFC;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 12px rgba(37, 99, 235, 0.15);
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 20px;
+}
+
+/* Global Container */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Hero Section */
+.pricing-hero {
+  background-color: var(--primary-color);
+  background-image: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+  color: white;
+  padding: 100px 0 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.pricing-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.1;
+}
+
+.pricing-hero h1 {
+  font-size: 48px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pricing-hero .subtitle {
+  font-size: 20px;
+  font-weight: 400;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+/* Pricing Cards */
+.pricing-cards {
+  padding: 100px 0;
+}
+
+.pricing-grid {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin-top: 40px;
+}
+
+.pricing-card {
+  background-color: #fff;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--border-color);
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 340px;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  z-index: 1;
+}
+
+.pricing-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  top: 0;
+  left: 0;
+}
+
+.pricing-card:hover {
+  transform: translateY(-5px) scale(1.02);
+}
+
+.pricing-card:hover::after {
+  opacity: 1;
+}
+
+.pricing-card.popular {
+  border: 2px solid var(--primary-color);
+  box-shadow: var(--shadow-primary);
+  z-index: 2;
+  transform: translateY(-5px) scale(1.02);
+}
+
+.pricing-card.popular:hover {
+  transform: translateY(-10px) scale(1.03);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 20px;
+  border-radius: var(--border-radius-xl);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.card-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.plan-name {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text-dark);
+}
+
+.price {
+  font-size: 54px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-dark);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.currency {
+  font-size: 28px;
+  margin-right: 4px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.billing-cycle {
+  color: var(--text-light);
+  font-size: 16px;
+  margin-bottom: 18px;
+}
+
+.plan-description {
+  color: var(--text-medium);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.card-cta {
+  margin-bottom: 30px;
+}
+
+.card-cta .btn {
+  display: block;
+  text-align: center;
+  padding: 14px;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+}
+
+.btn-outline:hover {
+  background-color: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-light {
+  background-color: white;
+  color: var(--primary-color);
+  border: 2px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-light:hover {
+  background-color: var(--bg-light);
+  transform: translateY(-2px);
+}
+
+.card-features ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.card-features li {
+  padding: 10px 0;
+  position: relative;
+  padding-left: 32px;
+  font-size: 15px;
+  color: var(--text-medium);
+}
+
+.feature-included:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 20px;
+  height: 20px;
+  background-color: var(--success-light);
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.feature-included:after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 17px;
+  width: 6px;
+  height: 3px;
+  border-left: 2px solid var(--success-color);
+  border-bottom: 2px solid var(--success-color);
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+
+.pricing-card:hover .feature-included:before {
+  transform: scale(1.1);
+}
+
+.feature-not-included {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Feature Comparison */
+.feature-comparison {
+  background-color: var(--bg-light);
+  padding: 100px 0;
+  position: relative;
+}
+
+.feature-comparison h2 {
+  font-size: 36px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--text-dark);
+}
+
+.feature-comparison .section-subtitle {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 18px;
+  margin-bottom: 50px;
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: white;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 18px 24px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.comparison-table th:first-child,
+.comparison-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+
+.comparison-table th {
+  font-weight: 600;
+  color: var(--text-dark);
+  background-color: #F9FAFB;
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table th:first-child {
+  border-top-left-radius: var(--border-radius-md);
+}
+
+.comparison-table th:last-child {
+  border-top-right-radius: var(--border-radius-md);
+}
+
+.comparison-table tr:last-child td:first-child {
+  border-bottom-left-radius: var(--border-radius-md);
+}
+
+.comparison-table tr:last-child td:last-child {
+  border-bottom-right-radius: var(--border-radius-md);
+}
+
+.comparison-table .check-mark {
+  color: var(--success-color);
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* Pricing FAQs */
+.pricing-faqs {
+  padding: 100px 0;
+  background-color: white;
+}
+
+.pricing-faqs h2 {
+  font-size: 36px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 50px;
+  color: var(--text-dark);
+}
+
+.faq-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  background-color: #ffffff;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.faq-item:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.faq-item.active {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.faq-item h3 {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 24px;
+  margin: 0;
+  color: var(--text-dark);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.faq-item.active h3 {
+  color: var(--primary-color);
+}
+
+.faq-answer {
+  padding: 0 24px 24px;
+  color: var(--text-medium);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* FAQ Accordion Functionality */
+.faq-item h3:after {
+  content: "+";
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  color: var(--primary-color);
+  transition: transform 0.3s ease;
+}
+
+.faq-item.active h3:after {
+  content: "−";
+  transform: translateY(-50%) rotate(0deg);
+}
+
+.faq-item .faq-answer {
+  display: none;
+  animation: fadeIn 0.5s ease;
+}
+
+.faq-item.active .faq-answer {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Questions CTA */
+.questions-cta {
+  background-color: var(--primary-color);
+  background-image: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+  color: white;
+  padding: 80px 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.questions-cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.1;
+}
+
+.questions-cta h2 {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 16px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.questions-cta p {
+  font-size: 20px;
+  margin-bottom: 32px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  opacity: 0.9;
+}
+
+.cta-button-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.questions-cta .btn {
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+  .pricing-grid {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 991px) {
+  .pricing-hero {
+    padding: 80px 0 60px;
+  }
+  
+  .pricing-cards,
+  .feature-comparison,
+  .pricing-faqs {
+    padding: 70px 0;
+  }
+  
+  .pricing-grid {
+    gap: 25px;
+  }
+  
+  .pricing-card {
+    max-width: calc(50% - 25px);
+    min-width: 300px;
+  }
+  
+  .comparison-table {
+    min-width: 700px;
+  }
+  
+  .price {
+    font-size: 46px;
+  }
+}
+
+@media (max-width: 767px) {
+  .pricing-hero h1 {
+    font-size: 36px;
+  }
+  
+  .pricing-hero .subtitle {
+    font-size: 18px;
+  }
+  
+  .pricing-cards,
+  .feature-comparison,
+  .pricing-faqs {
+    padding: 60px 0;
+  }
+  
+  .pricing-card {
+    max-width: 100%;
+  }
+  
+  .pricing-card:hover,
+  .pricing-card.popular:hover {
+    transform: translateY(-3px) scale(1.01);
+  }
+  
+  .feature-comparison h2,
+  .pricing-faqs h2,
+  .questions-cta h2 {
+    font-size: 30px;
+  }
+  
+  .questions-cta p {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pricing-hero h1 {
+    font-size: 30px;
+  }
+  
+  .pricing-hero .subtitle,
+  .questions-cta p {
+    font-size: 16px;
+  }
+  
+  .pricing-cards {
+    padding: 50px 0;
+  }
+  
+  .pricing-card {
+    padding: 30px 20px;
+  }
+  
+  .plan-name {
+    font-size: 20px;
+  }
+  
+  .price {
+    font-size: 40px;
+  }
+  
+  .currency {
+    font-size: 24px;
+  }
+  
+  .feature-comparison h2,
+  .pricing-faqs h2,
+  .questions-cta h2 {
+    font-size: 26px;
+  }
+  
+  .card-cta .btn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+  
+  .questions-cta .btn {
+    width: 100%;
+    max-width: 280px;
+  }
+}

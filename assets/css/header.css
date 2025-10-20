@@ -1,0 +1,416 @@
+/* Enhanced Header Styles - Fully Responsive */
+
+:root {
+  --primary-color: #2563EB;
+  --primary-dark: #1D4ED8;
+  --text-dark: #111827;
+  --text-medium: #64748B;
+  --border-color: #E5E7EB;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Base Header */
+.aakaari-header {
+  background-color: #ffffff;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 12px 0;
+  width: 100%;
+}
+
+.aakaari-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Logo */
+.aakaari-header .site-branding {
+  flex-shrink: 0;
+  z-index: 101;
+}
+
+.aakaari-header .site-branding .logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 20px;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.aakaari-header .site-branding .logo:hover {
+  opacity: 0.8;
+}
+
+.aakaari-header .site-branding .logo svg {
+  margin-right: 8px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+/* Navigation Container */
+.aakaari-header .main-navigation {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  flex: 1;
+  margin: 0 20px;
+}
+
+/* Nav Menu */
+.aakaari-header .nav-menu {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  flex: 1;
+}
+
+.aakaari-header .nav-menu li {
+  list-style: none;
+  margin: 0;
+}
+
+.aakaari-header .nav-menu a {
+  display: block;
+  color: var(--text-medium);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 16px;
+  transition: color 0.2s ease;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.aakaari-header .nav-menu a:hover,
+.aakaari-header .nav-menu .current-menu-item a {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* Auth Buttons */
+.aakaari-header .auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.aakaari-header .login-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-medium);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.aakaari-header .login-btn:hover {
+  color: var(--primary-color);
+}
+
+.aakaari-header .login-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.aakaari-header .btn-reseller-header {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.aakaari-header .btn-reseller-header:hover {
+  background-color: var(--primary-dark);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Mobile Menu Toggle */
+.aakaari-header .mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 44px;
+  width: 44px;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  z-index: 101;
+}
+
+.aakaari-header .hamburger {
+  width: 24px;
+  height: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.aakaari-header .hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--primary-color);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.aakaari-header .mobile-menu-toggle.is-active .hamburger span:nth-child(1) {
+  transform: translateY(9px) rotate(45deg);
+}
+
+.aakaari-header .mobile-menu-toggle.is-active .hamburger span:nth-child(2) {
+  opacity: 0;
+}
+
+.aakaari-header .mobile-menu-toggle.is-active .hamburger span:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Large Desktop (1200px and below) */
+@media (max-width: 1200px) {
+  .aakaari-header .nav-menu a {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .aakaari-header .main-navigation {
+    gap: 30px;
+    margin: 0 15px;
+  }
+
+  .aakaari-header .auth-buttons {
+    gap: 12px;
+  }
+}
+
+/* Tablet (991px and below) - Mobile Menu Activates */
+@media (max-width: 991px) {
+  /* Center logo on mobile */
+  .aakaari-header .container {
+    padding: 0 15px;
+    position: relative;
+  }
+
+  .aakaari-header .site-branding {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Hide logo text on mobile, keep only icon */
+  .aakaari-header .site-branding .logo span {
+    display: none;
+  }
+
+  /* Show mobile menu toggle on the left */
+  .aakaari-header .mobile-menu-toggle {
+    display: flex;
+    order: -1;
+  }
+
+  /* Mobile Navigation Menu */
+  .aakaari-header .main-navigation {
+    position: fixed;
+    top: 60px;
+    left: -100%;
+    width: 100%;
+    height: calc(100vh - 60px);
+    background: white;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    margin: 0;
+    z-index: 99;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    gap: 0;
+  }
+
+  .aakaari-header .main-navigation.active {
+    left: 0;
+  }
+
+  .aakaari-header .nav-menu {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  .aakaari-header .nav-menu li {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .aakaari-header .nav-menu a {
+    padding: 16px 20px;
+    border-bottom: none;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .aakaari-header .nav-menu a:hover,
+  .aakaari-header .nav-menu .current-menu-item a {
+    background-color: #EFF6FF;
+    color: var(--primary-color);
+    border-bottom: none;
+  }
+
+  /* Auth Buttons in Mobile Menu */
+  .aakaari-header .auth-buttons {
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border-top: 2px solid var(--border-color);
+    margin-top: auto;
+    width: 100%;
+  }
+
+  .aakaari-header .login-btn {
+    padding: 14px 20px;
+    justify-content: center;
+    border-radius: 6px;
+    background-color: transparent;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .aakaari-header .login-btn span {
+    display: inline;
+  }
+
+  .aakaari-header .login-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+  }
+
+  .aakaari-header .btn-reseller-header {
+    width: 100%;
+    text-align: center;
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+}
+
+/* Small Mobile (576px and below) */
+@media (max-width: 576px) {
+  .aakaari-header {
+    padding: 10px 0;
+  }
+
+  .aakaari-header .container {
+    padding: 0 12px;
+  }
+
+  .aakaari-header .site-branding .logo svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .aakaari-header .mobile-menu-toggle {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 6px;
+  }
+
+  .aakaari-header .hamburger {
+    width: 20px;
+    height: 18px;
+  }
+
+  .aakaari-header .main-navigation {
+    top: 56px;
+    height: calc(100vh - 56px);
+  }
+
+  .aakaari-header .auth-buttons {
+    padding: 16px;
+  }
+
+  .aakaari-header .nav-menu a {
+    font-size: 15px;
+  }
+}
+
+/* Extra Small Mobile (380px and below) */
+@media (max-width: 380px) {
+  .aakaari-header .container {
+    padding: 0 10px;
+  }
+
+  .aakaari-header .site-branding .logo svg {
+    width: 20px;
+    height: 20px;
+    margin-right: 0;
+  }
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .aakaari-header * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Touch-friendly targets for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .aakaari-header .nav-menu a,
+  .aakaari-header .login-btn,
+  .aakaari-header .btn-reseller-header,
+  .aakaari-header .mobile-menu-toggle {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+}

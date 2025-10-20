@@ -1,0 +1,171 @@
+/* Footer Styles */
+.aakaari-footer {
+    background-color: #111827;
+    color: #ffffff;
+    padding: 60px 0 30px;
+}
+
+.aakaari-footer .container {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.aakaari-footer .footer-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 40px;
+}
+
+.aakaari-footer .footer-column {
+    flex: 1;
+    min-width: 200px;
+    margin-bottom: 30px;
+    padding-right: 20px;
+}
+
+.aakaari-footer .footer-column.company-info {
+    flex: 1.5;
+}
+
+/* Logo */
+.aakaari-footer .footer-logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 22px;
+    margin-bottom: 15px;
+}
+
+.aakaari-footer .footer-logo svg {
+    margin-right: 8px;
+}
+
+.aakaari-footer .company-tagline {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #9ca3af;
+    margin-bottom: 20px;
+}
+
+/* Social Media Links */
+.aakaari-footer .social-links {
+    display: flex;
+    gap: 15px;
+}
+
+.aakaari-footer .social-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.aakaari-footer .social-links a:hover {
+    background-color: #2563EB;
+    transform: translateY(-2px);
+}
+
+/* Section Headers */
+.aakaari-footer h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #ffffff;
+}
+
+/* Footer Links */
+.aakaari-footer .footer-links {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.aakaari-footer .footer-links li {
+    margin-bottom: 12px;
+}
+
+.aakaari-footer .footer-links a {
+    color: #9ca3af;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s ease;
+}
+
+.aakaari-footer .footer-links a:hover {
+    color: #ffffff;
+}
+
+/* Contact Info */
+.aakaari-footer .contact-info {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.aakaari-footer .contact-info li {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.aakaari-footer .contact-info svg {
+    margin-right: 10px;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+/* Copyright Section */
+.aakaari-footer .copyright {
+    text-align: center;
+    padding-top: 30px;
+    border-top: 1px solid rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 991px) {
+    .aakaari-footer .footer-content {
+        flex-direction: column;
+    }
+    
+    .aakaari-footer .footer-column {
+        width: 100%;
+        padding-right: 0;
+    }
+    
+    .aakaari-footer .footer-column.company-info {
+        margin-bottom: 40px;
+    }
+    
+    .aakaari-footer .footer-column h3 {
+        margin-top: 10px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .aakaari-footer .footer-content {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .aakaari-footer .footer-column {
+        flex: 0 0 50%;
+    }
+    
+    .aakaari-footer .footer-column.company-info {
+        flex: 0 0 100%;
+    }
+}
