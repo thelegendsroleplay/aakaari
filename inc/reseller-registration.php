@@ -286,3 +286,40 @@ function aakaari_create_reseller_role() {
     );
 }
 add_action('init', 'aakaari_create_reseller_role');
+
+// Add this inside inc/reseller-application.php
+
+/**
+ * Register Reseller Application Status Taxonomy
+ */
+function register_reseller_application_status_taxonomy() {
+    $labels = array(
+        'name'              => _x( 'Application Statuses', 'taxonomy general name', 'aakaari' ),
+        'singular_name'     => _x( 'Application Status', 'taxonomy singular name', 'aakaari' ),
+        'search_items'      => __( 'Search Statuses', 'aakaari' ),
+        'all_items'         => __( 'All Statuses', 'aakaari' ),
+        'parent_item'       => __( 'Parent Status', 'aakaari' ),
+        'parent_item_colon' => __( 'Parent Status:', 'aakaari' ),
+        'edit_item'         => __( 'Edit Status', 'aakaari' ),
+        'update_item'       => __( 'Update Status', 'aakaari' ),
+        'add_new_item'      => __( 'Add New Status', 'aakaari' ),
+        'new_item_name'     => __( 'New Status Name', 'aakaari' ),
+        'menu_name'         => __( 'Statuses', 'aakaari' ),
+    );
+    $args = array(
+        'hierarchical'      => false, // like tags
+        'labels'            => $labels,
+        'show_ui'           => true,
+        'show_admin_column' => true,
+        'query_var'         => true,
+        'rewrite'           => array( 'slug' => 'reseller-application-status' ),
+        'public'            => false, // Not needed on front-end usually
+    );
+    register_taxonomy( 'reseller_application_status', array( 'reseller_application' ), $args );
+
+    // Optional: Pre-register default terms if they don't exist
+    wp_insert_term('pending', 'reseller_application_status');
+    wp_insert_term('approved', 'reseller_application_status');
+    wp_insert_term('rejected', 'reseller_application_status');
+}
+add_action( 'init', 'register_reseller_application_status_taxonomy', 0 ); // Register taxonomy early

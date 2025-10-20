@@ -16,46 +16,6 @@
         
         let selectedApplicationId = null;
         
-        // Mock applications data - in a real scenario, this would be populated from PHP
-        const applications = [
-            {
-                id: '1',
-                name: 'Rajesh Kumar',
-                email: 'rajesh@example.com',
-                phone: '+91 9876543210',
-                businessName: 'Kumar Enterprises',
-                businessType: 'Retail Shop',
-                city: 'Mumbai',
-                state: 'Maharashtra',
-                appliedDate: '2025-10-18',
-                status: 'pending'
-            },
-            {
-                id: '2',
-                name: 'Priya Sharma',
-                email: 'priya@example.com',
-                phone: '+91 9876543211',
-                businessName: 'Fashion Hub',
-                businessType: 'Online Store',
-                city: 'Delhi',
-                state: 'Delhi',
-                appliedDate: '2025-10-17',
-                status: 'pending'
-            },
-            {
-                id: '3',
-                name: 'Amit Patel',
-                email: 'amit@example.com',
-                phone: '+91 9876543212',
-                businessName: '',
-                businessType: 'Individual/Freelancer',
-                city: 'Ahmedabad',
-                state: 'Gujarat',
-                appliedDate: '2025-10-16',
-                status: 'pending'
-            }
-        ];
-
         // --- Event Handlers ---
         
         // Open application modal
@@ -121,16 +81,35 @@
          * Open application review modal
          */
         function openApplicationModal(applicationId) {
-            // Find application data
-            const application = applications.find(app => app.id === applicationId);
-            
-            if (!application) {
-                showToast('Application not found', 'error');
+            // --- Get data from the clicked row (assuming PHP added data attributes) ---
+            const row = $(`button[data-application-id="${applicationId}"]`).closest('tr');
+            if (row.length === 0) {
+                showToast('Could not find application row.', 'error');
                 return;
             }
             
-            selectedApplicationId = applicationId;
-            
+            // Extract all necessary data directly from the table row
+            const application = {
+                id: applicationId,
+                name: row.find('td:eq(0) div:first-child').text().trim() || 'N/A',
+                email: row.find('td:eq(1)').text().trim() || 'N/A',
+                phone: row.find('td:eq(0) .aakaari-table-subtitle').text().trim() || 'N/A',
+                businessName: row.find('td:eq(2) div:first-child').text().trim() || 'N/A',
+                businessType: row.find('td:eq(2) .aakaari-table-subtitle').text().trim() || 'N/A',
+                city: row.find('td:eq(3)').text().split(',')[0]?.trim() || 'N/A',
+                state: row.find('td:eq(3)').text().split(',')[1]?.trim() || 'N/A',
+                appliedDate: row.find('td:eq(4)').text().trim() || 'N/A',
+                status: row.find('.aakaari-status-badge').text().trim().toLowerCase() || 'pending'
+            };
+
+            // Check if we successfully got application data from the row
+            if (!application.id) {
+                showToast('Application data could not be retrieved.', 'error');
+                return;
+            }
+
+            selectedApplicationId = applicationId; // Keep track of the ID
+
             // Populate application details
             const detailsHtml = `
                 <div class="application-details-grid">
@@ -152,7 +131,7 @@
                     </div>
                     <div class="application-detail-item">
                         <label>Business Name</label>
-                        <p>${application.businessName || 'N/A'}</p>
+                        <p>${application.businessName}</p>
                     </div>
                     <div class="application-detail-item">
                         <label>Location</label>
@@ -166,12 +145,15 @@
                         <label>Status</label>
                         <p><span class="aakaari-status-badge status-${application.status}">${capitalizeFirstLetter(application.status)}</span></p>
                     </div>
+                    <div class="application-detail-item" style="grid-column: 1 / -1;">
+                        <a href="/wp-admin/post.php?post=${application.id}&action=edit" target="_blank" class="aakaari-button aakaari-button-sm aakaari-button-outline">View Full Application in WP Admin</a>
+                    </div>
                 </div>
             `;
-            
+
             applicationDetails.html(detailsHtml);
             rejectionReason.val('');
-            
+
             // Show modal
             applicationModal.addClass('active');
         }
@@ -188,32 +170,84 @@
          * Approve application
          */
         function approveApplication(applicationId) {
-            // In a real application, this would make an AJAX call to the server
+            if (!applicationId) {
+                showToast('Invalid application ID', 'error');
+                return;
+            }
             
-            // Simulate success
-            showToast('Application approved successfully!', 'success');
+            // Show processing state
+            approveAppBtn.prop('disabled', true).html('<span>Processing...</span>');
             
-            // Update UI
-            updateApplicationStatus(applicationId, 'approved');
-            
-            // Close modal
-            closeModal();
+            // Make AJAX request to the server
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'approve_application',
+                    application_id: applicationId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Application approved successfully!', 'success');
+                        updateApplicationStatus(applicationId, 'approved');
+                    } else {
+                        showToast(response.data.message || 'Failed to approve application', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                },
+                complete: function() {
+                    approveAppBtn.prop('disabled', false).html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Approve');
+                    closeModal();
+                }
+            });
         }
         
         /**
          * Reject application
          */
         function rejectApplication(applicationId, reason) {
-            // In a real application, this would make an AJAX call to the server
+            if (!applicationId) {
+                showToast('Invalid application ID', 'error');
+                return;
+            }
             
-            // Simulate success
-            showToast('Application rejected', 'success');
+            if (!reason) {
+                showToast('Please provide a rejection reason', 'error');
+                return;
+            }
             
-            // Update UI
-            updateApplicationStatus(applicationId, 'rejected');
+            // Show processing state
+            rejectAppBtn.prop('disabled', true).html('<span>Processing...</span>');
             
-            // Close modal
-            closeModal();
+            // Make AJAX request to the server
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'reject_application',
+                    application_id: applicationId,
+                    reason: reason,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Application rejected', 'success');
+                        updateApplicationStatus(applicationId, 'rejected');
+                    } else {
+                        showToast(response.data.message || 'Failed to reject application', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                },
+                complete: function() {
+                    rejectAppBtn.prop('disabled', false).html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Reject');
+                    closeModal();
+                }
+            });
         }
         
         /**
@@ -221,13 +255,16 @@
          */
         function updateApplicationStatus(applicationId, status) {
             // Update application status badge in tables
-            $(`[data-application-id="${applicationId}"]`).closest('tr')
-                .find('.aakaari-status-badge')
-                .removeClass('status-pending status-approved status-rejected')
-                .addClass(`status-${status}`)
-                .text(capitalizeFirstLetter(status));
+            const row = $(`[data-application-id="${applicationId}"]`).closest('tr');
+            if (row.length > 0) {
+                row.find('.aakaari-status-badge')
+                    .removeClass('status-pending status-approved status-rejected')
+                    .addClass(`status-${status}`)
+                    .text(capitalizeFirstLetter(status));
+            }
                 
-            // In a real application, you might want to refresh data from server or update local data
+            // You might want to update the counters on the page too
+            // For example, if this was the last pending application, update the count
         }
         
         /**
@@ -299,6 +336,7 @@
          * Capitalize first letter of a string
          */
         function capitalizeFirstLetter(string) {
+            if (!string) return '';
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
 

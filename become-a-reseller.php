@@ -12,17 +12,7 @@ $blocked_submission = false;
 // Get user IP
 $user_ip = $_SERVER['REMOTE_ADDR'];
 
-// Check if this IP has submitted within the last 7 days - Keep existing check but add exception for logged-in users
-$recent_submission = check_recent_submission_by_ip($user_ip);
-if ($recent_submission && !$onboarding_status) {
-    $blocked_submission = true;
-    $days_to_wait = calculate_days_remaining($recent_submission);
-} else {
-    $blocked_submission = false; // Allow submission for users with pending status who are completing their profile
-}
-
-// <<< ADD HERE
-// --- NEW: Get user ID and onboarding status ---
+// --- Get user ID and onboarding status ---
 $current_user = wp_get_current_user();
 $user_id = $current_user->ID;
 $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
@@ -32,8 +22,15 @@ if ($onboarding_status === 'completed') {
     wp_safe_redirect(home_url('/dashboard/'));
     exit;
 }
-// --- END NEW ---
 
+// Check if this IP has submitted within the last 7 days - Keep existing check but add exception for logged-in users
+$recent_submission = check_recent_submission_by_ip($user_ip);
+if ($recent_submission && !$onboarding_status) {
+    $blocked_submission = true;
+    $days_to_wait = calculate_days_remaining($recent_submission);
+} else {
+    $blocked_submission = false; // Allow submission for users with pending status who are completing their profile
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application']) && ! $blocked_submission) {
 
@@ -114,6 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     update_post_meta( $post_id, 'reseller_id_proof_url', esc_url_raw( $file_url ) );
                     update_post_meta( $post_id, 'ipAddress', $_SERVER['REMOTE_ADDR'] ?? '' );
                     update_post_meta( $post_id, 'submitDate', current_time('mysql') );
+                    // Add business type for dashboard display
+                    update_post_meta( $post_id, 'reseller_business_type', sanitize_text_field($_POST['businessType'] ?? 'Individual/Freelancer') );
 
                     // Set plugin taxonomy (status)
                     wp_set_object_terms( $post_id, 'pending', 'reseller_application_status' );
@@ -130,14 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
 
                     $submitted = true;
                     setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
-                // --- NEW: Update user onboarding status to 'completed' ---
-                    // This removes the need for a manual admin approval step to unlock the dashboard.
-                    // The admin still gets the CPT entry for review.
+                    
+                    // Update user onboarding status to 'completed'
                     update_user_meta($user_id, 'onboarding_status', 'completed');
-                    // --- END NEW ---
 
-                } else { // This 'else' belongs to the if(!is_wp_error($post_id)) check
-
+                } else {
                     $form_errors['general'] = 'Error creating application. Please try again.';
                 }
             } else {
@@ -341,6 +337,9 @@ $benefits = [
                                         <?php endif; ?>
                                     </div>
                                 </div>
+                                
+                                <!-- Add hidden field for business type -->
+                                <input type="hidden" name="businessType" value="Individual/Freelancer">
                             </div>
                             
                             <!-- Address Details -->

@@ -30,45 +30,48 @@ $stats = array(
     'pendingPayouts' => 125340
 );
 
-// Mock applications data
-$applications = array(
-    array(
-        'id' => '1',
-        'name' => 'Rajesh Kumar',
-        'email' => 'rajesh@example.com',
-        'phone' => '+91 9876543210',
-        'businessName' => 'Kumar Enterprises',
-        'businessType' => 'Retail Shop',
-        'city' => 'Mumbai',
-        'state' => 'Maharashtra',
-        'appliedDate' => '2025-10-18',
-        'status' => 'pending'
+// Fetch actual reseller applications
+$applications_query = new WP_Query(array(
+    'post_type' => 'reseller_application',
+    'posts_per_page' => -1, // Get all applications
+    'orderby' => 'date',
+    'order' => 'DESC',
+    'tax_query' => array(
+        // Optionally filter by status, e.g., 'pending' by default
+        // array(
+        //     'taxonomy' => 'reseller_application_status',
+        //     'field'    => 'slug',
+        //     'terms'    => 'pending',
+        // ),
     ),
-    array(
-        'id' => '2',
-        'name' => 'Priya Sharma',
-        'email' => 'priya@example.com',
-        'phone' => '+91 9876543211',
-        'businessName' => 'Fashion Hub',
-        'businessType' => 'Online Store',
-        'city' => 'Delhi',
-        'state' => 'Delhi',
-        'appliedDate' => '2025-10-17',
-        'status' => 'pending'
-    ),
-    array(
-        'id' => '3',
-        'name' => 'Amit Patel',
-        'email' => 'amit@example.com',
-        'phone' => '+91 9876543212',
-        'businessName' => '',
-        'businessType' => 'Individual/Freelancer',
-        'city' => 'Ahmedabad',
-        'state' => 'Gujarat',
-        'appliedDate' => '2025-10-16',
-        'status' => 'pending'
-    )
-);
+));
+
+$applications = array();
+if ($applications_query->have_posts()) {
+    while ($applications_query->have_posts()) {
+        $applications_query->the_post();
+        $post_id = get_the_ID();
+        $status_terms = wp_get_post_terms($post_id, 'reseller_application_status');
+        $status = !empty($status_terms) ? $status_terms[0]->slug : 'pending'; // Default to pending if no status set
+
+        $applications[] = array(
+            'id' => $post_id, // Use Post ID
+            'name' => get_post_meta($post_id, 'reseller_name', true),
+            'email' => get_post_meta($post_id, 'reseller_email', true),
+            'phone' => get_post_meta($post_id, 'reseller_phone', true),
+            'businessName' => get_post_meta($post_id, 'reseller_business', true),
+            'businessType' => get_post_meta($post_id, 'reseller_business_type', true), // Assuming you save business_type meta
+            'city' => get_post_meta($post_id, 'reseller_city', true),
+            'state' => get_post_meta($post_id, 'reseller_state', true),
+            'appliedDate' => get_the_date('Y-m-d'),
+            'status' => $status
+        );
+    }
+    wp_reset_postdata(); // Important after custom WP_Query
+}
+
+// NOTE: You might need to add 'reseller_business_type' to the saved meta fields
+// in become-a-reseller.php or reseller-application.php if it's not already there.
 
 // Mock resellers data
 $resellers = array(
