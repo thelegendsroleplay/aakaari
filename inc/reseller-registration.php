@@ -13,6 +13,61 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// --- UNVERIFIED USER CLEANUP CONFIG ---
+// Users unverified after this time will be deleted (1 hour = 3600 seconds)
+define('UNVERIFIED_USER_LIFETIME', 1 * HOUR_IN_SECONDS);
+define('UNVERIFIED_USER_CRON_HOOK', 'aakaari_cleanup_unverified_users');
+
+/**
+ * Schedule the cleanup event on theme activation/init
+ */
+function aakaari_schedule_user_cleanup() {
+    // Schedule a daily event to check for old unverified users
+    if (!wp_next_scheduled(UNVERIFIED_USER_CRON_HOOK)) {
+        wp_schedule_event(time(), 'daily', UNVERIFIED_USER_CRON_HOOK);
+    }
+}
+add_action('init', 'aakaari_schedule_user_cleanup');
+
+/**
+ * Cleanup job: Deletes reseller users who are unverified and older than the defined lifetime.
+ */
+function aakaari_cleanup_unverified_users_job() {
+    // Calculate the time threshold for deletion
+    $cutoff_time = time() - UNVERIFIED_USER_LIFETIME;
+    
+    $args = array(
+        'role'       => 'reseller', // Only target resellers
+        'meta_query' => array(
+            'relation' => 'AND',
+            array(
+                // Find users where email_verified is NOT 'true'
+                'key'     => 'email_verified',
+                'value'   => 'true',
+                'compare' => '!='
+            ),
+            array(
+                // Find users who haven't verified within the lifetime period
+                // We use 'otp_generated_at' as the creation/last-attempt time marker (set in otp-service.php)
+                'key'     => 'otp_generated_at', 
+                'value'   => $cutoff_time,
+                'compare' => '<',
+                'type'    => 'NUMERIC'
+            )
+        )
+    );
+    
+    $unverified_users = get_users($args);
+    
+    foreach ($unverified_users as $user) {
+        // Delete the user permanently.
+        wp_delete_user($user->ID); 
+    }
+}
+add_action(UNVERIFIED_USER_CRON_HOOK, 'aakaari_cleanup_unverified_users_job');
+
+// --- END UNVERIFIED USER CLEANUP CONFIG ---
+
 /**
  * Enqueue scripts and styles for the Registration page
  */

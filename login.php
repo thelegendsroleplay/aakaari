@@ -54,30 +54,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aakaari_login_nonce']
         $user = wp_signon($creds, is_ssl());
 
         // Check for errors
-        if (is_wp_error($user)) {
-            $login_error = $user->get_error_message();
-        } else {
-            // Successful login - redirect
-            // Note: Our 'wp_authenticate_user' hook might still block unverified users here.
-            
-            // Check for onboarding status
-            $onboarding_status = get_user_meta($user->ID, 'onboarding_status', true);
-            
-            if ($onboarding_status !== 'completed') {
-                $redirect = get_permalink(get_option('reseller_page_id')); // Send to onboarding
-            } else {
-                $redirect = home_url('/dashboard/'); // Send to dashboard
-            }
+if (is_wp_error($user)) {
+    
+    // *** NEW LOGIC: Intercept 'email_not_verified' error and redirect to OTP page ***
+    if ($user->get_error_code() === 'email_not_verified') {
+        // The verification hook (in security-features.php) has already re-sent the OTP 
+        // and set the session needed for the registration/verification page to load.
+        wp_safe_redirect(home_url('/register/'));
+        exit;
+    }
+    // ******************************************************************************
+    
+    $login_error = $user->get_error_message();
+} else {
+    // Successful login - redirect
+    // Note: Our 'wp_authenticate_user' hook might still block unverified users here.
+    
+    // Check for onboarding status
+    $onboarding_status = get_user_meta($user->ID, 'onboarding_status', true);
+    
+    if ($onboarding_status !== 'completed') {
+        $redirect = get_permalink(get_option('reseller_page_id')); // Send to onboarding
+    } else {
+        $redirect = home_url('/dashboard/'); // Send to dashboard
+    }
 
-            // Check for custom redirect_to param
-            $redirect_url = isset($_POST['redirect']) ? $_POST['redirect'] : '';
-            if (!empty($redirect_url) && wp_http_validate_url($redirect_url)) {
-                $redirect = $redirect_url;
-            }
+    // Check for custom redirect_to param
+    $redirect_url = isset($_POST['redirect']) ? $_POST['redirect'] : '';
+    if (!empty($redirect_url) && wp_http_validate_url($redirect_url)) {
+        $redirect = $redirect_url;
+    }
 
-            wp_safe_redirect($redirect);
-            exit;
-        }
+    wp_safe_redirect($redirect);
+    exit;
+}
     }
 }
 
