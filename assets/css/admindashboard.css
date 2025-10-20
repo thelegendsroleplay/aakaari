@@ -861,3 +861,389 @@ h3 {
         padding-left: 0;
     }
 }
+
+
+/* Additional Admin Dashboard Styles */
+
+/* Pagination */
+.aakaari-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+    gap: 0.25rem;
+}
+
+.aakaari-pagination-link {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+    color: var(--text-medium);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.aakaari-pagination-link:hover {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+}
+
+.aakaari-pagination-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.aakaari-pagination-link.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Form Styles */
+.aakaari-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.aakaari-form-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.aakaari-form-group {
+    flex: 1;
+    min-width: 250px;
+    margin-bottom: 1rem;
+}
+
+.aakaari-form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.aakaari-input, 
+.aakaari-textarea,
+.aakaari-select {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+    background-color: white;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+}
+
+.aakaari-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.aakaari-input:focus, 
+.aakaari-textarea:focus,
+.aakaari-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.aakaari-help-text {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-medium);
+    margin-top: 0.25rem;
+}
+
+.aakaari-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.aakaari-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.aakaari-checkbox-label input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--primary-color);
+}
+
+/* Filter Form */
+.aakaari-filter-form {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.aakaari-date-range {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.aakaari-input-date {
+    padding: 0.5rem;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+    font-size: 0.875rem;
+}
+
+/* Alerts */
+.aakaari-alert {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    border-radius: var(--border-radius-md);
+    gap: 1rem;
+}
+
+.aakaari-alert svg {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.aakaari-alert h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.aakaari-alert p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.aakaari-alert-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--orange-color);
+}
+
+.aakaari-action-center {
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0;
+}
+
+/* Utility classes */
+.aakaari-mt-4 {
+    margin-top: 1rem;
+}
+
+/* Add these styles to your admin-dashboard-styles2.php file */
+
+/* Scrollable Tables */
+.aakaari-card-content {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Style the scrollbar */
+.aakaari-card-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.aakaari-card-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.aakaari-card-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.aakaari-card-content::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Make table header sticky */
+.aakaari-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-light);
+    z-index: 10;
+}
+
+/* Ensure dropdown menus appear above the scrollable area */
+.aakaari-dropdown-content {
+    z-index: 20;
+}
+
+/* Add these styles to admin-dashboard-styles2.php */
+
+/* Notification Dropdown Styles */
+.aakaari-notification-dropdown .aakaari-dropdown-content {
+    width: 320px;
+    right: -10px;
+    padding: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.aakaari-notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.aakaari-notification-header h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.aakaari-notification-action {
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    text-decoration: none;
+}
+
+.aakaari-notification-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.aakaari-notification-item {
+    display: flex;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+    align-items: flex-start;
+}
+
+.aakaari-notification-item:hover {
+    background-color: var(--bg-light);
+}
+
+.aakaari-notification-icon {
+    margin-right: 12px;
+    color: var(--primary-color);
+    margin-top: 2px;
+}
+
+.aakaari-notification-content {
+    flex: 1;
+}
+
+.aakaari-notification-title {
+    font-weight: 600;
+    font-size: 0.813rem;
+    margin-bottom: 2px;
+}
+
+.aakaari-notification-message {
+    font-size: 0.75rem;
+    color: var(--text-medium);
+    margin-bottom: 4px;
+}
+
+.aakaari-notification-time {
+    font-size: 0.688rem;
+    color: var(--text-light);
+}
+
+.aakaari-notification-empty {
+    padding: 15px;
+    text-align: center;
+    color: var(--text-medium);
+    font-size: 0.875rem;
+}
+
+/* Enhanced dropdown styles */
+.aakaari-dropdown-actions {
+    min-width: 180px;
+    box-shadow: var(--shadow-md);
+}
+
+.aakaari-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+}
+
+.aakaari-dropdown-item svg {
+    flex-shrink: 0;
+}
+
+.text-red {
+    color: var(--red-color);
+}
+
+.text-green {
+    color: var(--green-color);
+}
+
+/* Status Badge Adjustments */
+.status-active {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: var(--green-color);
+    border-radius: 9999px;
+}
+
+
+/* Add these styles to admin-dashboard-styles2.php */
+
+/* Payout Result Styles */
+.payout-result-summary {
+    background-color: var(--bg-light);
+    padding: 1rem;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 1rem;
+}
+
+.payout-result-summary p {
+    margin: 0.5rem 0;
+}
+
+.payout-result-summary .total-amount {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--green-color);
+}
+
+.payout-result-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.payout-result-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.payout-result-item:last-child {
+    border-bottom: none;
+}
+
+.payout-result-item .amount {
+    font-weight: 500;
+    color: var(--green-color);
+}
+
+.payout-errors {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: var(--border-radius-sm);
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+}
+
+.payout-errors h4 {
+    color: var(--red-color);
+    margin-top: 0;
+}

@@ -91,132 +91,299 @@ function aakaari_add_custom_dashboard_to_admin_bar($wp_admin_bar) {
 }}
 add_action('admin_bar_menu', 'aakaari_add_custom_dashboard_to_admin_bar', 100);
 
+/**************************************
+ * DASHBOARD STATISTICS FUNCTIONS
+ **************************************/
+
 /**
- * Get mock data for testing the dashboard
+ * Get all dashboard statistics for overview tab
+ * 
+ * @return array All dashboard statistics
  */
-if (!function_exists('aakaari_get_mock_dashboard_data')) {
-function aakaari_get_mock_dashboard_data() {
+
+function aakaari_get_dashboard_stats() {
     return array(
-        'stats' => array(
-            'totalResellers' => 1247,
-            'activeResellers' => 1089,
-            'pendingApplications' => 23,
-            'totalOrders' => 5432,
-            'todayOrders' => 89,
-            'totalRevenue' => 2847650,
-            'thisMonthRevenue' => 456780,
-            'pendingPayouts' => 125340
-        ),
-        'applications' => array(
+        'totalResellers' => aakaari_get_total_resellers_count(),
+        'activeResellers' => aakaari_get_active_resellers_count(),
+        'pendingApplications' => aakaari_get_pending_applications_count(),
+        'unseenNotifications' => aakaari_get_unseen_notifications_count(), // Add this line
+        'totalOrders' => aakaari_get_total_orders_count(),
+        'todayOrders' => aakaari_get_today_orders_count(),
+        'totalRevenue' => aakaari_calculate_total_revenue(),
+        'thisMonthRevenue' => aakaari_calculate_month_revenue(),
+        'pendingPayouts' => aakaari_get_pending_payouts_amount()
+    );
+}
+
+/**
+ * Get total number of resellers (users with reseller role)
+ * 
+ * @return int Total resellers count
+ */
+function aakaari_get_total_resellers_count() {
+    $user_query = new WP_User_Query(array(
+        'role' => 'reseller',
+        'count_total' => true,
+    ));
+    
+    return $user_query->get_total();
+}
+
+/**
+ * Get number of active resellers
+ * 
+ * @return int Active resellers count
+ */
+function aakaari_get_active_resellers_count() {
+    $user_query = new WP_User_Query(array(
+        'role' => 'reseller',
+        'count_total' => true,
+        'meta_query' => array(
             array(
-                'id' => '1',
-                'name' => 'Rajesh Kumar',
-                'email' => 'rajesh@example.com',
-                'phone' => '+91 9876543210',
-                'businessName' => 'Kumar Enterprises',
-                'businessType' => 'Retail Shop',
-                'city' => 'Mumbai',
-                'state' => 'Maharashtra',
-                'appliedDate' => '2025-10-18',
-                'status' => 'pending'
-            ),
-            array(
-                'id' => '2',
-                'name' => 'Priya Sharma',
-                'email' => 'priya@example.com',
-                'phone' => '+91 9876543211',
-                'businessName' => 'Fashion Hub',
-                'businessType' => 'Online Store',
-                'city' => 'Delhi',
-                'state' => 'Delhi',
-                'appliedDate' => '2025-10-17',
-                'status' => 'pending'
-            ),
-            array(
-                'id' => '3',
-                'name' => 'Amit Patel',
-                'email' => 'amit@example.com',
-                'phone' => '+91 9876543212',
-                'businessName' => '',
-                'businessType' => 'Individual/Freelancer',
-                'city' => 'Ahmedabad',
-                'state' => 'Gujarat',
-                'appliedDate' => '2025-10-16',
-                'status' => 'pending'
-            )
-        ),
-        'resellers' => array(
-            array(
-                'id' => '1',
-                'name' => 'Vikram Singh',
-                'email' => 'vikram@example.com',
-                'phone' => '+91 9876543213',
-                'totalOrders' => 145,
-                'totalRevenue' => 287500,
-                'commission' => 28750,
-                'status' => 'active',
-                'joinedDate' => '2025-01-15'
-            ),
-            array(
-                'id' => '2',
-                'name' => 'Anita Desai',
-                'email' => 'anita@example.com',
-                'phone' => '+91 9876543214',
-                'totalOrders' => 89,
-                'totalRevenue' => 156700,
-                'commission' => 15670,
-                'status' => 'active',
-                'joinedDate' => '2025-02-20'
-            ),
-            array(
-                'id' => '3',
-                'name' => 'Mohammed Ali',
-                'email' => 'mohammed@example.com',
-                'phone' => '+91 9876543215',
-                'totalOrders' => 234,
-                'totalRevenue' => 456800,
-                'commission' => 45680,
-                'status' => 'active',
-                'joinedDate' => '2024-12-10'
-            )
-        ),
-        'orders' => array(
-            array(
-                'id' => '1',
-                'orderId' => 'ORD-2025-1234',
-                'reseller' => 'Vikram Singh',
-                'customer' => 'Ramesh Verma',
-                'products' => 3,
-                'amount' => 1899,
-                'status' => 'processing',
-                'date' => '2025-10-20',
-                'paymentStatus' => 'paid'
-            ),
-            array(
-                'id' => '2',
-                'orderId' => 'ORD-2025-1235',
-                'reseller' => 'Anita Desai',
-                'customer' => 'Sunita Rao',
-                'products' => 5,
-                'amount' => 2499,
-                'status' => 'shipped',
-                'date' => '2025-10-19',
-                'paymentStatus' => 'paid'
-            ),
-            array(
-                'id' => '3',
-                'orderId' => 'ORD-2025-1236',
-                'reseller' => 'Mohammed Ali',
-                'customer' => 'Deepak Joshi',
-                'products' => 2,
-                'amount' => 1299,
-                'status' => 'pending',
-                'date' => '2025-10-20',
-                'paymentStatus' => 'pending'
+                'key' => 'account_status',
+                'value' => 'active',
+                'compare' => '='
             )
         )
+    ));
+    
+    return $user_query->get_total();
+}
+
+/**
+ * Get number of pending reseller applications
+ * 
+ * @return int Pending applications count
+ */
+function aakaari_get_pending_applications_count() {
+    $args = array(
+        'post_type' => 'reseller_application',
+        'posts_per_page' => -1,
+        'tax_query' => array(
+            array(
+                'taxonomy' => 'reseller_application_status',
+                'field'    => 'slug',
+                'terms'    => 'pending',
+            ),
+        ),
     );
-}}
+    
+    $query = new WP_Query($args);
+    return $query->found_posts;
+}
+
+/**
+ * Get total number of orders in WooCommerce
+ * 
+ * @return int Total orders count
+ */
+function aakaari_get_total_orders_count() {
+    if (!function_exists('wc_get_orders')) {
+        return 0; // WooCommerce not active
+    }
+    
+    $args = array(
+        'limit' => -1,
+        'return' => 'ids',
+    );
+    
+    $orders = wc_get_orders($args);
+    return count($orders);
+}
+
+/**
+ * Get number of orders created today
+ * 
+ * @return int Today's orders count
+ */
+function aakaari_get_today_orders_count() {
+    if (!function_exists('wc_get_orders')) {
+        return 0; // WooCommerce not active
+    }
+    
+    $today = date('Y-m-d');
+    $args = array(
+        'limit' => -1,
+        'return' => 'ids',
+        'date_created' => $today,
+    );
+    
+    $orders = wc_get_orders($args);
+    return count($orders);
+}
+
+/**
+ * Calculate total revenue from all orders
+ * 
+ * @return float Total revenue amount
+ */
+function aakaari_calculate_total_revenue() {
+    if (!function_exists('wc_get_orders')) {
+        return 0; // WooCommerce not active
+    }
+    
+    $args = array(
+        'status' => array('completed', 'processing'),
+        'limit' => -1,
+    );
+    
+    $orders = wc_get_orders($args);
+    
+    $total = 0;
+    foreach ($orders as $order) {
+        $total += $order->get_total();
+    }
+    
+    return $total;
+}
+
+/**
+ * Calculate revenue for current month
+ * 
+ * @return float Current month revenue
+ */
+function aakaari_calculate_month_revenue() {
+    if (!function_exists('wc_get_orders')) {
+        return 0; // WooCommerce not active
+    }
+    
+    $first_day = date('Y-m-01'); // First day of current month
+    $last_day = date('Y-m-t'); // Last day of current month
+    
+    $args = array(
+        'status' => array('completed', 'processing'),
+        'limit' => -1,
+        'date_created' => $first_day . '...' . $last_day,
+    );
+    
+    $orders = wc_get_orders($args);
+    
+    $total = 0;
+    foreach ($orders as $order) {
+        $total += $order->get_total();
+    }
+    
+    return $total;
+}
+
+/**
+ * Calculate total pending payouts amount
+ * 
+ * @return float Pending payouts amount
+ */
+function aakaari_get_pending_payouts_amount() {
+    global $wpdb;
+    
+    // This assumes you're storing wallet balances in user meta
+    $query = "
+        SELECT SUM(meta_value) as total 
+        FROM $wpdb->usermeta 
+        WHERE meta_key = 'wallet_balance'
+    ";
+    
+    $result = $wpdb->get_var($query);
+    
+    return $result ? floatval($result) : 0;
+}
+
+/**************************************
+ * RESELLER APPLICATIONS FUNCTIONS
+ **************************************/
+
+/**
+ * Get all reseller applications with filtering options
+ * 
+ * @param array $args Filter arguments
+ * @return array List of applications
+ */
+function aakaari_get_applications($args = array()) {
+    $defaults = array(
+        'status' => '', // empty for all, or specify: pending, approved, rejected
+        'search' => '',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'posts_per_page' => -1,
+        'paged' => 1,
+    );
+    
+    $args = wp_parse_args($args, $defaults);
+    
+    $query_args = array(
+        'post_type' => 'reseller_application',
+        'posts_per_page' => $args['posts_per_page'],
+        'paged' => $args['paged'],
+        'orderby' => $args['orderby'],
+        'order' => $args['order'],
+    );
+    
+    // Add status filter if provided
+    if (!empty($args['status'])) {
+        $query_args['tax_query'] = array(
+            array(
+                'taxonomy' => 'reseller_application_status',
+                'field'    => 'slug',
+                'terms'    => $args['status'],
+            ),
+        );
+    }
+    
+    // Add search if provided
+    if (!empty($args['search'])) {
+        $query_args['meta_query'] = array(
+            'relation' => 'OR',
+            array(
+                'key'     => 'reseller_name',
+                'value'   => $args['search'],
+                'compare' => 'LIKE',
+            ),
+            array(
+                'key'     => 'reseller_email',
+                'value'   => $args['search'],
+                'compare' => 'LIKE',
+            ),
+            array(
+                'key'     => 'reseller_business',
+                'value'   => $args['search'],
+                'compare' => 'LIKE',
+            ),
+        );
+    }
+    
+    $applications_query = new WP_Query($query_args);
+    
+    $applications = array();
+    if ($applications_query->have_posts()) {
+        while ($applications_query->have_posts()) {
+            $applications_query->the_post();
+            $post_id = get_the_ID();
+            $status_terms = wp_get_post_terms($post_id, 'reseller_application_status');
+            $status = !empty($status_terms) ? $status_terms[0]->slug : 'pending'; // Default to pending if no status set
+
+            $applications[] = array(
+                'id' => $post_id,
+                'name' => get_post_meta($post_id, 'reseller_name', true),
+                'email' => get_post_meta($post_id, 'reseller_email', true),
+                'phone' => get_post_meta($post_id, 'reseller_phone', true),
+                'businessName' => get_post_meta($post_id, 'reseller_business', true),
+                'businessType' => get_post_meta($post_id, 'reseller_business_type', true),
+                'city' => get_post_meta($post_id, 'reseller_city', true),
+                'state' => get_post_meta($post_id, 'reseller_state', true),
+                'appliedDate' => get_the_date('Y-m-d'),
+                'status' => $status,
+                'rejectionReason' => get_post_meta($post_id, 'rejection_reason', true),
+                'submittedData' => get_post_meta($post_id, 'form_data', true) // All form data if stored
+            );
+        }
+        wp_reset_postdata();
+    }
+    
+    return array(
+        'applications' => $applications,
+        'total' => $applications_query->found_posts,
+        'max_pages' => $applications_query->max_num_pages
+    );
+}
+
 /**
  * Process application approval via AJAX
  */
@@ -246,6 +413,8 @@ function aakaari_approve_application() {
             if ($user) {
                 // Mark onboarding completed only on approval
                 update_user_meta($user->ID, 'onboarding_status', 'completed');
+                update_user_meta($user->ID, 'account_status', 'active');
+                update_user_meta($user->ID, 'approved_date', current_time('mysql'));
 
                 // Ensure reseller role
                 $wp_user = new WP_User($user->ID);
@@ -254,6 +423,10 @@ function aakaari_approve_application() {
                 }
             }
         }
+
+        // Record approval in application post
+        update_post_meta($application_id, 'approval_date', current_time('mysql'));
+        update_post_meta($application_id, 'approved_by', get_current_user_id());
 
         // Notify applicant
         if (!empty($applicant_email)) {
@@ -298,9 +471,19 @@ function aakaari_reject_application() {
     } else {
         // Save the rejection reason as post meta
         update_post_meta($application_id, 'rejection_reason', $reason);
+        update_post_meta($application_id, 'rejected_date', current_time('mysql'));
+        update_post_meta($application_id, 'rejected_by', get_current_user_id());
+
+        // Update user status if applicable
+        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+        if ($applicant_email) {
+            $user = get_user_by('email', $applicant_email);
+            if ($user) {
+                update_user_meta($user->ID, 'application_status', 'rejected');
+            }
+        }
 
         // Notify applicant
-        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
         if ($applicant_email) {
             $subject = 'Update on Your Aakaari Reseller Application';
             $message = "We regret to inform you that your reseller application has been rejected.\n\nReason: " . $reason;
@@ -312,3 +495,798 @@ function aakaari_reject_application() {
     exit;
 }}
 add_action('wp_ajax_reject_application', 'aakaari_reject_application');
+
+/**************************************
+ * RESELLERS MANAGEMENT FUNCTIONS
+ **************************************/
+
+/**
+ * Get all resellers with their statistics
+ * 
+ * @param array $args Filter arguments
+ * @return array List of resellers with their data
+ */
+function aakaari_get_resellers($args = array()) {
+    $defaults = array(
+        'status' => '', // empty for all, or specify: active, inactive, suspended
+        'search' => '',
+        'orderby' => 'registered',
+        'order' => 'DESC',
+        'number' => -1,
+        'paged' => 1,
+    );
+    
+    $args = wp_parse_args($args, $defaults);
+    
+    $query_args = array(
+        'role' => 'reseller',
+        'number' => $args['number'],
+        'paged' => $args['paged'],
+        'orderby' => $args['orderby'],
+        'order' => $args['order'],
+    );
+    
+    // Add status filter if provided
+    if (!empty($args['status'])) {
+        $query_args['meta_query'][] = array(
+            'key' => 'account_status',
+            'value' => $args['status'],
+            'compare' => '=',
+        );
+    }
+    
+    // Add search if provided
+    if (!empty($args['search'])) {
+        // WP_User_Query will handle the search parameter
+        $query_args['search'] = '*' . $args['search'] . '*';
+    }
+    
+    $user_query = new WP_User_Query($query_args);
+    
+    $resellers = array();
+    if (!empty($user_query->results)) {
+        foreach ($user_query->results as $user) {
+            $orders = aakaari_get_reseller_orders_count($user->ID);
+            $revenue = aakaari_calculate_reseller_revenue($user->ID);
+            $commission = aakaari_calculate_reseller_commission($user->ID);
+            
+            $status = get_user_meta($user->ID, 'account_status', true);
+            if (empty($status)) {
+                $status = 'active'; // Default status if not set
+            }
+            
+            $resellers[] = array(
+                'id' => $user->ID,
+                'name' => $user->display_name,
+                'email' => $user->user_email,
+                'phone' => get_user_meta($user->ID, 'phone', true),
+                'businessName' => get_user_meta($user->ID, 'business_name', true),
+                'businessType' => get_user_meta($user->ID, 'business_type', true),
+                'totalOrders' => $orders,
+                'totalRevenue' => $revenue,
+                'commission' => $commission,
+                'status' => $status,
+                'joinedDate' => date('Y-m-d', strtotime($user->user_registered)),
+                'walletBalance' => get_user_meta($user->ID, 'wallet_balance', true) ?: 0
+            );
+        }
+    }
+    
+    return array(
+        'resellers' => $resellers,
+        'total' => $user_query->get_total(),
+        'max_pages' => ceil($user_query->get_total() / $args['number'])
+    );
+}
+
+/**
+ * Get reseller's orders count
+ * 
+ * @param int $user_id User ID
+ * @return int Number of orders
+ */
+function aakaari_get_reseller_orders_count($user_id) {
+    if (!function_exists('wc_get_orders')) {
+        return 0; // WooCommerce not active
+    }
+    
+    $args = array(
+        'customer' => $user_id,
+        'return' => 'ids',
+        'limit' => -1,
+    );
+    
+    $orders = wc_get_orders($args);
+    return count($orders);
+}
+
+/**
+ * Calculate reseller's total revenue
+ * 
+ * @param int $user_id User ID
+ * @return float Total revenue amount
+ */
+function aakaari_calculate_reseller_revenue($user_id) {
+    if (!function_exists('wc_get_orders')) {
+        return 0; // WooCommerce not active
+    }
+    
+    $args = array(
+        'customer' => $user_id,
+        'status' => array('completed', 'processing'),
+        'limit' => -1,
+    );
+    
+    $orders = wc_get_orders($args);
+    
+    $total = 0;
+    foreach ($orders as $order) {
+        $total += $order->get_total();
+    }
+    
+    return $total;
+}
+
+/**
+ * Calculate reseller's total commission
+ * 
+ * @param int $user_id User ID
+ * @return float Total commission amount
+ */
+function aakaari_calculate_reseller_commission($user_id) {
+    // Get commission rate (can be customized per reseller or use default)
+    $commission_rate = get_user_meta($user_id, 'commission_rate', true);
+    if (empty($commission_rate)) {
+        $commission_rate = 0.15; // Default 15% commission
+    }
+    
+    // Calculate based on revenue
+    $revenue = aakaari_calculate_reseller_revenue($user_id);
+    return $revenue * $commission_rate;
+}
+
+/**
+ * Update reseller status
+ * 
+ * @param int $user_id User ID
+ * @param string $status New status (active, inactive, suspended)
+ * @return bool|WP_Error True on success, WP_Error on failure
+ */
+function aakaari_update_reseller_status($user_id, $status) {
+    // Validate status
+    $valid_statuses = array('active', 'inactive', 'suspended');
+    if (!in_array($status, $valid_statuses)) {
+        return new WP_Error('invalid_status', 'Invalid status provided');
+    }
+    
+    // Validate user
+    $user = get_user_by('ID', $user_id);
+    if (!$user || !in_array('reseller', (array) $user->roles)) {
+        return new WP_Error('invalid_user', 'Invalid reseller user ID');
+    }
+    
+    // Update status
+    $result = update_user_meta($user_id, 'account_status', $status);
+    
+    if ($result) {
+        // Log the status change
+        $admin_id = get_current_user_id();
+        $log_entry = array(
+            'changed_by' => $admin_id,
+            'old_status' => get_user_meta($user_id, 'account_status', true),
+            'new_status' => $status,
+            'timestamp' => current_time('mysql')
+        );
+        
+        add_user_meta($user_id, 'status_change_log', $log_entry);
+        
+        // Notify user of status change
+        $user_email = $user->user_email;
+        $subject = 'Your Aakaari Reseller Account Status Update';
+        
+        switch ($status) {
+            case 'active':
+                $message = "Your reseller account has been activated. You can now log in and access your dashboard.";
+                break;
+            case 'inactive':
+                $message = "Your reseller account has been deactivated. Please contact support for more information.";
+                break;
+            case 'suspended':
+                $message = "Your reseller account has been suspended. Please contact support for assistance.";
+                break;
+        }
+        
+        wp_mail($user_email, $subject, $message);
+        
+        return true;
+    }
+    
+    return new WP_Error('update_failed', 'Failed to update reseller status');
+}
+
+/**************************************
+ * ORDERS MANAGEMENT FUNCTIONS
+ **************************************/
+
+/**
+ * Get orders with reseller information
+ * 
+ * @param array $args Filter arguments
+ * @return array List of orders with details
+ */
+function aakaari_get_orders($args = array()) {
+    if (!function_exists('wc_get_orders')) {
+        return array(
+            'orders' => array(),
+            'total' => 0,
+            'max_pages' => 0
+        ); // WooCommerce not active
+    }
+    
+    $defaults = array(
+        'status' => '', // empty for all, or specify status
+        'reseller_id' => '', // specific reseller
+        'date_from' => '',
+        'date_to' => '',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'limit' => 10,
+        'paged' => 1,
+    );
+    
+    $args = wp_parse_args($args, $defaults);
+    
+    $query_args = array(
+        'limit' => $args['limit'],
+        'paged' => $args['paged'],
+        'orderby' => $args['orderby'],
+        'order' => $args['order'],
+    );
+    
+    // Add status filter if provided
+    if (!empty($args['status'])) {
+        $query_args['status'] = $args['status'];
+    }
+    
+    // Add reseller filter if provided
+    if (!empty($args['reseller_id'])) {
+        $query_args['customer'] = $args['reseller_id'];
+    }
+    
+    // Add date range if provided
+    if (!empty($args['date_from']) && !empty($args['date_to'])) {
+        $query_args['date_created'] = $args['date_from'] . '...' . $args['date_to'];
+    }
+    
+    $wc_orders = wc_get_orders($query_args);
+    $orders = array();
+    
+    foreach ($wc_orders as $order) {
+        $customer_id = $order->get_customer_id();
+        $customer = $customer_id ? get_userdata($customer_id) : null;
+        
+        // Get if the order is by a reseller
+        $is_reseller = $customer && in_array('reseller', (array) $customer->roles);
+        
+        // Process line items
+        $items = $order->get_items();
+        $products_count = count($items);
+        
+        $orders[] = array(
+            'id' => $order->get_id(),
+            'orderId' => $order->get_order_number(),
+            'reseller' => $is_reseller ? $customer->display_name : 'Direct Customer',
+            'reseller_id' => $is_reseller ? $customer_id : 0,
+            'customer' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+            'customer_email' => $order->get_billing_email(),
+            'products' => $products_count,
+            'amount' => $order->get_total(),
+            'status' => $order->get_status(),
+            'date' => $order->get_date_created()->date('Y-m-d'),
+            'paymentStatus' => $order->is_paid() ? 'paid' : 'pending',
+            'commission' => $is_reseller ? aakaari_calculate_order_commission($order, $customer_id) : 0
+        );
+    }
+    
+    // Get total order count for pagination
+    $count_args = $query_args;
+    $count_args['limit'] = -1;
+    $count_args['return'] = 'ids';
+    $total_orders = wc_get_orders($count_args);
+    
+    return array(
+        'orders' => $orders,
+        'total' => count($total_orders),
+        'max_pages' => ceil(count($total_orders) / $args['limit'])
+    );
+}
+
+/**
+ * Calculate commission for a specific order
+ * 
+ * @param WC_Order $order Order object
+ * @param int $reseller_id Reseller user ID
+ * @return float Commission amount
+ */
+function aakaari_calculate_order_commission($order, $reseller_id) {
+    // Get commission rate (can be customized per reseller or use default)
+    $commission_rate = get_user_meta($reseller_id, 'commission_rate', true);
+    if (empty($commission_rate)) {
+        $commission_rate = 0.15; // Default 15% commission
+    }
+    
+    // Calculate commission on order total
+    $commission = $order->get_total() * $commission_rate;
+    
+    return $commission;
+}
+
+/**************************************
+ * PRODUCTS FUNCTIONS
+ **************************************/
+
+/**
+ * Get product statistics for admin dashboard
+ * 
+ * @return array Product statistics
+ */
+function aakaari_get_product_stats() {
+    if (!function_exists('wc_get_products')) {
+        return array(
+            'total' => 0,
+            'inStock' => 0,
+            'lowStock' => 0
+        ); // WooCommerce not active
+    }
+    
+    // Get all products count
+    $args = array(
+        'limit' => -1,
+        'return' => 'ids',
+    );
+    $products = wc_get_products($args);
+    $total = count($products);
+    
+    // Get in stock products
+    $args = array(
+        'limit' => -1,
+        'return' => 'ids',
+        'stock_status' => 'instock',
+    );
+    $in_stock = wc_get_products($args);
+    $in_stock_count = count($in_stock);
+    
+    // Get low stock products
+    // This is more complex as we need to check actual stock levels
+    $low_stock_threshold = get_option('woocommerce_notify_low_stock_amount', 2);
+    $low_stock_count = 0;
+    
+    foreach ($products as $product_id) {
+        $product = wc_get_product($product_id);
+        if ($product->managing_stock() && $product->get_stock_quantity() <= $low_stock_threshold && $product->get_stock_quantity() > 0) {
+            $low_stock_count++;
+        }
+    }
+    
+    return array(
+        'total' => $total,
+        'inStock' => $in_stock_count,
+        'lowStock' => $low_stock_count
+    );
+}
+
+/**************************************
+ * PAYOUTS FUNCTIONS
+ **************************************/
+
+/**
+ * Get payout statistics
+ * 
+ * @return array Payout statistics
+ */
+function aakaari_get_payout_stats() {
+    global $wpdb;
+    
+    // Get total pending payout amount (from wallet balances)
+    $pending_query = "
+        SELECT SUM(meta_value) as total 
+        FROM $wpdb->usermeta 
+        WHERE meta_key = 'wallet_balance'
+    ";
+    $pending_amount = $wpdb->get_var($pending_query);
+    $pending_amount = $pending_amount ? floatval($pending_amount) : 0;
+    
+    // Get resellers with pending payouts
+    $resellers_query = "
+        SELECT COUNT(DISTINCT user_id) as total 
+        FROM $wpdb->usermeta 
+        WHERE meta_key = 'wallet_balance' 
+        AND meta_value > 0
+    ";
+    $pending_resellers = $wpdb->get_var($resellers_query);
+    $pending_resellers = $pending_resellers ? intval($pending_resellers) : 0;
+    
+    // Get month to date payout amount (from payout records)
+    $month_start = date('Y-m-01');
+    $today = date('Y-m-d');
+    
+    // This assumes you're storing payout records in a custom table or post type
+    // Adjust according to your actual data storage method
+    $month_paid = 0;
+    $month_transactions = 0;
+    
+    // Example if using custom post type:
+    $payout_args = array(
+        'post_type' => 'reseller_payout',
+        'posts_per_page' => -1,
+        'meta_query' => array(
+            array(
+                'key' => 'payout_date',
+                'value' => array($month_start, $today),
+                'compare' => 'BETWEEN',
+                'type' => 'DATE'
+            )
+        )
+    );
+    
+    $payouts = get_posts($payout_args);
+    foreach ($payouts as $payout) {
+        $amount = get_post_meta($payout->ID, 'payout_amount', true);
+        $month_paid += floatval($amount);
+        $month_transactions++;
+    }
+    
+    // Get lifetime payout amount
+    $lifetime_paid = 0;
+    $lifetime_args = array(
+        'post_type' => 'reseller_payout',
+        'posts_per_page' => -1,
+    );
+    
+    $all_payouts = get_posts($lifetime_args);
+    foreach ($all_payouts as $payout) {
+        $amount = get_post_meta($payout->ID, 'payout_amount', true);
+        $lifetime_paid += floatval($amount);
+    }
+    
+    return array(
+        'pendingAmount' => $pending_amount,
+        'pendingResellers' => $pending_resellers,
+        'monthPaid' => $month_paid,
+        'monthTransactions' => $month_transactions,
+        'lifetimePaid' => $lifetime_paid
+    );
+}
+
+/**
+ * Track and update notification read status
+ */
+function aakaari_mark_notifications_seen() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Permission denied'));
+        exit;
+    }
+
+    // Get the current user ID
+    $user_id = get_current_user_id();
+    
+    // Get timestamp to mark as last seen time
+    $timestamp = isset($_POST['timestamp']) ? intval($_POST['timestamp']) : time();
+    
+    // Update the user meta with last viewed timestamp
+    update_user_meta($user_id, 'notifications_last_seen', $timestamp);
+    
+    // Return success
+    wp_send_json_success(array('message' => 'Notifications marked as seen'));
+    exit;
+}
+add_action('wp_ajax_mark_notifications_seen', 'aakaari_mark_notifications_seen');
+
+/**
+ * Get the number of new unseen notifications
+ * 
+ * @return int Number of unseen notifications
+ */
+function aakaari_get_unseen_notifications_count() {
+    // Get the current user ID
+    $user_id = get_current_user_id();
+    
+    // Get the last time notifications were viewed
+    $last_seen = get_user_meta($user_id, 'notifications_last_seen', true);
+    if (empty($last_seen)) {
+        $last_seen = 0; // If never seen before, treat all as new
+    }
+    
+    // Get all pending applications with timestamp greater than last_seen
+    $args = array(
+        'post_type' => 'reseller_application',
+        'posts_per_page' => -1,
+        'tax_query' => array(
+            array(
+                'taxonomy' => 'reseller_application_status',
+                'field'    => 'slug',
+                'terms'    => 'pending',
+            ),
+        ),
+        'date_query' => array(
+            'after' => date('Y-m-d H:i:s', $last_seen)
+        )
+    );
+    
+    $query = new WP_Query($args);
+    return $query->found_posts;
+}
+
+/**
+ * Process a single reseller payout via AJAX
+ */
+function aakaari_process_single_payout() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Permission denied'));
+        exit;
+    }
+
+    $reseller_id = isset($_POST['reseller_id']) ? intval($_POST['reseller_id']) : 0;
+    $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
+
+    if ($reseller_id <= 0) {
+        wp_send_json_error(array('message' => 'Invalid reseller ID'));
+        exit;
+    }
+
+    if ($amount <= 0) {
+        wp_send_json_error(array('message' => 'Invalid payout amount'));
+        exit;
+    }
+
+    // Get current wallet balance
+    $current_balance = get_user_meta($reseller_id, 'wallet_balance', true);
+    if (empty($current_balance)) {
+        $current_balance = 0;
+    }
+
+    // Verify balance is sufficient
+    if ($current_balance < $amount) {
+        wp_send_json_error(array(
+            'message' => 'Error: Payout amount exceeds wallet balance',
+            'balance' => $current_balance,
+            'amount' => $amount
+        ));
+        exit;
+    }
+
+    // Create payout record
+    $payout_id = wp_insert_post(array(
+        'post_type' => 'reseller_payout',
+        'post_title' => 'Payout for Reseller #' . $reseller_id,
+        'post_status' => 'publish',
+        'meta_input' => array(
+            'reseller_id' => $reseller_id,
+            'payout_amount' => $amount,
+            'payout_date' => current_time('mysql'),
+            'payout_status' => 'completed',
+            'processed_by' => get_current_user_id()
+        )
+    ));
+
+    if (is_wp_error($payout_id)) {
+        wp_send_json_error(array('message' => 'Failed to create payout record: ' . $payout_id->get_error_message()));
+        exit;
+    }
+
+    // Update wallet balance
+    $new_balance = $current_balance - $amount;
+    update_user_meta($reseller_id, 'wallet_balance', $new_balance);
+    
+    // Record transaction in user meta for history
+    $transaction = array(
+        'type' => 'payout',
+        'amount' => $amount,
+        'date' => current_time('mysql'),
+        'reference' => $payout_id,
+        'note' => 'Manual payout processed by admin'
+    );
+    add_user_meta($reseller_id, 'wallet_transactions', $transaction);
+
+    // Get reseller information
+    $reseller = get_userdata($reseller_id);
+    
+    // Notify reseller via email
+    if ($reseller && !is_wp_error($reseller)) {
+        $subject = 'Your Commission Payout Has Been Processed';
+        $message = "Hello {$reseller->display_name},\n\n";
+        $message .= "We're pleased to inform you that your commission payout of ₹" . number_format($amount, 2) . " has been processed.\n\n";
+        $message .= "The funds should be transferred to your registered bank account within 1-3 business days.\n\n";
+        $message .= "Thank you for your partnership!\n\n";
+        $message .= "Regards,\nAakaari Team";
+        
+        wp_mail($reseller->user_email, $subject, $message);
+    }
+
+    wp_send_json_success(array(
+        'message' => 'Payout processed successfully',
+        'payout_id' => $payout_id,
+        'reseller_id' => $reseller_id,
+        'amount' => $amount,
+        'new_balance' => $new_balance
+    ));
+    exit;
+}
+add_action('wp_ajax_process_single_payout', 'aakaari_process_single_payout');
+
+/**
+ * Process bulk payouts for all eligible resellers
+ */
+function aakaari_process_bulk_payouts() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Permission denied'));
+        exit;
+    }
+
+    // Get minimum payout threshold
+    $min_payout_threshold = get_option('aakaari_min_payout_amount', 1000);
+
+    // Get all resellers with wallet balance above threshold
+    $eligible_resellers = get_users(array(
+        'role' => 'reseller',
+        'meta_query' => array(
+            array(
+                'key' => 'wallet_balance',
+                'value' => $min_payout_threshold,
+                'compare' => '>=',
+                'type' => 'NUMERIC'
+            ),
+            array(
+                'key' => 'account_status',
+                'value' => 'active',
+                'compare' => '='
+            )
+        )
+    ));
+
+    if (empty($eligible_resellers)) {
+        wp_send_json_error(array('message' => 'No eligible resellers found for payout'));
+        exit;
+    }
+
+    $successful_payouts = array();
+    $failed_payouts = array();
+    $total_processed = 0;
+
+    foreach ($eligible_resellers as $reseller) {
+        $reseller_id = $reseller->ID;
+        $balance = get_user_meta($reseller_id, 'wallet_balance', true);
+        
+        if (empty($balance) || $balance <= 0) {
+            continue;
+        }
+
+        // Create payout record
+        $payout_id = wp_insert_post(array(
+            'post_type' => 'reseller_payout',
+            'post_title' => 'Bulk Payout for Reseller #' . $reseller_id,
+            'post_status' => 'publish',
+            'meta_input' => array(
+                'reseller_id' => $reseller_id,
+                'payout_amount' => $balance,
+                'payout_date' => current_time('mysql'),
+                'payout_status' => 'completed',
+                'processed_by' => get_current_user_id()
+            )
+        ));
+
+        if (is_wp_error($payout_id)) {
+            $failed_payouts[] = array(
+                'reseller_id' => $reseller_id,
+                'name' => $reseller->display_name,
+                'amount' => $balance,
+                'error' => $payout_id->get_error_message()
+            );
+            continue;
+        }
+
+        // Update wallet balance
+        update_user_meta($reseller_id, 'wallet_balance', 0);
+        
+        // Record transaction
+        $transaction = array(
+            'type' => 'payout',
+            'amount' => $balance,
+            'date' => current_time('mysql'),
+            'reference' => $payout_id,
+            'note' => 'Bulk payout processed by admin'
+        );
+        add_user_meta($reseller_id, 'wallet_transactions', $transaction);
+
+        // Notify reseller via email
+        $subject = 'Your Commission Payout Has Been Processed';
+        $message = "Hello {$reseller->display_name},\n\n";
+        $message .= "We're pleased to inform you that your commission payout of ₹" . number_format($balance, 2) . " has been processed.\n\n";
+        $message .= "The funds should be transferred to your registered bank account within 1-3 business days.\n\n";
+        $message .= "Thank you for your partnership!\n\n";
+        $message .= "Regards,\nAakaari Team";
+        
+        wp_mail($reseller->user_email, $subject, $message);
+
+        $successful_payouts[] = array(
+            'reseller_id' => $reseller_id,
+            'name' => $reseller->display_name,
+            'amount' => $balance,
+            'payout_id' => $payout_id
+        );
+        
+        $total_processed += $balance;
+    }
+
+    $result = array(
+        'message' => count($successful_payouts) . ' payouts processed successfully for a total of ₹' . number_format($total_processed, 2),
+        'successful_payouts' => $successful_payouts,
+        'failed_payouts' => $failed_payouts,
+        'total_amount' => $total_processed
+    );
+
+    if (empty($successful_payouts)) {
+        wp_send_json_error(array_merge($result, array('message' => 'No payouts were processed successfully')));
+    } else {
+        wp_send_json_success($result);
+    }
+    exit;
+}
+add_action('wp_ajax_process_bulk_payouts', 'aakaari_process_bulk_payouts');
+
+
+/**
+ * Register Reseller Payout custom post type
+ */
+function aakaari_register_payout_post_type() {
+    $labels = array(
+        'name'               => 'Reseller Payouts',
+        'singular_name'      => 'Reseller Payout',
+        'menu_name'          => 'Reseller Payouts',
+        'name_admin_bar'     => 'Reseller Payout',
+        'add_new'            => 'Add New',
+        'add_new_item'       => 'Add New Payout',
+        'new_item'           => 'New Payout',
+        'edit_item'          => 'Edit Payout',
+        'view_item'          => 'View Payout',
+        'all_items'          => 'All Payouts',
+        'search_items'       => 'Search Payouts',
+        'parent_item_colon'  => 'Parent Payouts:',
+        'not_found'          => 'No payouts found.',
+        'not_found_in_trash' => 'No payouts found in Trash.'
+    );
+
+    $args = array(
+        'labels'             => $labels,
+        'public'             => false,
+        'publicly_queryable' => false,
+        'show_ui'            => true,
+        'show_in_menu'       => 'edit.php?post_type=reseller_application',
+        'query_var'          => true,
+        'rewrite'            => array('slug' => 'reseller-payouts'),
+        'capability_type'    => 'post',
+        'has_archive'        => false,
+        'hierarchical'       => false,
+        'menu_position'      => null,
+        'supports'           => array('title'),
+        'menu_icon'          => 'dashicons-money-alt',
+    );
+
+    register_post_type('reseller_payout', $args);
+}
+add_action('init', 'aakaari_register_payout_post_type');

@@ -91,9 +91,9 @@ function redirect_to_dashboard_after_login($redirect_to, $request, $user) {
     $reseller_url      = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
     $register_url      = home_url('/register/');
 
-    // Require verified email
+    // Require verified email - improved check for different possible values
     $email_verified = get_user_meta($user->ID, 'email_verified', true);
-    if (!$email_verified) {
+    if ($email_verified !== 'true' && $email_verified !== true && $email_verified !== '1' && $email_verified !== 1) {
         return $register_url;
     }
 

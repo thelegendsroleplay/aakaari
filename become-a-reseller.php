@@ -17,11 +17,11 @@ $current_user = wp_get_current_user();
 $user_id = $current_user->ID;
 $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
 
-// If the user's onboarding is already marked as completed, send them to the dashboard
-if ($onboarding_status === 'completed') {
-    wp_safe_redirect(home_url('/dashboard/'));
-    exit;
-}
+// Get application status from URL parameter
+$status_param = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+
+// CRITICAL FIX: REMOVED THE DASHBOARD REDIRECT COMPLETELY
+// The code that was redirecting to dashboard has been removed to prevent the redirect loop
 
 // Check if this IP has submitted within the last 7 days - Keep existing check but add exception for logged-in users
 $recent_submission = check_recent_submission_by_ip($user_ip);
@@ -198,6 +198,62 @@ function calculate_days_remaining($submit_date) {
     return ceil($time_diff / DAY_IN_SECONDS);
 }
 
+// NEW FUNCTION: Check for application and its status
+function get_reseller_application_status($user_email) {
+    $application = null;
+    $status = 'not-submitted';
+    
+    $q = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $user_email,
+            ),
+        ),
+    ));
+
+    if ($q->have_posts()) {
+        $q->the_post();
+        $application = get_post();
+        $terms = wp_get_post_terms(get_the_ID(), 'reseller_application_status', array('fields' => 'slugs'));
+        
+        if (!is_wp_error($terms) && !empty($terms)) {
+            if (in_array('approved', $terms, true)) {
+                $status = 'approved';
+            } elseif (in_array('pending', $terms, true)) {
+                $status = 'pending';
+            } elseif (in_array('rejected', $terms, true)) {
+                $status = 'rejected';
+            }
+        }
+        
+        wp_reset_postdata();
+    }
+    
+    return array(
+        'application' => $application,
+        'status' => $status
+    );
+}
+
+// Get application status from database
+$application_info = get_reseller_application_status($current_user->user_email);
+$db_application_status = $application_info['status'];
+$application = $application_info['application'];
+
+// Use URL parameter status if provided, otherwise use status from database
+$display_status = !empty($status_param) ? $status_param : $db_application_status;
+
+// Optional debugging for admins only
+if (current_user_can('administrator')) {
+    echo "<!-- DEBUG: User ID: $user_id | Onboarding: $onboarding_status | Status param: $status_param | DB status: $db_application_status | Display: $display_status -->";
+}
+
 get_header();
 
 $benefits = [
@@ -250,7 +306,7 @@ $benefits = [
                 </div>
             </div>
 
-        <?php elseif ($onboarding_status === 'submitted'): ?>
+        <?php elseif ($onboarding_status === 'submitted' || $display_status === 'pending'): ?>
             <!-- Pending Approval Message -->
             <div class="warning-card">
                 <div class="warning-icon">
@@ -261,7 +317,27 @@ $benefits = [
                     </svg>
                 </div>
                 <h2>Your Application is Under Review</h2>
-                <p>Thanks for submitting your details. Our team is reviewing your application. You’ll receive an email once it’s approved.</p>
+                <p>Thanks for submitting your details. Our team is reviewing your application. You'll receive an email once it's approved.</p>
+
+                <div class="action-buttons">
+                    <a href="<?php echo esc_url(home_url('/')); ?>" class="btn btn-outline">Back to Home</a>
+                    <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
+                </div>
+            </div>
+            
+        <?php elseif ($display_status === 'rejected'): ?>
+            <!-- Rejected Application Message -->
+            <div class="error-card">
+                <div class="error-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+                <h2>Application Not Approved</h2>
+                <p>Unfortunately, your reseller application was not approved at this time.</p>
+                <p>Please contact our support team for more information or to discuss reapplying.</p>
 
                 <div class="action-buttons">
                     <a href="<?php echo esc_url(home_url('/')); ?>" class="btn btn-outline">Back to Home</a>

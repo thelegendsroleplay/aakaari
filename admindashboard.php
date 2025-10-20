@@ -17,142 +17,63 @@ $admin_email = $current_user->user_email;
 $admin_display_name = $current_user->display_name;
 $admin_initials = substr($admin_display_name, 0, 1);
 
-// Mock data for dashboard
-// In a real implementation, you would fetch this data from your database
-$stats = array(
-    'totalResellers' => 1247,
-    'activeResellers' => 1089,
-    'pendingApplications' => 23,
-    'totalOrders' => 5432,
-    'todayOrders' => 89,
-    'totalRevenue' => 2847650,
-    'thisMonthRevenue' => 456780,
-    'pendingPayouts' => 125340
+// Get real-time dashboard statistics
+$stats = aakaari_get_dashboard_stats();
+
+// Get active tab from URL or default to overview
+$active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'overview';
+
+// Handle filtering and pagination
+$current_page = isset($_GET['page_num']) ? intval($_GET['page_num']) : 1;
+$items_per_page = isset($_GET['per_page']) ? intval($_GET['per_page']) : 10;
+$filter_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+$search_term = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+$date_from = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
+$date_to = isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '';
+
+// Fetch applications with filtering
+$applications_args = array(
+    'status' => $filter_status,
+    'search' => $search_term,
+    'posts_per_page' => $items_per_page,
+    'paged' => $current_page
 );
+$applications_data = aakaari_get_applications($applications_args);
+$applications = $applications_data['applications'];
 
-// Fetch actual reseller applications
-$applications_query = new WP_Query(array(
-    'post_type' => 'reseller_application',
-    'posts_per_page' => -1, // Get all applications
-    'orderby' => 'date',
-    'order' => 'DESC',
-    'tax_query' => array(
-        // Optionally filter by status, e.g., 'pending' by default
-        // array(
-        //     'taxonomy' => 'reseller_application_status',
-        //     'field'    => 'slug',
-        //     'terms'    => 'pending',
-        // ),
-    ),
-));
-
-$applications = array();
-if ($applications_query->have_posts()) {
-    while ($applications_query->have_posts()) {
-        $applications_query->the_post();
-        $post_id = get_the_ID();
-        $status_terms = wp_get_post_terms($post_id, 'reseller_application_status');
-        $status = !empty($status_terms) ? $status_terms[0]->slug : 'pending'; // Default to pending if no status set
-
-        $applications[] = array(
-            'id' => $post_id, // Use Post ID
-            'name' => get_post_meta($post_id, 'reseller_name', true),
-            'email' => get_post_meta($post_id, 'reseller_email', true),
-            'phone' => get_post_meta($post_id, 'reseller_phone', true),
-            'businessName' => get_post_meta($post_id, 'reseller_business', true),
-            'businessType' => get_post_meta($post_id, 'reseller_business_type', true), // Assuming you save business_type meta
-            'city' => get_post_meta($post_id, 'reseller_city', true),
-            'state' => get_post_meta($post_id, 'reseller_state', true),
-            'appliedDate' => get_the_date('Y-m-d'),
-            'status' => $status
-        );
-    }
-    wp_reset_postdata(); // Important after custom WP_Query
-}
-
-// NOTE: You might need to add 'reseller_business_type' to the saved meta fields
-// in become-a-reseller.php or reseller-application.php if it's not already there.
-
-// Mock resellers data
-$resellers = array(
-    array(
-        'id' => '1',
-        'name' => 'Vikram Singh',
-        'email' => 'vikram@example.com',
-        'phone' => '+91 9876543213',
-        'totalOrders' => 145,
-        'totalRevenue' => 287500,
-        'commission' => 28750,
-        'status' => 'active',
-        'joinedDate' => '2025-01-15'
-    ),
-    array(
-        'id' => '2',
-        'name' => 'Anita Desai',
-        'email' => 'anita@example.com',
-        'phone' => '+91 9876543214',
-        'totalOrders' => 89,
-        'totalRevenue' => 156700,
-        'commission' => 15670,
-        'status' => 'active',
-        'joinedDate' => '2025-02-20'
-    ),
-    array(
-        'id' => '3',
-        'name' => 'Mohammed Ali',
-        'email' => 'mohammed@example.com',
-        'phone' => '+91 9876543215',
-        'totalOrders' => 234,
-        'totalRevenue' => 456800,
-        'commission' => 45680,
-        'status' => 'active',
-        'joinedDate' => '2024-12-10'
-    )
+// Fetch resellers with filtering
+$resellers_args = array(
+    'status' => $filter_status,
+    'search' => $search_term,
+    'number' => $items_per_page,
+    'paged' => $current_page
 );
+$resellers_data = aakaari_get_resellers($resellers_args);
+$resellers = $resellers_data['resellers'];
 
-// Mock orders data
-$orders = array(
-    array(
-        'id' => '1',
-        'orderId' => 'ORD-2025-1234',
-        'reseller' => 'Vikram Singh',
-        'customer' => 'Ramesh Verma',
-        'products' => 3,
-        'amount' => 1899,
-        'status' => 'processing',
-        'date' => '2025-10-20',
-        'paymentStatus' => 'paid'
-    ),
-    array(
-        'id' => '2',
-        'orderId' => 'ORD-2025-1235',
-        'reseller' => 'Anita Desai',
-        'customer' => 'Sunita Rao',
-        'products' => 5,
-        'amount' => 2499,
-        'status' => 'shipped',
-        'date' => '2025-10-19',
-        'paymentStatus' => 'paid'
-    ),
-    array(
-        'id' => '3',
-        'orderId' => 'ORD-2025-1236',
-        'reseller' => 'Mohammed Ali',
-        'customer' => 'Deepak Joshi',
-        'products' => 2,
-        'amount' => 1299,
-        'status' => 'pending',
-        'date' => '2025-10-20',
-        'paymentStatus' => 'pending'
-    )
+// Fetch orders with filtering
+$orders_args = array(
+    'status' => $filter_status,
+    'date_from' => $date_from,
+    'date_to' => $date_to,
+    'limit' => $items_per_page,
+    'paged' => $current_page
 );
+$orders_data = aakaari_get_orders($orders_args);
+$orders = $orders_data['orders'];
+
+// Fetch product statistics
+$product_stats = aakaari_get_product_stats();
+
+// Fetch payout statistics
+$payout_stats = aakaari_get_payout_stats();
+
+// Format the current date for display
+$current_date = date('F j, Y');
 
 // Enqueue styles and scripts
 wp_enqueue_style('aakaari-admin-dashboard-style', get_template_directory_uri() . '/assets/css/admindashboard.css', array(), '1.0.0');
 wp_enqueue_script('aakaari-admin-dashboard-script', get_template_directory_uri() . '/assets/js/admindashboard.js', array('jquery'), '1.0.0', true);
-
-// Get active tab from URL or default to overview
-$active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'overview';
 
 get_header('minimal'); // Use a minimal header or create one
 ?>
@@ -166,10 +87,54 @@ get_header('minimal'); // Use a minimal header or create one
                 <div class="aakaari-admin-badge">Administrator</div>
             </div>
             <div class="aakaari-header-right">
-                <button class="aakaari-notification-button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    <span class="aakaari-notification-badge"><?php echo esc_html($stats['pendingApplications']); ?></span>
-                </button>
+<!-- Replace the current notification bell button with this dropdown implementation -->
+<div class="aakaari-dropdown aakaari-notification-dropdown">
+    <button class="aakaari-notification-button aakaari-dropdown-trigger" id="notification-bell-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <?php if ($stats['unseenNotifications'] > 0): ?>
+            <span class="aakaari-notification-badge" id="notification-badge"><?php echo esc_html($stats['unseenNotifications']); ?></span>
+        <?php endif; ?>
+    </button>
+    
+    <div class="aakaari-dropdown-content aakaari-notification-dropdown-content">
+        <div class="aakaari-notification-header">
+            <h4>Notifications</h4>
+            <?php if ($stats['pendingApplications'] > 0): ?>
+                <a href="<?php echo esc_url(add_query_arg('tab', 'applications')); ?>" class="aakaari-notification-action">View All</a>
+            <?php endif; ?>
+        </div>
+        
+        <div class="aakaari-notification-list">
+            <?php 
+            $pending_apps_args = array(
+                'status' => 'pending',
+                'posts_per_page' => 5
+            );
+            $pending_apps_data = aakaari_get_applications($pending_apps_args);
+            $pending_apps = $pending_apps_data['applications'];
+            
+            if (!empty($pending_apps)): 
+                foreach ($pending_apps as $app): 
+            ?>
+                <div class="aakaari-notification-item">
+                    <div class="aakaari-notification-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                    </div>
+                    <div class="aakaari-notification-content">
+                        <div class="aakaari-notification-title">New Application</div>
+                        <div class="aakaari-notification-message"><?php echo esc_html($app['name']); ?> has applied for a reseller account.</div>
+                        <div class="aakaari-notification-time"><?php echo esc_html(human_time_diff(strtotime($app['appliedDate']), current_time('timestamp'))); ?> ago</div>
+                    </div>
+                </div>
+            <?php 
+                endforeach;
+            else: 
+            ?>
+                <div class="aakaari-notification-empty">No new notifications</div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
                 <div class="aakaari-user-profile">
                     <div class="aakaari-avatar">
                         <span><?php echo esc_html($admin_initials); ?></span>
@@ -246,7 +211,7 @@ get_header('minimal'); // Use a minimal header or create one
                 <div class="aakaari-tab-content">
                     <div class="aakaari-tab-header">
                         <h2>Dashboard Overview</h2>
-                        <p>Welcome back! Here's what's happening with your platform.</p>
+                        <p>Welcome back! Here's what's happening with your platform as of <?php echo esc_html($current_date); ?></p>
                     </div>
 
                     <!-- Stats Grid -->
@@ -255,10 +220,10 @@ get_header('minimal'); // Use a minimal header or create one
                             <div class="aakaari-stat-content">
                                 <div>
                                     <p class="aakaari-stat-label">Total Resellers</p>
-                                    <p class="aakaari-stat-value"><?php echo esc_html($stats['totalResellers']); ?></p>
+                                    <p class="aakaari-stat-value"><?php echo esc_html(number_format($stats['totalResellers'])); ?></p>
                                     <p class="aakaari-stat-trend trend-up">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                                        +12% from last month
+                                        <?php echo esc_html($stats['activeResellers']); ?> active resellers
                                     </p>
                                 </div>
                                 <svg class="aakaari-stat-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -269,7 +234,7 @@ get_header('minimal'); // Use a minimal header or create one
                             <div class="aakaari-stat-content">
                                 <div>
                                     <p class="aakaari-stat-label">Total Orders</p>
-                                    <p class="aakaari-stat-value"><?php echo esc_html($stats['totalOrders']); ?></p>
+                                    <p class="aakaari-stat-value"><?php echo esc_html(number_format($stats['totalOrders'])); ?></p>
                                     <p class="aakaari-stat-trend trend-up">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                                         +<?php echo esc_html($stats['todayOrders']); ?> today
@@ -283,10 +248,18 @@ get_header('minimal'); // Use a minimal header or create one
                             <div class="aakaari-stat-content">
                                 <div>
                                     <p class="aakaari-stat-label">Total Revenue</p>
-                                    <p class="aakaari-stat-value">₹<?php echo esc_html(round($stats['totalRevenue'] / 100000, 1)); ?>L</p>
+                                    <p class="aakaari-stat-value">
+                                        <?php 
+                                        if ($stats['totalRevenue'] >= 100000) {
+                                            echo '₹' . esc_html(round($stats['totalRevenue'] / 100000, 1)) . 'L';
+                                        } else {
+                                            echo '₹' . esc_html(number_format($stats['totalRevenue']));
+                                        }
+                                        ?>
+                                    </p>
                                     <p class="aakaari-stat-trend trend-up">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                                        +₹<?php echo esc_html(round($stats['thisMonthRevenue'] / 1000, 0)); ?>K this month
+                                        +₹<?php echo esc_html(number_format(round($stats['thisMonthRevenue']))); ?> this month
                                     </p>
                                 </div>
                                 <svg class="aakaari-stat-icon icon-emerald" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
@@ -298,10 +271,16 @@ get_header('minimal'); // Use a minimal header or create one
                                 <div>
                                     <p class="aakaari-stat-label">Pending Applications</p>
                                     <p class="aakaari-stat-value"><?php echo esc_html($stats['pendingApplications']); ?></p>
-                                    <p class="aakaari-stat-trend trend-attention">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12"></polyline><polyline points="12 16 12.01 16"></polyline></svg>
-                                        Needs attention
-                                    </p>
+                                    <?php if ($stats['pendingApplications'] > 0): ?>
+                                        <p class="aakaari-stat-trend trend-attention">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12"></polyline><polyline points="12 16 12.01 16"></polyline></svg>
+                                            Needs attention
+                                        </p>
+                                    <?php else: ?>
+                                        <p class="aakaari-stat-trend">
+                                            All clear
+                                        </p>
+                                    <?php endif; ?>
                                 </div>
                                 <svg class="aakaari-stat-icon icon-orange" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                             </div>
@@ -315,20 +294,39 @@ get_header('minimal'); // Use a minimal header or create one
                                 <h3>Recent Orders</h3>
                             </div>
                             <div class="aakaari-card-content">
-                                <?php foreach (array_slice($orders, 0, 3) as $order): ?>
+                                <?php 
+                                $recent_orders_args = array(
+                                    'limit' => 3,
+                                    'paged' => 1,
+                                    'orderby' => 'date',
+                                    'order' => 'DESC'
+                                );
+                                $recent_orders_data = aakaari_get_orders($recent_orders_args);
+                                $recent_orders = $recent_orders_data['orders'];
+                                
+                                if (!empty($recent_orders)): 
+                                    foreach ($recent_orders as $order): 
+                                ?>
                                     <div class="aakaari-activity-item">
                                         <div>
                                             <div class="aakaari-item-title"><?php echo esc_html($order['orderId']); ?></div>
                                             <div class="aakaari-item-subtitle"><?php echo esc_html($order['reseller']); ?></div>
                                         </div>
                                         <div class="aakaari-item-details">
-                                            <div class="aakaari-item-amount">₹<?php echo esc_html($order['amount']); ?></div>
+                                            <div class="aakaari-item-amount">₹<?php echo esc_html(number_format($order['amount'])); ?></div>
                                             <span class="aakaari-status-badge status-<?php echo esc_attr($order['status']); ?>">
                                                 <?php echo esc_html(ucfirst($order['status'])); ?>
                                             </span>
                                         </div>
                                     </div>
-                                <?php endforeach; ?>
+                                <?php 
+                                    endforeach; 
+                                else: 
+                                ?>
+                                    <div class="aakaari-activity-item">
+                                        <p>No recent orders found.</p>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -337,7 +335,17 @@ get_header('minimal'); // Use a minimal header or create one
                                 <h3>Pending Applications</h3>
                             </div>
                             <div class="aakaari-card-content">
-                                <?php foreach ($applications as $app): ?>
+                                <?php 
+                                $pending_apps_args = array(
+                                    'status' => 'pending',
+                                    'posts_per_page' => 3
+                                );
+                                $pending_apps_data = aakaari_get_applications($pending_apps_args);
+                                $pending_apps = $pending_apps_data['applications'];
+                                
+                                if (!empty($pending_apps)): 
+                                    foreach ($pending_apps as $app): 
+                                ?>
                                     <div class="aakaari-activity-item">
                                         <div>
                                             <div class="aakaari-item-title"><?php echo esc_html($app['name']); ?></div>
@@ -348,7 +356,14 @@ get_header('minimal'); // Use a minimal header or create one
                                             Review
                                         </button>
                                     </div>
-                                <?php endforeach; ?>
+                                <?php 
+                                    endforeach;
+                                else: 
+                                ?>
+                                    <div class="aakaari-activity-item">
+                                        <p>No pending applications.</p>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -364,12 +379,22 @@ get_header('minimal'); // Use a minimal header or create one
                             <p>Review and approve new reseller registrations</p>
                         </div>
                         <div class="aakaari-actions">
-                            <select class="aakaari-select">
-                                <option value="all">All Applications</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
+                            <form id="applications-filter" method="get" class="aakaari-filter-form">
+                                <input type="hidden" name="tab" value="applications">
+                                
+                                <select name="status" class="aakaari-select" onchange="this.form.submit()">
+                                    <option value="" <?php selected($filter_status, ''); ?>>All Applications</option>
+                                    <option value="pending" <?php selected($filter_status, 'pending'); ?>>Pending</option>
+                                    <option value="approved" <?php selected($filter_status, 'approved'); ?>>Approved</option>
+                                    <option value="rejected" <?php selected($filter_status, 'rejected'); ?>>Rejected</option>
+                                </select>
+                                
+                                <input type="text" name="search" class="aakaari-search-input" placeholder="Search applicants..." value="<?php echo esc_attr($search_term); ?>">
+                                <button type="submit" class="aakaari-button aakaari-button-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    Search
+                                </button>
+                            </form>
                         </div>
                     </div>
 
@@ -388,39 +413,85 @@ get_header('minimal'); // Use a minimal header or create one
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($applications as $app): ?>
+                                    <?php if (!empty($applications)): ?>
+                                        <?php foreach ($applications as $app): ?>
+                                            <tr>
+                                                <td>
+                                                    <div>
+                                                        <div><?php echo esc_html($app['name']); ?></div>
+                                                        <div class="aakaari-table-subtitle"><?php echo esc_html($app['phone']); ?></div>
+                                                    </div>
+                                                </td>
+                                                <td><?php echo esc_html($app['email']); ?></td>
+                                                <td>
+                                                    <div>
+                                                        <div><?php echo !empty($app['businessName']) ? esc_html($app['businessName']) : 'Individual'; ?></div>
+                                                        <div class="aakaari-table-subtitle"><?php echo esc_html($app['businessType']); ?></div>
+                                                    </div>
+                                                </td>
+                                                <td><?php echo esc_html($app['city'] . ', ' . $app['state']); ?></td>
+                                                <td><?php echo esc_html($app['appliedDate']); ?></td>
+                                                <td>
+                                                    <span class="aakaari-status-badge status-<?php echo esc_attr($app['status']); ?>">
+                                                        <?php echo esc_html(ucfirst($app['status'])); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button class="aakaari-button aakaari-button-sm aakaari-button-outline"
+                                                            data-application-id="<?php echo esc_attr($app['id']); ?>">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                        Review
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
                                         <tr>
-                                            <td>
-                                                <div>
-                                                    <div><?php echo esc_html($app['name']); ?></div>
-                                                    <div class="aakaari-table-subtitle"><?php echo esc_html($app['phone']); ?></div>
-                                                </div>
-                                            </td>
-                                            <td><?php echo esc_html($app['email']); ?></td>
-                                            <td>
-                                                <div>
-                                                    <div><?php echo !empty($app['businessName']) ? esc_html($app['businessName']) : 'Individual'; ?></div>
-                                                    <div class="aakaari-table-subtitle"><?php echo esc_html($app['businessType']); ?></div>
-                                                </div>
-                                            </td>
-                                            <td><?php echo esc_html($app['city'] . ', ' . $app['state']); ?></td>
-                                            <td><?php echo esc_html($app['appliedDate']); ?></td>
-                                            <td>
-                                                <span class="aakaari-status-badge status-<?php echo esc_attr($app['status']); ?>">
-                                                    <?php echo esc_html(ucfirst($app['status'])); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <button class="aakaari-button aakaari-button-sm aakaari-button-outline"
-                                                        data-application-id="<?php echo esc_attr($app['id']); ?>">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                                    Review
-                                                </button>
+                                            <td colspan="7" class="aakaari-text-center aakaari-py-8">
+                                                <p class="aakaari-text-muted">No applications found matching your criteria.</p>
                                             </td>
                                         </tr>
-                                    <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
+                            
+                            <?php if ($applications_data['max_pages'] > 1): ?>
+                                <div class="aakaari-pagination">
+                                    <?php
+                                    // Generate pagination links
+                                    $pagination_args = array_merge($_GET, array('tab' => 'applications'));
+                                    
+                                    // Previous page link
+                                    if ($current_page > 1) {
+                                        $prev_args = array_merge($pagination_args, array('page_num' => $current_page - 1));
+                                        echo '<a href="' . esc_url(add_query_arg($prev_args)) . '" class="aakaari-pagination-link">Previous</a>';
+                                    } else {
+                                        echo '<span class="aakaari-pagination-link disabled">Previous</span>';
+                                    }
+                                    
+                                    // Page numbers
+                                    $start_page = max(1, $current_page - 2);
+                                    $end_page = min($applications_data['max_pages'], $current_page + 2);
+                                    
+                                    for ($i = $start_page; $i <= $end_page; $i++) {
+                                        $page_args = array_merge($pagination_args, array('page_num' => $i));
+                                        if ($i == $current_page) {
+                                            echo '<span class="aakaari-pagination-link active">' . $i . '</span>';
+                                        } else {
+                                            echo '<a href="' . esc_url(add_query_arg($page_args)) . '" class="aakaari-pagination-link">' . $i . '</a>';
+                                        }
+                                    }
+                                    
+                                    // Next page link
+                                    if ($current_page < $applications_data['max_pages']) {
+                                        $next_args = array_merge($pagination_args, array('page_num' => $current_page + 1));
+                                        echo '<a href="' . esc_url(add_query_arg($next_args)) . '" class="aakaari-pagination-link">Next</a>';
+                                    } else {
+                                        echo '<span class="aakaari-pagination-link disabled">Next</span>';
+                                    }
+                                    ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -435,14 +506,26 @@ get_header('minimal'); // Use a minimal header or create one
                             <p>View and manage all registered resellers</p>
                         </div>
                         <div class="aakaari-actions">
-                            <div class="aakaari-search">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                <input type="text" class="aakaari-search-input" placeholder="Search resellers...">
-                            </div>
-                            <button class="aakaari-button aakaari-button-outline">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                                Filter
-                            </button>
+                            <form id="resellers-filter" method="get" class="aakaari-filter-form">
+                                <input type="hidden" name="tab" value="resellers">
+                                
+                                <div class="aakaari-search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" name="search" class="aakaari-search-input" placeholder="Search resellers..." value="<?php echo esc_attr($search_term); ?>">
+                                </div>
+                                
+                                <select name="status" class="aakaari-select" onchange="this.form.submit()">
+                                    <option value="" <?php selected($filter_status, ''); ?>>All Resellers</option>
+                                    <option value="active" <?php selected($filter_status, 'active'); ?>>Active</option>
+                                    <option value="inactive" <?php selected($filter_status, 'inactive'); ?>>Inactive</option>
+                                    <option value="suspended" <?php selected($filter_status, 'suspended'); ?>>Suspended</option>
+                                </select>
+                                
+                                <button type="submit" class="aakaari-button aakaari-button-outline">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                                    Filter
+                                </button>
+                            </form>
                         </div>
                     </div>
 
@@ -462,54 +545,109 @@ get_header('minimal'); // Use a minimal header or create one
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($resellers as $reseller): ?>
+                                    <?php if (!empty($resellers)): ?>
+                                        <?php foreach ($resellers as $reseller): ?>
+                                            <tr>
+                                                <td>
+                                                    <div class="aakaari-user-row">
+                                                        <div class="aakaari-avatar">
+                                                            <?php 
+                                                                $initials = '';
+                                                                $name_parts = explode(' ', $reseller['name']);
+                                                                foreach ($name_parts as $part) {
+                                                                    if (!empty($part)) {
+                                                                        $initials .= substr($part, 0, 1);
+                                                                    }
+                                                                }
+                                                                if (empty($initials)) {
+                                                                    $initials = '?';
+                                                                }
+                                                            ?>
+                                                            <span><?php echo esc_html($initials); ?></span>
+                                                        </div>
+                                                        <div><?php echo esc_html($reseller['name']); ?></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        <div><?php echo esc_html($reseller['email']); ?></div>
+                                                        <div class="aakaari-table-subtitle"><?php echo esc_html($reseller['phone']); ?></div>
+                                                    </div>
+                                                </td>
+                                                <td><?php echo esc_html($reseller['totalOrders']); ?></td>
+                                                <td>₹<?php echo esc_html(number_format($reseller['totalRevenue'])); ?></td>
+                                                <td class="aakaari-text-green">₹<?php echo esc_html(number_format($reseller['commission'])); ?></td>
+                                                <td><?php echo esc_html($reseller['joinedDate']); ?></td>
+                                                <td>
+                                                    <span class="aakaari-status-badge status-<?php echo esc_attr($reseller['status']); ?>">
+                                                        <?php echo esc_html(ucfirst($reseller['status'])); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="aakaari-dropdown">
+                                                        <button class="aakaari-dropdown-trigger aakaari-button-icon">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                                                        </button>
+                                                        <div class="aakaari-dropdown-content">
+                                                            <a href="#" class="aakaari-dropdown-item" data-action="view-reseller" data-id="<?php echo esc_attr($reseller['id']); ?>">View Details</a>
+                                                            <a href="<?php echo esc_url(add_query_arg(array('tab' => 'orders', 'reseller_id' => $reseller['id']))); ?>" class="aakaari-dropdown-item">View Orders</a>
+                                                            <?php if ($reseller['status'] === 'active'): ?>
+                                                                <a href="#" class="aakaari-dropdown-item" data-action="suspend-reseller" data-id="<?php echo esc_attr($reseller['id']); ?>">Suspend Account</a>
+                                                            <?php elseif ($reseller['status'] === 'suspended'): ?>
+                                                                <a href="#" class="aakaari-dropdown-item" data-action="activate-reseller" data-id="<?php echo esc_attr($reseller['id']); ?>">Activate Account</a>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
                                         <tr>
-                                            <td>
-                                                <div class="aakaari-user-row">
-                                                    <div class="aakaari-avatar">
-                                                        <?php 
-                                                            $initials = '';
-                                                            $name_parts = explode(' ', $reseller['name']);
-                                                            foreach ($name_parts as $part) {
-                                                                $initials .= substr($part, 0, 1);
-                                                            }
-                                                        ?>
-                                                        <span><?php echo esc_html($initials); ?></span>
-                                                    </div>
-                                                    <div><?php echo esc_html($reseller['name']); ?></div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div>
-                                                    <div><?php echo esc_html($reseller['email']); ?></div>
-                                                    <div class="aakaari-table-subtitle"><?php echo esc_html($reseller['phone']); ?></div>
-                                                </div>
-                                            </td>
-                                            <td><?php echo esc_html($reseller['totalOrders']); ?></td>
-                                            <td>₹<?php echo esc_html(number_format($reseller['totalRevenue'])); ?></td>
-                                            <td class="aakaari-text-green">₹<?php echo esc_html(number_format($reseller['commission'])); ?></td>
-                                            <td><?php echo esc_html($reseller['joinedDate']); ?></td>
-                                            <td>
-                                                <span class="aakaari-status-badge status-<?php echo esc_attr($reseller['status']); ?>">
-                                                    <?php echo esc_html(ucfirst($reseller['status'])); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="aakaari-dropdown">
-                                                    <button class="aakaari-dropdown-trigger aakaari-button-icon">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                                                    </button>
-                                                    <div class="aakaari-dropdown-content">
-                                                        <a href="#" class="aakaari-dropdown-item">View Details</a>
-                                                        <a href="#" class="aakaari-dropdown-item">View Orders</a>
-                                                        <a href="#" class="aakaari-dropdown-item">Suspend Account</a>
-                                                    </div>
-                                                </div>
+                                            <td colspan="8" class="aakaari-text-center aakaari-py-8">
+                                                <p class="aakaari-text-muted">No resellers found matching your criteria.</p>
                                             </td>
                                         </tr>
-                                    <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
+                            
+                            <?php if ($resellers_data['max_pages'] > 1): ?>
+                                <div class="aakaari-pagination">
+                                    <?php
+                                    // Generate pagination links
+                                    $pagination_args = array_merge($_GET, array('tab' => 'resellers'));
+                                    
+                                    // Previous page link
+                                    if ($current_page > 1) {
+                                        $prev_args = array_merge($pagination_args, array('page_num' => $current_page - 1));
+                                        echo '<a href="' . esc_url(add_query_arg($prev_args)) . '" class="aakaari-pagination-link">Previous</a>';
+                                    } else {
+                                        echo '<span class="aakaari-pagination-link disabled">Previous</span>';
+                                    }
+                                    
+                                    // Page numbers
+                                    $start_page = max(1, $current_page - 2);
+                                    $end_page = min($resellers_data['max_pages'], $current_page + 2);
+                                    
+                                    for ($i = $start_page; $i <= $end_page; $i++) {
+                                        $page_args = array_merge($pagination_args, array('page_num' => $i));
+                                        if ($i == $current_page) {
+                                            echo '<span class="aakaari-pagination-link active">' . $i . '</span>';
+                                        } else {
+                                            echo '<a href="' . esc_url(add_query_arg($page_args)) . '" class="aakaari-pagination-link">' . $i . '</a>';
+                                        }
+                                    }
+                                    
+                                    // Next page link
+                                    if ($current_page < $resellers_data['max_pages']) {
+                                        $next_args = array_merge($pagination_args, array('page_num' => $current_page + 1));
+                                        echo '<a href="' . esc_url(add_query_arg($next_args)) . '" class="aakaari-pagination-link">Next</a>';
+                                    } else {
+                                        echo '<span class="aakaari-pagination-link disabled">Next</span>';
+                                    }
+                                    ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -524,17 +662,32 @@ get_header('minimal'); // Use a minimal header or create one
                             <p>Monitor and manage all platform orders</p>
                         </div>
                         <div class="aakaari-actions">
-                            <select class="aakaari-select">
-                                <option value="all">All Orders</option>
-                                <option value="pending">Pending</option>
-                                <option value="processing">Processing</option>
-                                <option value="shipped">Shipped</option>
-                                <option value="delivered">Delivered</option>
-                            </select>
-                            <button class="aakaari-button aakaari-button-outline">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                Export
-                            </button>
+                            <form id="orders-filter" method="get" class="aakaari-filter-form">
+                                <input type="hidden" name="tab" value="orders">
+                                
+                                <select name="status" class="aakaari-select" onchange="this.form.submit()">
+                                    <option value="" <?php selected($filter_status, ''); ?>>All Orders</option>
+                                    <option value="pending" <?php selected($filter_status, 'pending'); ?>>Pending</option>
+                                    <option value="processing" <?php selected($filter_status, 'processing'); ?>>Processing</option>
+                                    <option value="shipped" <?php selected($filter_status, 'shipped'); ?>>Shipped</option>
+                                    <option value="completed" <?php selected($filter_status, 'completed'); ?>>Delivered</option>
+                                </select>
+                                
+                                <div class="aakaari-date-range">
+                                    <input type="date" name="date_from" class="aakaari-input-date" value="<?php echo esc_attr($date_from); ?>" placeholder="From">
+                                    <input type="date" name="date_to" class="aakaari-input-date" value="<?php echo esc_attr($date_to); ?>" placeholder="To">
+                                </div>
+                                
+                                <button type="submit" class="aakaari-button aakaari-button-outline">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                                    Filter
+                                </button>
+                                
+                                <button type="button" class="aakaari-button aakaari-button-outline" id="exportOrdersBtn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Export
+                                </button>
+                            </form>
                         </div>
                     </div>
 
@@ -555,41 +708,89 @@ get_header('minimal'); // Use a minimal header or create one
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($orders as $order): ?>
-                                        <tr>
-                                            <td><?php echo esc_html($order['orderId']); ?></td>
-                                            <td><?php echo esc_html($order['reseller']); ?></td>
-                                            <td><?php echo esc_html($order['customer']); ?></td>
-                                            <td><?php echo esc_html($order['products']); ?> items</td>
-                                            <td>₹<?php echo esc_html($order['amount']); ?></td>
-                                            <td><?php echo esc_html($order['date']); ?></td>
-                                            <td>
-                                                <span class="aakaari-status-badge status-<?php echo esc_attr($order['paymentStatus']); ?>">
-                                                    <?php echo esc_html(ucfirst($order['paymentStatus'])); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="aakaari-status-badge status-<?php echo esc_attr($order['status']); ?>">
-                                                    <?php echo esc_html(ucfirst($order['status'])); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="aakaari-dropdown">
-                                                    <button class="aakaari-dropdown-trigger aakaari-button-icon">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                                                    </button>
-                                                    <div class="aakaari-dropdown-content">
-                                                        <a href="#" class="aakaari-dropdown-item">View Details</a>
-                                                        <a href="#" class="aakaari-dropdown-item">Update Status</a>
-                                                        <a href="#" class="aakaari-dropdown-item">Download Invoice</a>
-                                                        <a href="#" class="aakaari-dropdown-item">Contact Reseller</a>
+                                    <?php if (!empty($orders)): ?>
+                                        <?php foreach ($orders as $order): ?>
+                                            <tr>
+                                                <td><?php echo esc_html($order['orderId']); ?></td>
+                                                <td><?php echo esc_html($order['reseller']); ?></td>
+                                                <td><?php echo esc_html($order['customer']); ?></td>
+                                                <td><?php echo esc_html($order['products']); ?> items</td>
+                                                <td>₹<?php echo esc_html(number_format($order['amount'])); ?></td>
+                                                <td><?php echo esc_html($order['date']); ?></td>
+                                                <td>
+                                                    <span class="aakaari-status-badge status-<?php echo esc_attr($order['paymentStatus']); ?>">
+                                                        <?php echo esc_html(ucfirst($order['paymentStatus'])); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="aakaari-status-badge status-<?php echo esc_attr($order['status']); ?>">
+                                                        <?php echo esc_html(ucfirst($order['status'])); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="aakaari-dropdown">
+                                                        <button class="aakaari-dropdown-trigger aakaari-button-icon">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                                                        </button>
+                                                        <div class="aakaari-dropdown-content">
+                                                            <a href="#" class="aakaari-dropdown-item" data-action="view-order" data-id="<?php echo esc_attr($order['id']); ?>">View Details</a>
+                                                            <a href="#" class="aakaari-dropdown-item" data-action="update-status" data-id="<?php echo esc_attr($order['id']); ?>">Update Status</a>
+                                                            <a href="#" class="aakaari-dropdown-item" data-action="download-invoice" data-id="<?php echo esc_attr($order['id']); ?>">Download Invoice</a>
+                                                            <?php if ($order['reseller_id'] > 0): ?>
+                                                                <a href="mailto:<?php echo esc_attr($order['reseller_email']); ?>" class="aakaari-dropdown-item">Contact Reseller</a>
+                                                            <?php endif; ?>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="9" class="aakaari-text-center aakaari-py-8">
+                                                <p class="aakaari-text-muted">No orders found matching your criteria.</p>
                                             </td>
                                         </tr>
-                                    <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
+                            
+                            <?php if ($orders_data['max_pages'] > 1): ?>
+                                <div class="aakaari-pagination">
+                                    <?php
+                                    // Generate pagination links
+                                    $pagination_args = array_merge($_GET, array('tab' => 'orders'));
+                                    
+                                    // Previous page link
+                                    if ($current_page > 1) {
+                                        $prev_args = array_merge($pagination_args, array('page_num' => $current_page - 1));
+                                        echo '<a href="' . esc_url(add_query_arg($prev_args)) . '" class="aakaari-pagination-link">Previous</a>';
+                                    } else {
+                                        echo '<span class="aakaari-pagination-link disabled">Previous</span>';
+                                    }
+                                    
+                                    // Page numbers
+                                    $start_page = max(1, $current_page - 2);
+                                    $end_page = min($orders_data['max_pages'], $current_page + 2);
+                                    
+                                    for ($i = $start_page; $i <= $end_page; $i++) {
+                                        $page_args = array_merge($pagination_args, array('page_num' => $i));
+                                        if ($i == $current_page) {
+                                            echo '<span class="aakaari-pagination-link active">' . $i . '</span>';
+                                        } else {
+                                            echo '<a href="' . esc_url(add_query_arg($page_args)) . '" class="aakaari-pagination-link">' . $i . '</a>';
+                                        }
+                                    }
+                                    
+                                    // Next page link
+                                    if ($current_page < $orders_data['max_pages']) {
+                                        $next_args = array_merge($pagination_args, array('page_num' => $current_page + 1));
+                                        echo '<a href="' . esc_url(add_query_arg($next_args)) . '" class="aakaari-pagination-link">Next</a>';
+                                    } else {
+                                        echo '<span class="aakaari-pagination-link disabled">Next</span>';
+                                    }
+                                    ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -603,10 +804,12 @@ get_header('minimal'); // Use a minimal header or create one
                             <h2>Product Management</h2>
                             <p>Manage your product catalog and pricing</p>
                         </div>
-                        <button class="aakaari-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                            Add New Product
-                        </button>
+                        <?php if (current_user_can('edit_products')): ?>
+                            <a href="<?php echo esc_url(admin_url('post-new.php?post_type=product')); ?>" class="aakaari-button" target="_blank">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                Add New Product
+                            </a>
+                        <?php endif; ?>
                     </div>
 
                     <div class="aakaari-stats-grid aakaari-stats-grid-3">
@@ -614,7 +817,7 @@ get_header('minimal'); // Use a minimal header or create one
                             <div class="aakaari-stat-icon-large">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                             </div>
-                            <p class="aakaari-stat-value">156</p>
+                            <p class="aakaari-stat-value"><?php echo esc_html($product_stats['total']); ?></p>
                             <p class="aakaari-stat-label">Total Products</p>
                         </div>
                         
@@ -622,7 +825,7 @@ get_header('minimal'); // Use a minimal header or create one
                             <div class="aakaari-stat-icon-large icon-green">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                             </div>
-                            <p class="aakaari-stat-value">142</p>
+                            <p class="aakaari-stat-value"><?php echo esc_html($product_stats['inStock']); ?></p>
                             <p class="aakaari-stat-label">In Stock</p>
                         </div>
                         
@@ -630,14 +833,33 @@ get_header('minimal'); // Use a minimal header or create one
                             <div class="aakaari-stat-icon-large icon-orange">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                             </div>
-                            <p class="aakaari-stat-value">14</p>
+                            <p class="aakaari-stat-value"><?php echo esc_html($product_stats['lowStock']); ?></p>
                             <p class="aakaari-stat-label">Low Stock</p>
                         </div>
                     </div>
 
                     <div class="aakaari-card">
-                        <div class="aakaari-card-content aakaari-text-center aakaari-py-8">
-                            <p class="aakaari-text-muted">Product management interface will be displayed here</p>
+                        <div class="aakaari-card-content">
+                            <?php if (function_exists('wc_get_products')): ?>
+                                <p class="aakaari-text-center">To manage products, please use the WooCommerce Products section in the WordPress admin.</p>
+                                <div class="aakaari-action-center">
+                                                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=product')); ?>" class="aakaari-button" target="_blank">
+                                        Go to Products Admin
+                                    </a>
+                                </div>
+                                
+                                <?php if ($product_stats['lowStock'] > 0): ?>
+                                <div class="aakaari-alert aakaari-alert-warning aakaari-mt-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    <div>
+                                        <h4>Low Stock Alert</h4>
+                                        <p>You have <?php echo esc_html($product_stats['lowStock']); ?> products with low stock. Please check the <a href="<?php echo esc_url(admin_url('admin.php?page=wc-reports&tab=stock&report=low_in_stock')); ?>" target="_blank">Low Stock Report</a>.</p>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <p class="aakaari-text-center">WooCommerce is not active. Please activate WooCommerce to manage products.</p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -651,47 +873,137 @@ get_header('minimal'); // Use a minimal header or create one
                             <h2>Commission & Payouts</h2>
                             <p>Manage reseller commissions and wallet payouts</p>
                         </div>
-                        <button class="aakaari-button aakaari-button-green">
+                        <button class="aakaari-button aakaari-button-green" id="processPayoutsBtn">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                             Process Payouts
                         </button>
                     </div>
-
-                    <div class="aakaari-stats-grid aakaari-stats-grid-3">
+                                        <div class="aakaari-stats-grid aakaari-stats-grid-3">
                         <div class="aakaari-stat-card">
                             <div class="aakaari-stat-content">
                                 <p class="aakaari-stat-label">Pending Payouts</p>
-                                <p class="aakaari-stat-value">₹<?php echo esc_html(number_format($stats['pendingPayouts'])); ?></p>
-                                <p class="aakaari-stat-trend trend-attention">47 resellers pending</p>
+                                <p class="aakaari-stat-value">₹<?php echo esc_html(number_format($payout_stats['pendingAmount'])); ?></p>
+                                <p class="aakaari-stat-trend trend-attention"><?php echo esc_html($payout_stats['pendingResellers']); ?> resellers pending</p>
                             </div>
                         </div>
                         
                         <div class="aakaari-stat-card">
                             <div class="aakaari-stat-content">
                                 <p class="aakaari-stat-label">This Month Paid</p>
-                                <p class="aakaari-stat-value">₹234,500</p>
-                                <p class="aakaari-stat-trend trend-up">89 transactions</p>
+                                <p class="aakaari-stat-value">₹<?php echo esc_html(number_format($payout_stats['monthPaid'])); ?></p>
+                                <p class="aakaari-stat-trend trend-up"><?php echo esc_html($payout_stats['monthTransactions']); ?> transactions</p>
                             </div>
                         </div>
                         
                         <div class="aakaari-stat-card">
                             <div class="aakaari-stat-content">
                                 <p class="aakaari-stat-label">Total Paid (Lifetime)</p>
-                                <p class="aakaari-stat-value">₹12.5L</p>
-                                <p class="aakaari-stat-trend">1,247 resellers</p>
+                                <p class="aakaari-stat-value">
+                                    <?php
+                                    if ($payout_stats['lifetimePaid'] >= 100000) {
+                                        echo '₹' . esc_html(round($payout_stats['lifetimePaid'] / 100000, 1)) . 'L';
+                                    } else {
+                                        echo '₹' . esc_html(number_format($payout_stats['lifetimePaid']));
+                                    }
+                                    ?>
+                                </p>
+                                <p class="aakaari-stat-trend"><?php echo esc_html($stats['totalResellers']); ?> resellers</p>
                             </div>
                         </div>
                     </div>
 
                     <div class="aakaari-card">
-                        <div class="aakaari-card-content aakaari-text-center aakaari-py-8">
-                            <p class="aakaari-text-muted">Payout management interface will be displayed here</p>
+                        <div class="aakaari-card-header">
+                            <h3>Pending Payouts</h3>
+                        </div>
+                        <div class="aakaari-card-content">
+                            <?php
+                            // Get resellers with pending payouts
+                            $pending_payouts_args = array(
+                                'status' => 'active',
+                                'number' => 10,
+                                'paged' => $current_page,
+                                'meta_query' => array(
+                                    array(
+                                        'key' => 'wallet_balance',
+                                        'value' => 0,
+                                        'compare' => '>',
+                                        'type' => 'NUMERIC'
+                                    )
+                                )
+                            );
+                            $pending_payouts_data = aakaari_get_resellers($pending_payouts_args);
+                            $resellers_with_payouts = $pending_payouts_data['resellers'];
+                            ?>
+                            
+                            <table class="aakaari-table">
+                                <thead>
+                                    <tr>
+                                        <th>Reseller</th>
+                                        <th>Email</th>
+                                        <th>Total Sales</th>
+                                        <th>Wallet Balance</th>
+                                        <th>Last Payout</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($resellers_with_payouts)): ?>
+                                        <?php foreach ($resellers_with_payouts as $reseller): ?>
+                                            <tr>
+                                                <td><?php echo esc_html($reseller['name']); ?></td>
+                                                <td><?php echo esc_html($reseller['email']); ?></td>
+                                                <td>₹<?php echo esc_html(number_format($reseller['totalRevenue'])); ?></td>
+                                                <td class="aakaari-text-green">₹<?php echo esc_html(number_format($reseller['walletBalance'])); ?></td>
+                                                <td>
+                                                    <?php
+                                                    // Get last payout date (mock data for now)
+                                                    $last_payout = '2025-09-15';
+                                                    echo esc_html($last_payout);
+                                                    ?>
+                                                </td>
+                                                <td>
+                                                    <button class="aakaari-button aakaari-button-sm aakaari-button-green" data-action="process-payout" data-id="<?php echo esc_attr($reseller['id']); ?>" data-amount="<?php echo esc_attr($reseller['walletBalance']); ?>">
+                                                        Process Payout
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="6" class="aakaari-text-center aakaari-py-8">
+                                                <p class="aakaari-text-muted">No pending payouts found.</p>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
+            <!-- Payout Result Modal -->
+<div class="aakaari-modal" id="payoutResultModal">
+    <div class="aakaari-modal-overlay"></div>
+    <div class="aakaari-modal-container">
+        <div class="aakaari-modal-header">
+            <h3>Payout Results</h3>
+            <p>Summary of processed payouts</p>
+        </div>
+        
+        <div class="aakaari-modal-body">
+            <div id="payoutResultContent">
+                <!-- Results will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="aakaari-modal-footer">
+            <button class="aakaari-button" id="closePayoutResultBtn">Close</button>
+        </div>
+    </div>
+</div>    
             <?php endif; ?>
 
-            <!-- Settings Tab -->
+                        <!-- Settings Tab -->
             <?php if ($active_tab === 'settings'): ?>
                 <div class="aakaari-tab-content">
                     <div class="aakaari-tab-header">
@@ -700,8 +1012,90 @@ get_header('minimal'); // Use a minimal header or create one
                     </div>
 
                     <div class="aakaari-card">
-                        <div class="aakaari-card-content aakaari-text-center aakaari-py-8">
-                            <p class="aakaari-text-muted">Settings interface will be displayed here</p>
+                        <div class="aakaari-card-header">
+                            <h3>Commission Settings</h3>
+                        </div>
+                        <div class="aakaari-card-content">
+                            <form id="commission-settings-form" class="aakaari-form">
+                                <div class="aakaari-form-row">
+                                    <div class="aakaari-form-group">
+                                        <label for="default-commission">Default Commission Rate (%)</label>
+                                        <input type="number" id="default-commission" name="default_commission" min="0" max="100" step="0.01" value="15" class="aakaari-input">
+                                        <small class="aakaari-help-text">Default commission percentage for all resellers</small>
+                                    </div>
+                                    
+                                    <div class="aakaari-form-group">
+                                        <label for="min-payout">Minimum Payout Amount (₹)</label>
+                                        <input type="number" id="min-payout" name="min_payout" min="0" step="1" value="1000" class="aakaari-input">
+                                        <small class="aakaari-help-text">Minimum balance required for payout processing</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="aakaari-form-row">
+                                    <div class="aakaari-form-group">
+                                        <label for="payout-schedule">Payout Schedule</label>
+                                        <select id="payout-schedule" name="payout_schedule" class="aakaari-select">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="biweekly">Bi-weekly</option>
+                                            <option value="monthly" selected>Monthly</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="aakaari-form-group">
+                                        <label for="payout-day">Payout Day</label>
+                                        <select id="payout-day" name="payout_day" class="aakaari-select">
+                                            <option value="1">1st of month</option>
+                                            <option value="15" selected>15th of month</option>
+                                            <option value="lastday">Last day of month</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="aakaari-form-actions">
+                                    <button type="submit" class="aakaari-button">Save Settings</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="aakaari-card aakaari-mt-4">
+                        <div class="aakaari-card-header">
+                            <h3>Email Notification Settings</h3>
+                        </div>
+                        <div class="aakaari-card-content">
+                            <form id="notification-settings-form" class="aakaari-form">
+                                <div class="aakaari-form-group">
+                                    <label class="aakaari-checkbox-label">
+                                        <input type="checkbox" name="notify_new_applications" checked> 
+                                        <span>Notify admins about new applications</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="aakaari-form-group">
+                                    <label class="aakaari-checkbox-label">
+                                        <input type="checkbox" name="notify_new_orders" checked> 
+                                        <span>Notify resellers about new orders</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="aakaari-form-group">
+                                    <label class="aakaari-checkbox-label">
+                                        <input type="checkbox" name="notify_low_stock"> 
+                                        <span>Notify admins about low stock</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="aakaari-form-group">
+                                    <label class="aakaari-checkbox-label">
+                                        <input type="checkbox" name="notify_payouts" checked> 
+                                        <span>Send payout notifications to resellers</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="aakaari-form-actions">
+                                    <button type="submit" class="aakaari-button">Save Settings</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -737,6 +1131,47 @@ get_header('minimal'); // Use a minimal header or create one
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     Approve
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Status Update Modal -->
+    <div class="aakaari-modal" id="orderStatusModal">
+        <div class="aakaari-modal-overlay"></div>
+        <div class="aakaari-modal-container">
+            <div class="aakaari-modal-header">
+                <h3>Update Order Status</h3>
+                <p>Change the status of order <span id="orderIdDisplay"></span></p>
+            </div>
+            
+            <div class="aakaari-modal-body">
+                <div class="aakaari-form-group">
+                    <label for="orderStatus">New Status</label>
+                    <select id="orderStatus" class="aakaari-select">
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                
+                <div class="aakaari-form-group">
+                    <label for="statusNotes">Notes (optional)</label>
+                    <textarea id="statusNotes" class="aakaari-textarea" placeholder="Add notes about this status change..."></textarea>
+                </div>
+                
+                <div class="aakaari-form-group">
+                    <label class="aakaari-checkbox-label">
+                        <input type="checkbox" id="notifyCustomer" checked>
+                        <span>Notify customer about this update</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="aakaari-modal-footer">
+                <button class="aakaari-button aakaari-button-outline" id="closeOrderStatusBtn">Cancel</button>
+                <button class="aakaari-button" id="updateOrderStatusBtn">Update Status</button>
             </div>
         </div>
     </div>

@@ -1,37 +1,33 @@
 <?php
 /**
  * Template Name: Reseller Dashboard
- *
- * @package Aakaari
+ * 
+ * Reseller dashboard with proper access control checks.
  */
 
-// --- START ACCESS CONTROL ---
-
-// 1. Check if user is logged in
+// First check: Is user logged in?
 if (!is_user_logged_in()) {
-    wp_safe_redirect(home_url('/login/'));
+    wp_redirect(site_url('/login'));
     exit;
 }
 
-// 2. User is logged in, get info
 $current_user = wp_get_current_user();
-$user_display_name = $current_user->display_name;
 $user_id = $current_user->ID;
+$user_email = $current_user->user_email;
 
-// 3. Require email verification
+// Second check: Is email verified?
 $email_verified = get_user_meta($user_id, 'email_verified', true);
-if (!$email_verified) {
-    wp_safe_redirect(home_url('/register/'));
+if ($email_verified !== 'true' && $email_verified !== true && $email_verified !== '1' && $email_verified !== 1) {
+    wp_redirect(site_url('/register?verify=1'));
     exit;
 }
 
-// 4. Require approved application (strict)
-$application_approved = false;
-$user_email = $current_user->user_email;
-$app_terms = array();
+// Third check: Does user have an approved application?
+// Use same query method as in reseller-dashboard-functions.php
+$approved = false;
+$status   = 'not-submitted';
 
-// Query the most recent application for this email
-$application_query = new WP_Query(array(
+$q = new WP_Query(array(
     'post_type'      => 'reseller_application',
     'post_status'    => array('private', 'publish', 'draft', 'pending'),
     'posts_per_page' => 1,
@@ -45,36 +41,43 @@ $application_query = new WP_Query(array(
     ),
 ));
 
-if ($application_query->have_posts()) {
-    $application_query->the_post();
-    $app_id = get_the_ID();
-    $app_terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
-    if (!is_wp_error($app_terms) && !empty($app_terms)) {
-        $application_approved = in_array('approved', $app_terms, true);
-    }
+if ($q->have_posts()) {
+    $q->the_post();
+    $terms = wp_get_post_terms(get_the_ID(), 'reseller_application_status', array('fields' => 'slugs'));
     wp_reset_postdata();
-}
 
-// If not approved, redirect to become-a-reseller with a status hint
-if (!$application_approved) {
-    $reseller_page_id  = get_option('reseller_page_id');
-    $reseller_page_url = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
-
-    $status = 'not-submitted';
-    if (!empty($app_terms)) {
-        if (in_array('pending', $app_terms, true)) {
+    if (!is_wp_error($terms) && !empty($terms)) {
+        if (in_array('approved', $terms, true)) {
+            $approved = true;
+        } elseif (in_array('pending', $terms, true)) {
             $status = 'pending';
-        } elseif (in_array('rejected', $app_terms, true)) {
+        } elseif (in_array('rejected', $terms, true)) {
             $status = 'rejected';
         }
     }
-
-    wp_safe_redirect(add_query_arg('status', $status, $reseller_page_url));
-    exit;
 }
 
-// 5. All checks passed. User can view the dashboard.
-// --- END ACCESS CONTROL ---
+if (!$approved) {
+    // If application exists but not approved, send to pending page
+    if ($status === 'pending' || $status === 'rejected') {
+        wp_redirect(site_url('/application-pending/'));
+        exit;
+    } else {
+        // If no application found, redirect to become-a-reseller
+        wp_redirect(site_url('/become-a-reseller/'));
+        exit;
+    }
+}
+
+// All access checks passed, now include header
+get_header();
+
+// Set up user display name for welcome message
+$user_display_name = $current_user->display_name;
+
+// Ensure dashboard JS and CSS are loaded
+wp_enqueue_style('dashboard-styles', get_template_directory_uri() . '/assets/css/dashboard.css');
+wp_enqueue_script('dashboard-js', get_template_directory_uri() . '/assets/js/dashboard.js', array('jquery'), null, true);
 
 // Get user's orders from WooCommerce
 $customer_orders = wc_get_orders(array(
@@ -151,8 +154,87 @@ $transactions = array(
 $goal_percentage = ($current_month_earnings / $monthly_goal) * 100;
 $goal_percentage = min(100, $goal_percentage); // Cap at 100%
 
-get_header();
+// Add inline script for tab functionality
 ?>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    // Tab functionality
+    $('.tab-item').on('click', function(e) {
+        e.preventDefault();
+        var tabId = $(this).attr('data-tab');
+        
+        // Update active tab
+        $('.tab-item').removeClass('active');
+        $(this).addClass('active');
+        
+        // Show corresponding content
+        $('.tab-content').removeClass('active');
+        $('#' + tabId + '-content').addClass('active');
+        
+        // Update URL hash
+        window.location.hash = tabId;
+    });
+    
+    // Handle tab trigger links
+    $('[data-tab-trigger]').on('click', function(e) {
+        e.preventDefault();
+        var tabId = $(this).attr('data-tab-trigger');
+        $('.tab-item[data-tab="' + tabId + '"]').trigger('click');
+    });
+    
+    // Check for hash in URL
+    if(window.location.hash) {
+        var hash = window.location.hash.substring(1);
+        $('.tab-item[data-tab="' + hash + '"]').trigger('click');
+    }
+});
+</script>
+
+<style>
+/* Ensure basic tab styling works even if CSS file doesn't load */
+.dashboard-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.tab-item {
+    padding: 10px 15px;
+    text-decoration: none;
+    color: #495057;
+}
+
+.tab-item.active {
+    color: #007bff;
+    border-bottom: 2px solid #007bff;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.stats-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+}
+</style>
 
 <div class="dashboard-container">
     <div class="dashboard-header">
@@ -186,28 +268,15 @@ get_header();
                 </a>
                 <a href="#orders" class="tab-item" data-tab="orders">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                        <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4a2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4a2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                     </svg>
                     Orders
-                </a>
-                <a href="#bulk-order" class="tab-item" data-tab="bulk-order">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M9 12h2l-2 1.5L9 12Zm-4 0H3l2 1.5L5 12Z"/>
-                        <path d="M12 1a1 1 0 0 1 1 1v10.755S12 11 8 11s-5 1.755-5 1.755V2a1 1 0 0 1 1-1h8ZM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4Z"/>
-                    </svg>
-                    Bulk Order
                 </a>
                 <a href="#wallet" class="tab-item" data-tab="wallet">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M12.136.326A1.5 1.5 0 0 1 14 1.78V3h.5A1.5 1.5 0 0 1 16 4.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 13.5v-9a1.5 1.5 0 0 1 1.432-1.499L12.136.326zM5.562 3H13V1.78a.5.5 0 0 0-.621-.484L5.562 3zM1.5 4a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-13z"/>
                     </svg>
                     Wallet
-                </a>
-                <a href="#downloads" class="tab-item" data-tab="downloads">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M8 2a5.53 5.53 0 0 0-3.594 1.342c-.766.66-1.321 1.52-1.464 2.383C1.266 6.095 0 7.555 0 9.318 0 11.366 1.708 13 3.781 13h8.906C14.502 13 16 11.57 16 9.773c0-1.636-1.242-2.969-2.834-3.194C12.923 3.999 10.69 2 8 2zm2.354 6.854-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 1 1 .708-.708L7.5 9.293V5.5a.5.5 0 0 1 1 0v3.793l1.146-1.147a.5.5 0 0 1 .708.708z"/>
-                    </svg>
-                    Downloads
                 </a>
             </div>
 
@@ -218,7 +287,7 @@ get_header();
                     <div class="stat-card">
                         <div class="stat-icon orders-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                                <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4a2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4a2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                             </svg>
                         </div>
                         <div class="stat-info">
@@ -541,127 +610,6 @@ get_header();
                     </div>
                 </div>
             </div>
-            
-            <!-- Tab Content: Bulk Order (Placeholder) -->
-            <div class="tab-content" id="bulk-order-content">
-                <div class="bulk-order-form-container">
-                    <h2>Bulk Order</h2>
-                    <p class="section-description">Place orders for multiple products at once by uploading a CSV file with product details.</p>
-                    
-                    <div class="bulk-order-steps">
-                        <div class="step">
-                            <div class="step-number">1</div>
-                            <div class="step-content">
-                                <h3>Download Template</h3>
-                                <p>Download our CSV template with the required format</p>
-                                <a href="#" class="btn btn-sm btn-outline">Download Template</a>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <div class="step-number">2</div>
-                            <div class="step-content">
-                                <h3>Fill in Details</h3>
-                                <p>Add your product IDs, quantities and customer details</p>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <div class="step-number">3</div>
-                            <div class="step-content">
-                                <h3>Upload File</h3>
-                                <p>Upload your completed CSV file</p>
-                                <div class="file-upload-container">
-                                    <input type="file" id="bulkOrderFile" accept=".csv" class="file-input">
-                                    <label for="bulkOrderFile" class="file-label">Choose File</label>
-                                    <span class="selected-file">No file chosen</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="step">
-                            <div class="step-number">4</div>
-                            <div class="step-content">
-                                <h3>Submit Order</h3>
-                                <p>Review and confirm your bulk order</p>
-                                <button class="btn btn-primary" disabled>Upload & Review</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Tab Content: Downloads (Placeholder) -->
-            <div class="tab-content" id="downloads-content">
-                <div class="downloads-container">
-                    <h2>Downloads</h2>
-                    <p class="section-description">Access catalogs, price lists, and marketing materials for your business.</p>
-                    
-                    <div class="download-grid">
-                        <div class="download-card">
-                            <div class="download-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>
-                                </svg>
-                            </div>
-                            <h3>Product Catalog</h3>
-                            <p>Complete catalog with all products and wholesale pricing</p>
-                            <div class="download-meta">
-                                <span class="file-type">PDF</span>
-                                <span class="file-size">4.2 MB</span>
-                                <span class="update-date">Updated: 2025-10-01</span>
-                            </div>
-                            <a href="#" class="btn btn-outline btn-download">Download</a>
-                        </div>
-                        
-                        <div class="download-card">
-                            <div class="download-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>
-                                </svg>
-                            </div>
-                            <h3>Price List</h3>
-                            <p>Latest wholesale and recommended retail prices</p>
-                            <div class="download-meta">
-                                <span class="file-type">XLSX</span>
-                                <span class="file-size">1.8 MB</span>
-                                <span class="update-date">Updated: 2025-10-05</span>
-                            </div>
-                            <a href="#" class="btn btn-outline btn-download">Download</a>
-                        </div>
-                        
-                        <div class="download-card">
-                            <div class="download-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-                                    <path d="M1.5 2A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-13zm13 1a.5.5 0 0 1 .5.5v6l-3.775-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12v.54A.505.505 0 0 1 1 12.5v-9a.5.5 0 0 1 .5-.5h13z"/>
-                                </svg>
-                            </div>
-                            <h3>Product Images</h3>
-                            <p>High-resolution product images for marketing</p>
-                            <div class="download-meta">
-                                <span class="file-type">ZIP</span>
-                                <span class="file-size">156 MB</span>
-                                <span class="update-date">Updated: 2025-10-10</span>
-                            </div>
-                            <a href="#" class="btn btn-outline btn-download">Download</a>
-                        </div>
-                        
-                        <div class="download-card">
-                            <div class="download-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.026A2 2 0 0 0 2 14h6.256A4.493 4.493 0 0 1 8 12.5a4.49 4.49 0 0 1 1.606-3.446l-.367-.225L8 9.586l-1.239-.757ZM16 4.697v4.974A4.491 4.491 0 0 0 12.5 8a4.49 4.49 0 0 0-1.965.45l-.338-.207L16 4.697Z"/>
-                                    <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm.5-5v1.5a.5.5 0 0 1-1 0V11a.5.5 0 0 1 1 0Zm0 3a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Z"/>
-                                </svg>
-                            </div>
-                            <h3>Marketing Kit</h3>
-                            <p>Templates and resources for promotions</p>
-                            <div class="download-meta">
-                                <span class="file-type">ZIP</span>
-                                <span class="file-size">78 MB</span>
-                                <span class="update-date">Updated: 2025-09-25</span>
-                            </div>
-                            <a href="#" class="btn btn-outline btn-download">Download</a>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
