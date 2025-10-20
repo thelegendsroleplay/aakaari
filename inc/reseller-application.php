@@ -14,6 +14,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (is_user_logged_in()) {
+    update_user_meta(get_current_user_id(), 'onboarding_status', 'completed');
+}
 /**
  * Enqueue reseller application assets
  */

@@ -229,7 +229,6 @@ function aakaari_get_mock_dashboard_data() {
  * Process application approval via AJAX
  */
 function aakaari_approve_application() {
-    // Verify nonce
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
         wp_send_json_error(array('message' => 'Security check failed'));
         exit;
@@ -242,18 +241,33 @@ function aakaari_approve_application() {
         exit;
     }
 
-    // Update the status taxonomy term
     $result = wp_set_object_terms($application_id, 'approved', 'reseller_application_status', false);
 
     if (is_wp_error($result)) {
         wp_send_json_error(array('message' => 'Failed to update status: ' . $result->get_error_message()));
     } else {
-        // Optional: Send notification email to applicant
+        // Also link the approval to the user account
+        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+        if ($applicant_email) {
+            $user = get_user_by('email', $applicant_email);
+            if ($user) {
+                update_user_meta($user->ID, 'onboarding_status', 'completed');
+                // Optionally ensure they have the reseller role
+                $wp_user = new WP_User($user->ID);
+                if (!$wp_user->has_cap('read')) {
+                    // no-op, just a safety check
+                }
+                if (!in_array('reseller', (array) $wp_user->roles, true)) {
+                    $wp_user->add_role('reseller');
+                }
+            }
+        }
+
+        // Notify applicant (keep your existing mail)
         $applicant_email = get_post_meta($application_id, 'reseller_email', true);
         if ($applicant_email) {
             $subject = 'Your Aakaari Reseller Application Approved!';
             $message = "Congratulations! Your reseller application has been approved. You can now log in and access your dashboard.";
-            // You might want to include login links etc.
             wp_mail($applicant_email, $subject, $message);
         }
 

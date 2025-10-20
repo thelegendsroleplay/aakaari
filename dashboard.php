@@ -9,7 +9,6 @@
 
 // 1. Check if user is logged in
 if (!is_user_logged_in()) {
-    // Not logged in, redirect to login page
     wp_safe_redirect(home_url('/login/'));
     exit;
 }
@@ -22,21 +21,62 @@ $user_id = $current_user->ID;
 // 3. Check email verification status
 $email_verified = get_user_meta($user_id, 'email_verified', true);
 if (!$email_verified) {
-    // Email is not verified, redirect to the registration page (which will show OTP screen)
     wp_safe_redirect(home_url('/register/'));
     exit;
 }
 
-// 4. Check onboarding status (as requested: 'completed')
+// 4. Check onboarding status OR approved application
 $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-if ($onboarding_status !== 'completed') {
-    // Email is verified, but onboarding form is not filled.
-    // Redirect to the become-reseller page to complete onboarding.
-    $reseller_page_id = get_option('reseller_page_id');
+$application_approved = false;
+
+// Try to find the user's application by email and read its taxonomy status
+$user_email = $current_user->user_email;
+
+// Query the most recent application for this email
+$application_query = new WP_Query(array(
+    'post_type'      => 'reseller_application',
+    'post_status'    => array('private', 'publish', 'draft', 'pending'),
+    'posts_per_page' => 1,
+    'orderby'        => 'date',
+    'order'          => 'DESC',
+    'meta_query'     => array(
+        array(
+            'key'   => 'reseller_email',
+            'value' => $user_email,
+        ),
+    ),
+));
+
+if ($application_query->have_posts()) {
+    $application_query->the_post();
+    $app_id = get_the_ID();
+    $terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
+    if (!is_wp_error($terms) && !empty($terms)) {
+        $application_approved = in_array('approved', $terms, true);
+    }
+    wp_reset_postdata();
+}
+
+// If onboarding isn't completed and there is no approved application, redirect to complete onboarding
+if ($onboarding_status !== 'completed' && !$application_approved) {
+    $reseller_page_id  = get_option('reseller_page_id');
     $reseller_page_url = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
-    wp_safe_redirect($reseller_page_url);
+    // Optionally pass a status to show a message
+    // Detect pending/rejected to help UX
+    $status_param = 'pending';
+    if (isset($app_id)) {
+        $terms = isset($terms) ? $terms : array();
+        if (in_array('rejected', $terms, true)) {
+            $status_param = 'rejected';
+        } elseif (in_array('approved', $terms, true)) {
+            $status_param = 'approved';
+        }
+    }
+    $target = add_query_arg('status', $status_param, $reseller_page_url);
+    wp_safe_redirect($target);
     exit;
 }
+
 
 // 5. All checks passed. User can view the dashboard.
 // --- END ACCESS CONTROL ---
