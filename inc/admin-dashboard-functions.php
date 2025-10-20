@@ -326,3 +326,138 @@ function aakaari_reject_application() {
     exit;
 }
 add_action('wp_ajax_reject_application', 'aakaari_reject_application'); // Keep existing action hook
+
+/**
+ * Suspend a reseller's application/account
+ */
+function aakaari_suspend_reseller() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Unauthorized'));
+        exit;
+    }
+
+    $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+    
+    if ($user_id <= 0) {
+        wp_send_json_error(array('message' => 'Invalid User ID'));
+        exit;
+    }
+    
+    $user = get_user_by('id', $user_id);
+    if (!$user) {
+        wp_send_json_error(array('message' => 'User not found'));
+        exit;
+    }
+    
+    // Find user's application
+    $application_query = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $user->user_email,
+            ),
+        ),
+    ));
+    
+    if ($application_query->have_posts()) {
+        $application_query->the_post();
+        $app_id = get_the_ID();
+        wp_reset_postdata();
+        
+        // Update status to suspended
+        $result = wp_set_object_terms($app_id, 'suspended', 'reseller_application_status', false);
+        
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => 'Failed to suspend: ' . $result->get_error_message()));
+        } else {
+            // Send notification email
+            $subject = 'Your Aakaari Reseller Account Has Been Suspended';
+            $message = "Your reseller account has been temporarily suspended. Please contact support for more information.";
+            wp_mail($user->user_email, $subject, $message);
+            
+            wp_send_json_success(array('message' => 'Reseller suspended successfully'));
+        }
+    } else {
+        wp_send_json_error(array('message' => 'No application found for this user'));
+    }
+    exit;
+}
+add_action('wp_ajax_suspend_reseller', 'aakaari_suspend_reseller');
+
+/**
+ * Activate/reactivate a reseller's application
+ */
+function aakaari_activate_reseller() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Unauthorized'));
+        exit;
+    }
+
+    $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+    
+    if ($user_id <= 0) {
+        wp_send_json_error(array('message' => 'Invalid User ID'));
+        exit;
+    }
+    
+    $user = get_user_by('id', $user_id);
+    if (!$user) {
+        wp_send_json_error(array('message' => 'User not found'));
+        exit;
+    }
+    
+    // Find user's application
+    $application_query = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $user->user_email,
+            ),
+        ),
+    ));
+    
+    if ($application_query->have_posts()) {
+        $application_query->the_post();
+        $app_id = get_the_ID();
+        wp_reset_postdata();
+        
+        // Update status to approved
+        $result = wp_set_object_terms($app_id, 'approved', 'reseller_application_status', false);
+        
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => 'Failed to activate: ' . $result->get_error_message()));
+        } else {
+            // Update user meta
+            update_user_meta($user_id, 'onboarding_status', 'completed');
+            
+            // Send notification email
+            $subject = 'Your Aakaari Reseller Account Has Been Activated';
+            $message = "Good news! Your reseller account has been activated. You can now log in and access your dashboard.";
+            wp_mail($user->user_email, $subject, $message);
+            
+            wp_send_json_success(array('message' => 'Reseller activated successfully'));
+        }
+    } else {
+        wp_send_json_error(array('message' => 'No application found for this user'));
+    }
+    exit;
+}
+add_action('wp_ajax_activate_reseller', 'aakaari_activate_reseller');

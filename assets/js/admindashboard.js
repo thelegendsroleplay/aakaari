@@ -75,6 +75,26 @@
             $('.aakaari-dropdown').removeClass('active');
         });
         
+        // Suspend reseller
+        $(document).on('click', '.suspend-reseller-btn', function(e) {
+            e.preventDefault();
+            const userId = $(this).data('user-id');
+            
+            if (confirm('Are you sure you want to suspend this reseller account?')) {
+                suspendReseller(userId);
+            }
+        });
+        
+        // Activate reseller
+        $(document).on('click', '.activate-reseller-btn', function(e) {
+            e.preventDefault();
+            const userId = $(this).data('user-id');
+            
+            if (confirm('Are you sure you want to activate this reseller account?')) {
+                activateReseller(userId);
+            }
+        });
+        
         // --- Functions ---
         
         /**
@@ -338,6 +358,74 @@
         function capitalizeFirstLetter(string) {
             if (!string) return '';
             return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+        
+        /**
+         * Suspend reseller account
+         */
+        function suspendReseller(userId) {
+            if (!userId) {
+                showToast('Invalid user ID', 'error');
+                return;
+            }
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'suspend_reseller',
+                    user_id: userId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Reseller account suspended successfully!', 'success');
+                        // Reload page after short delay
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(response.data.message || 'Failed to suspend reseller', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+        
+        /**
+         * Activate reseller account
+         */
+        function activateReseller(userId) {
+            if (!userId) {
+                showToast('Invalid user ID', 'error');
+                return;
+            }
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'activate_reseller',
+                    user_id: userId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Reseller account activated successfully!', 'success');
+                        // Reload page after short delay
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(response.data.message || 'Failed to activate reseller', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
         }
 
         // --- Initialize UI Elements ---

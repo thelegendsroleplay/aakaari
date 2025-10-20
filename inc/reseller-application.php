@@ -14,9 +14,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-if (is_user_logged_in()) {
-    update_user_meta(get_current_user_id(), 'onboarding_status', 'completed');
-}
 /**
  * Enqueue reseller application assets
  */
@@ -127,6 +124,12 @@ function aar_handle_reseller_submission() {
         update_post_meta($post_id, 'reseller_account', $account);
         update_post_meta($post_id, 'reseller_ifsc', $ifsc);
         update_post_meta($post_id, 'reseller_id_proof_url', $uploaded_file_url);
+        update_post_meta($post_id, 'reseller_business_type', 'Individual/Freelancer'); // Default business type
+        update_post_meta($post_id, 'ipAddress', $_SERVER['REMOTE_ADDR'] ?? '');
+        update_post_meta($post_id, 'submitDate', current_time('mysql'));
+        
+        // Set application status taxonomy to pending
+        wp_set_object_terms($post_id, 'pending', 'reseller_application_status');
     }
 
     // Send notification to admin

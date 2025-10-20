@@ -130,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     $submitted = true;
                     setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
                     
-                    // Update user onboarding status to 'completed'
-                    update_user_meta($user_id, 'onboarding_status', 'completed');
+                    // Keep onboarding status as 'pending' - it will be set to 'completed' when admin approves
+                    // Don't update it here since the application still needs admin review
 
                 } else {
                     $form_errors['general'] = 'Error creating application. Please try again.';

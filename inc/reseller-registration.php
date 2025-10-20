@@ -321,5 +321,6 @@ function register_reseller_application_status_taxonomy() {
     wp_insert_term('pending', 'reseller_application_status');
     wp_insert_term('approved', 'reseller_application_status');
     wp_insert_term('rejected', 'reseller_application_status');
+    wp_insert_term('suspended', 'reseller_application_status');
 }
 add_action( 'init', 'register_reseller_application_status_taxonomy', 0 ); // Register taxonomy early

@@ -281,9 +281,44 @@ function aakaari_ajax_verify_login_otp() {
         wp_set_current_user($user_id);
         wp_set_auth_cookie($user_id);
         
-        // Check onboarding status for redirect
-        $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-        $redirect_url = ($onboarding_status === 'completed') ? home_url('/dashboard/') : get_permalink(get_option('reseller_page_id'));
+        // Check application status for redirect
+        $user = get_user_by('id', $user_id);
+        $user_email = $user->user_email;
+        
+        $application_query = new WP_Query(array(
+            'post_type'      => 'reseller_application',
+            'post_status'    => array('private', 'publish', 'draft', 'pending'),
+            'posts_per_page' => 1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'meta_query'     => array(
+                array(
+                    'key'   => 'reseller_email',
+                    'value' => $user_email,
+                ),
+            ),
+        ));
+        
+        $application_status = null;
+        if ($application_query->have_posts()) {
+            $application_query->the_post();
+            $app_id = get_the_ID();
+            $terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
+            if (!is_wp_error($terms) && !empty($terms)) {
+                $application_status = $terms[0];
+            }
+            wp_reset_postdata();
+        }
+        
+        // Determine redirect based on application status
+        if (!$application_status) {
+            $redirect_url = home_url('/become-a-reseller/');
+        } elseif ($application_status === 'approved') {
+            $redirect_url = home_url('/dashboard/');
+        } else {
+            // Pending, rejected, or suspended - dashboard will show appropriate message
+            $redirect_url = home_url('/dashboard/');
+        }
         
         wp_send_json_success(array('message' => 'Login successful! Redirecting...', 'redirect_url' => $redirect_url));
     } else {
