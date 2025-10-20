@@ -63,8 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
 
             if ( isset($result['success']) && $result['success'] ) {
                 $submitted = true;
-                // Optionally set cookie to prevent duplicates (plugin already stores submitDate/meta)
+                // Prevent duplicate (plugin already stores submitDate/meta)
                 setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
+
+                // Mark onboarding as submitted (awaiting approval)
+                if ($user_id) {
+                    update_user_meta($user_id, 'onboarding_status', 'submitted');
+                }
             } else {
                 // Map plugin errors back into $form_errors for display
                 if ( isset($result['errors']) && is_array($result['errors']) ) {
@@ -90,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                 $application_data = array(
                     'post_title'    => sanitize_text_field($_POST['fullName']) . ' - ' . date('Y-m-d'),
                     'post_status'   => 'private',
-                    'post_type'     => 'reseller_application', // note plugin CPT
+                    'post_type'     => 'reseller_application', // plugin CPT
                 );
                 $post_id = wp_insert_post( $application_data );
 
@@ -114,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     // Add business type for dashboard display
                     update_post_meta( $post_id, 'reseller_business_type', sanitize_text_field($_POST['businessType'] ?? 'Individual/Freelancer') );
 
-                    // Set plugin taxonomy (status)
+                    // Set taxonomy (status)
                     wp_set_object_terms( $post_id, 'pending', 'reseller_application_status' );
                     update_post_meta( $post_id, 'reseller_status', 'pending' );
 
@@ -130,8 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     $submitted = true;
                     setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
                     
-                    // Update user onboarding status to 'completed'
-                    update_user_meta($user_id, 'onboarding_status', 'completed');
+                    // Mark onboarding as submitted (awaiting approval) — NOT completed
+                    if ($user_id) {
+                        update_user_meta($user_id, 'onboarding_status', 'submitted');
+                    }
 
                 } else {
                     $form_errors['general'] = 'Error creating application. Please try again.';
@@ -231,7 +238,7 @@ $benefits = [
                     <h3>What's Next?</h3>
                     <ol>
                         <li>Our team will verify your KYC documents</li>
-                        <li>You'll receive an approval email with login credentials</li>
+                        <li>You'll receive an approval email with login access</li>
                         <li>Access your dashboard and start ordering</li>
                         <li>Share product links and start earning!</li>
                     </ol>
@@ -242,6 +249,26 @@ $benefits = [
                     <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
                 </div>
             </div>
+
+        <?php elseif ($onboarding_status === 'submitted'): ?>
+            <!-- Pending Approval Message -->
+            <div class="warning-card">
+                <div class="warning-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h2>Your Application is Under Review</h2>
+                <p>Thanks for submitting your details. Our team is reviewing your application. You’ll receive an email once it’s approved.</p>
+
+                <div class="action-buttons">
+                    <a href="<?php echo esc_url(home_url('/')); ?>" class="btn btn-outline">Back to Home</a>
+                    <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
+                </div>
+            </div>
+
         <?php elseif ($blocked_submission): ?>
             <!-- Duplicate Submission Warning -->
             <div class="warning-card">

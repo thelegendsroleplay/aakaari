@@ -12,18 +12,17 @@ if (!defined('ABSPATH')) {
 /**
  * Register the Admin Dashboard template
  */
+if (!function_exists('aakaari_register_admin_dashboard_template')) {
 function aakaari_register_admin_dashboard_template($templates) {
     $templates['admindashboard.php'] = 'Admin Dashboard';
     return $templates;
-}
+}}
 add_filter('theme_page_templates', 'aakaari_register_admin_dashboard_template');
 
 /**
  * Enqueue admin dashboard styles and scripts
  */
-/**
- * Enqueue admin dashboard styles and scripts
- */
+if (!function_exists('aakaari_admin_dashboard_enqueue_assets')) {
 function aakaari_admin_dashboard_enqueue_assets() {
     // Ensure we are on the correct page template
     if (is_page_template('admindashboard.php')) {
@@ -32,54 +31,52 @@ function aakaari_admin_dashboard_enqueue_assets() {
             'aakaari-admin-dashboard-style',
             get_template_directory_uri() . '/assets/css/admindashboard.css',
             array(),
-            '1.0.0' // Consider using filemtime() for cache busting in production
+            '1.0.0'
         );
 
         // Enqueue Script
         wp_enqueue_script(
             'aakaari-admin-dashboard-script',
             get_template_directory_uri() . '/assets/js/admindashboard.js',
-            array('jquery'), // Depends on jQuery
-            '1.0.0', // Consider using filemtime()
-            true // Load in footer
+            array('jquery'),
+            '1.0.0',
+            true
         );
 
         // Localize script with AJAX URL and Nonce
         wp_localize_script(
-            'aakaari-admin-dashboard-script', // Handle for the script to attach data to
-            'aakaari_admin_ajax',            // Object name in JavaScript
-            array(                           // Data array
+            'aakaari-admin-dashboard-script',
+            'aakaari_admin_ajax',
+            array(
                 'ajax_url' => admin_url('admin-ajax.php'),
-                // Correct nonce name used in AJAX handlers
                 'nonce'    => wp_create_nonce('aakaari_ajax_nonce')
-            ) // This parenthesis was likely the cause of the error if misplaced or incorrectly structured previously
+            )
         );
     }
-}
-add_action('wp_enqueue_scripts', 'aakaari_admin_dashboard_enqueue_assets'); // Ensure this action hook is present
+}}
+add_action('wp_enqueue_scripts', 'aakaari_admin_dashboard_enqueue_assets');
 
 /**
  * Restrict access to custom admin dashboard to administrators only
  */
+if (!function_exists('aakaari_restrict_admin_dashboard_access')) {
 function aakaari_restrict_admin_dashboard_access() {
     if (is_page_template('admindashboard.php')) {
         if (!is_user_logged_in()) {
-            // Not logged in at all, redirect to custom admin login
             wp_redirect(home_url('/adminlogin/'));
             exit;
         } elseif (!current_user_can('manage_options')) {
-            // Logged in but not an admin, redirect to homepage
             wp_redirect(home_url('/'));
             exit;
         }
-        // If they are logged in and an admin, continue to show the dashboard
     }
-}
+}}
 add_action('template_redirect', 'aakaari_restrict_admin_dashboard_access');
 
 /**
  * Add a link to the custom dashboard in the admin bar
  */
+if (!function_exists('aakaari_add_custom_dashboard_to_admin_bar')) {
 function aakaari_add_custom_dashboard_to_admin_bar($wp_admin_bar) {
     if (current_user_can('manage_options')) {
         $wp_admin_bar->add_node(array(
@@ -91,13 +88,13 @@ function aakaari_add_custom_dashboard_to_admin_bar($wp_admin_bar) {
             ),
         ));
     }
-}
+}}
 add_action('admin_bar_menu', 'aakaari_add_custom_dashboard_to_admin_bar', 100);
 
 /**
  * Get mock data for testing the dashboard
- * In a real scenario, you would fetch this data from the database
  */
+if (!function_exists('aakaari_get_mock_dashboard_data')) {
 function aakaari_get_mock_dashboard_data() {
     return array(
         'stats' => array(
@@ -219,15 +216,11 @@ function aakaari_get_mock_dashboard_data() {
             )
         )
     );
-}
-
-/**
- * Process application approval
- * In a real scenario, this would update the database record
- */
+}}
 /**
  * Process application approval via AJAX
  */
+if (!function_exists('aakaari_approve_application')) {
 function aakaari_approve_application() {
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
         wp_send_json_error(array('message' => 'Security check failed'));
@@ -246,26 +239,24 @@ function aakaari_approve_application() {
     if (is_wp_error($result)) {
         wp_send_json_error(array('message' => 'Failed to update status: ' . $result->get_error_message()));
     } else {
-        // Also link the approval to the user account
+        // Link the approval to the user account
         $applicant_email = get_post_meta($application_id, 'reseller_email', true);
         if ($applicant_email) {
             $user = get_user_by('email', $applicant_email);
             if ($user) {
+                // Mark onboarding completed only on approval
                 update_user_meta($user->ID, 'onboarding_status', 'completed');
-                // Optionally ensure they have the reseller role
+
+                // Ensure reseller role
                 $wp_user = new WP_User($user->ID);
-                if (!$wp_user->has_cap('read')) {
-                    // no-op, just a safety check
-                }
                 if (!in_array('reseller', (array) $wp_user->roles, true)) {
                     $wp_user->add_role('reseller');
                 }
             }
         }
 
-        // Notify applicant (keep your existing mail)
-        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
-        if ($applicant_email) {
+        // Notify applicant
+        if (!empty($applicant_email)) {
             $subject = 'Your Aakaari Reseller Application Approved!';
             $message = "Congratulations! Your reseller application has been approved. You can now log in and access your dashboard.";
             wp_mail($applicant_email, $subject, $message);
@@ -274,18 +265,14 @@ function aakaari_approve_application() {
         wp_send_json_success(array('message' => 'Application approved successfully'));
     }
     exit;
-}
-add_action('wp_ajax_approve_application', 'aakaari_approve_application'); // Keep existing action hook
+}}
+add_action('wp_ajax_approve_application', 'aakaari_approve_application');
 
-/**
- * Process application rejection
- * In a real scenario, this would update the database record
- */
 /**
  * Process application rejection via AJAX
  */
+if (!function_exists('aakaari_reject_application')) {
 function aakaari_reject_application() {
-    // Verify nonce
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
         wp_send_json_error(array('message' => 'Security check failed'));
         exit;
@@ -304,7 +291,6 @@ function aakaari_reject_application() {
         exit;
     }
 
-    // Update the status taxonomy term
     $result = wp_set_object_terms($application_id, 'rejected', 'reseller_application_status', false);
 
     if (is_wp_error($result)) {
@@ -313,7 +299,7 @@ function aakaari_reject_application() {
         // Save the rejection reason as post meta
         update_post_meta($application_id, 'rejection_reason', $reason);
 
-        // Optional: Send notification email to applicant
+        // Notify applicant
         $applicant_email = get_post_meta($application_id, 'reseller_email', true);
         if ($applicant_email) {
             $subject = 'Update on Your Aakaari Reseller Application';
@@ -324,5 +310,5 @@ function aakaari_reject_application() {
         wp_send_json_success(array('message' => 'Application rejected'));
     }
     exit;
-}
-add_action('wp_ajax_reject_application', 'aakaari_reject_application'); // Keep existing action hook
+}}
+add_action('wp_ajax_reject_application', 'aakaari_reject_application');

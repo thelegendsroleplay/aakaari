@@ -18,19 +18,17 @@ $current_user = wp_get_current_user();
 $user_display_name = $current_user->display_name;
 $user_id = $current_user->ID;
 
-// 3. Check email verification status
+// 3. Require email verification
 $email_verified = get_user_meta($user_id, 'email_verified', true);
 if (!$email_verified) {
     wp_safe_redirect(home_url('/register/'));
     exit;
 }
 
-// 4. Check onboarding status OR approved application
-$onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
+// 4. Require approved application (strict)
 $application_approved = false;
-
-// Try to find the user's application by email and read its taxonomy status
 $user_email = $current_user->user_email;
+$app_terms = array();
 
 // Query the most recent application for this email
 $application_query = new WP_Query(array(
@@ -50,33 +48,30 @@ $application_query = new WP_Query(array(
 if ($application_query->have_posts()) {
     $application_query->the_post();
     $app_id = get_the_ID();
-    $terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
-    if (!is_wp_error($terms) && !empty($terms)) {
-        $application_approved = in_array('approved', $terms, true);
+    $app_terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
+    if (!is_wp_error($app_terms) && !empty($app_terms)) {
+        $application_approved = in_array('approved', $app_terms, true);
     }
     wp_reset_postdata();
 }
 
-// If onboarding isn't completed and there is no approved application, redirect to complete onboarding
-if ($onboarding_status !== 'completed' && !$application_approved) {
+// If not approved, redirect to become-a-reseller with a status hint
+if (!$application_approved) {
     $reseller_page_id  = get_option('reseller_page_id');
     $reseller_page_url = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
-    // Optionally pass a status to show a message
-    // Detect pending/rejected to help UX
-    $status_param = 'pending';
-    if (isset($app_id)) {
-        $terms = isset($terms) ? $terms : array();
-        if (in_array('rejected', $terms, true)) {
-            $status_param = 'rejected';
-        } elseif (in_array('approved', $terms, true)) {
-            $status_param = 'approved';
+
+    $status = 'not-submitted';
+    if (!empty($app_terms)) {
+        if (in_array('pending', $app_terms, true)) {
+            $status = 'pending';
+        } elseif (in_array('rejected', $app_terms, true)) {
+            $status = 'rejected';
         }
     }
-    $target = add_query_arg('status', $status_param, $reseller_page_url);
-    wp_safe_redirect($target);
+
+    wp_safe_redirect(add_query_arg('status', $status, $reseller_page_url));
     exit;
 }
-
 
 // 5. All checks passed. User can view the dashboard.
 // --- END ACCESS CONTROL ---
