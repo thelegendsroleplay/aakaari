@@ -25,12 +25,11 @@ if (!$email_verified) {
     exit;
 }
 
-// 4. Check onboarding status OR approved application
-$onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-$application_approved = false;
-
-// Try to find the user's application by email and read its taxonomy status
+// 4. Check application status and handle accordingly
 $user_email = $current_user->user_email;
+$application_status = null;
+$rejection_reason = '';
+$app_id = null;
 
 // Query the most recent application for this email
 $application_query = new WP_Query(array(
@@ -52,30 +51,150 @@ if ($application_query->have_posts()) {
     $app_id = get_the_ID();
     $terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
     if (!is_wp_error($terms) && !empty($terms)) {
-        $application_approved = in_array('approved', $terms, true);
+        $application_status = $terms[0]; // Get first status term
+        if ($application_status === 'rejected') {
+            $rejection_reason = get_post_meta($app_id, 'rejection_reason', true);
+        }
     }
     wp_reset_postdata();
 }
 
-// If onboarding isn't completed and there is no approved application, redirect to complete onboarding
-if ($onboarding_status !== 'completed' && !$application_approved) {
+// Handle different application states
+if (!$application_status) {
+    // No application submitted - redirect to become-a-seller page
     $reseller_page_id  = get_option('reseller_page_id');
     $reseller_page_url = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
-    // Optionally pass a status to show a message
-    // Detect pending/rejected to help UX
-    $status_param = 'pending';
-    if (isset($app_id)) {
-        $terms = isset($terms) ? $terms : array();
-        if (in_array('rejected', $terms, true)) {
-            $status_param = 'rejected';
-        } elseif (in_array('approved', $terms, true)) {
-            $status_param = 'approved';
-        }
-    }
-    $target = add_query_arg('status', $status_param, $reseller_page_url);
-    wp_safe_redirect($target);
+    wp_safe_redirect($reseller_page_url);
+    exit;
+} elseif ($application_status === 'pending') {
+    // Application is pending - show pending status message
+    get_header();
+    ?>
+    <div class="dashboard-container application-status-page">
+        <div class="status-message-card pending">
+            <div class="status-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </div>
+            <h1>Application Under Review</h1>
+            <p class="message">Thank you for submitting your reseller application! Our team is currently reviewing your details.</p>
+            <div class="info-box">
+                <h3>What's Next?</h3>
+                <ul>
+                    <li>Our team will verify your KYC documents</li>
+                    <li>You'll receive an email notification once your application is reviewed</li>
+                    <li>This typically takes 24-48 hours</li>
+                </ul>
+            </div>
+            <div class="actions">
+                <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-outline">Contact Support</a>
+                <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="btn btn-primary">Logout</a>
+            </div>
+        </div>
+    </div>
+    <style>
+        .application-status-page { min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .status-message-card { max-width: 600px; text-align: center; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status-message-card.pending .status-icon { color: #f59e0b; margin-bottom: 20px; }
+        .status-message-card.rejected .status-icon { color: #ef4444; margin-bottom: 20px; }
+        .status-message-card.suspended .status-icon { color: #6b7280; margin-bottom: 20px; }
+        .status-message-card h1 { font-size: 28px; margin-bottom: 16px; }
+        .status-message-card .message { font-size: 16px; color: #6b7280; margin-bottom: 30px; }
+        .info-box { background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 30px; text-align: left; }
+        .info-box h3 { font-size: 18px; margin-bottom: 12px; }
+        .info-box ul { margin: 0; padding-left: 20px; }
+        .info-box li { margin-bottom: 8px; }
+        .rejection-box { background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin-bottom: 30px; text-align: left; }
+        .rejection-box h3 { font-size: 18px; margin-bottom: 12px; color: #dc2626; }
+        .actions { display: flex; gap: 12px; justify-content: center; }
+        .btn { padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-outline { background: white; color: #2563eb; border: 1px solid #2563eb; }
+    </style>
+    <?php
+    get_footer();
+    exit;
+} elseif ($application_status === 'rejected') {
+    // Application is rejected - show rejection message with reason
+    get_header();
+    ?>
+    <div class="dashboard-container application-status-page">
+        <div class="status-message-card rejected">
+            <div class="status-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <h1>Application Not Approved</h1>
+            <p class="message">We're sorry, but your reseller application has not been approved at this time.</p>
+            <?php if ($rejection_reason): ?>
+            <div class="rejection-box">
+                <h3>Reason</h3>
+                <p><?php echo esc_html($rejection_reason); ?></p>
+            </div>
+            <?php endif; ?>
+            <div class="info-box">
+                <h3>What Can You Do?</h3>
+                <ul>
+                    <li>Review the reason provided above</li>
+                    <li>Contact our support team for clarification</li>
+                    <li>You may reapply after addressing the concerns</li>
+                </ul>
+            </div>
+            <div class="actions">
+                <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
+                <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </div>
+    <?php
+    get_footer();
+    exit;
+} elseif ($application_status === 'suspended') {
+    // Application/account is suspended - show suspended message
+    get_header();
+    ?>
+    <div class="dashboard-container application-status-page">
+        <div class="status-message-card suspended">
+            <div class="status-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                </svg>
+            </div>
+            <h1>Account Suspended</h1>
+            <p class="message">Your reseller account has been temporarily suspended.</p>
+            <div class="info-box">
+                <h3>Why is my account suspended?</h3>
+                <p>Your account may have been suspended due to:</p>
+                <ul>
+                    <li>Violation of terms and conditions</li>
+                    <li>Suspicious activity detected</li>
+                    <li>Pending verification or compliance issues</li>
+                </ul>
+            </div>
+            <div class="actions">
+                <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
+                <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </div>
+    <?php
+    get_footer();
+    exit;
+} elseif ($application_status !== 'approved') {
+    // Unknown status - redirect to become-a-seller
+    $reseller_page_id  = get_option('reseller_page_id');
+    $reseller_page_url = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
+    wp_safe_redirect($reseller_page_url);
     exit;
 }
+
+// If we reach here, application is approved - continue to show dashboard
 
 
 // 5. All checks passed. User can view the dashboard.

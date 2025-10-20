@@ -73,42 +73,77 @@ if ($applications_query->have_posts()) {
 // NOTE: You might need to add 'reseller_business_type' to the saved meta fields
 // in become-a-reseller.php or reseller-application.php if it's not already there.
 
-// Mock resellers data
-$resellers = array(
-    array(
-        'id' => '1',
-        'name' => 'Vikram Singh',
-        'email' => 'vikram@example.com',
-        'phone' => '+91 9876543213',
-        'totalOrders' => 145,
-        'totalRevenue' => 287500,
-        'commission' => 28750,
-        'status' => 'active',
-        'joinedDate' => '2025-01-15'
-    ),
-    array(
-        'id' => '2',
-        'name' => 'Anita Desai',
-        'email' => 'anita@example.com',
-        'phone' => '+91 9876543214',
-        'totalOrders' => 89,
-        'totalRevenue' => 156700,
-        'commission' => 15670,
-        'status' => 'active',
-        'joinedDate' => '2025-02-20'
-    ),
-    array(
-        'id' => '3',
-        'name' => 'Mohammed Ali',
-        'email' => 'mohammed@example.com',
-        'phone' => '+91 9876543215',
-        'totalOrders' => 234,
-        'totalRevenue' => 456800,
-        'commission' => 45680,
-        'status' => 'active',
-        'joinedDate' => '2024-12-10'
-    )
-);
+// Get real resellers from WordPress users
+$reseller_users = get_users(array(
+    'role' => 'reseller',
+    'orderby' => 'registered',
+    'order' => 'DESC',
+));
+
+$resellers = array();
+foreach ($reseller_users as $reseller_user) {
+    $user_id = $reseller_user->ID;
+    
+    // Get user orders if WooCommerce is active
+    $total_orders = 0;
+    $total_revenue = 0;
+    $commission = 0;
+    if (class_exists('WooCommerce')) {
+        $customer_orders = wc_get_orders(array(
+            'customer' => $user_id,
+            'limit' => -1,
+        ));
+        $total_orders = count($customer_orders);
+        foreach ($customer_orders as $order) {
+            $order_total = $order->get_total();
+            $total_revenue += $order_total;
+            $commission += $order_total * 0.15; // 15% commission
+        }
+    }
+    
+    // Check if user has approved application
+    $user_status = 'active';
+    $application_query = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $reseller_user->user_email,
+            ),
+        ),
+    ));
+    
+    if ($application_query->have_posts()) {
+        $application_query->the_post();
+        $app_id = get_the_ID();
+        $terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
+        if (!is_wp_error($terms) && !empty($terms)) {
+            $app_status = $terms[0];
+            if ($app_status === 'suspended') {
+                $user_status = 'suspended';
+            } elseif ($app_status === 'rejected') {
+                $user_status = 'inactive';
+            } elseif ($app_status === 'pending') {
+                $user_status = 'pending';
+            }
+        }
+        wp_reset_postdata();
+    }
+    
+    $resellers[] = array(
+        'id' => $user_id,
+        'name' => $reseller_user->display_name ?: $reseller_user->user_login,
+        'email' => $reseller_user->user_email,
+        'phone' => get_user_meta($user_id, 'phone', true) ?: 'N/A',
+        'totalOrders' => $total_orders,
+        'totalRevenue' => $total_revenue,
+        'commission' => $commission,
+        'status' => $user_status,
+        'joinedDate' => date('Y-m-d', strtotime($reseller_user->user_registered))
+    );
+}
 
 // Mock orders data
 $orders = array(
@@ -500,9 +535,13 @@ get_header('minimal'); // Use a minimal header or create one
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                                                     </button>
                                                     <div class="aakaari-dropdown-content">
-                                                        <a href="#" class="aakaari-dropdown-item">View Details</a>
-                                                        <a href="#" class="aakaari-dropdown-item">View Orders</a>
-                                                        <a href="#" class="aakaari-dropdown-item">Suspend Account</a>
+                                                        <a href="<?php echo admin_url('user-edit.php?user_id=' . $reseller['id']); ?>" class="aakaari-dropdown-item">View Details</a>
+                                                        <a href="<?php echo add_query_arg(array('tab' => 'orders', 'reseller_id' => $reseller['id'])); ?>" class="aakaari-dropdown-item">View Orders</a>
+                                                        <?php if ($reseller['status'] === 'active' || $reseller['status'] === 'pending'): ?>
+                                                            <a href="#" class="aakaari-dropdown-item suspend-reseller-btn" data-user-id="<?php echo esc_attr($reseller['id']); ?>">Suspend Account</a>
+                                                        <?php else: ?>
+                                                            <a href="#" class="aakaari-dropdown-item activate-reseller-btn" data-user-id="<?php echo esc_attr($reseller['id']); ?>">Activate Account</a>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                             </td>

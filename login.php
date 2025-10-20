@@ -67,16 +67,46 @@ if (is_wp_error($user)) {
     
     $login_error = $user->get_error_message();
 } else {
-    // Successful login - redirect
-    // Note: Our 'wp_authenticate_user' hook might still block unverified users here.
+    // Successful login - check application status and redirect accordingly
+    $user_id = $user->ID;
+    $user_email = $user->user_email;
     
-    // Check for onboarding status
-    $onboarding_status = get_user_meta($user->ID, 'onboarding_status', true);
+    // Query user's application status
+    $application_query = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $user_email,
+            ),
+        ),
+    ));
     
-    if ($onboarding_status !== 'completed') {
-        $redirect = get_permalink(get_option('reseller_page_id')); // Send to onboarding
+    $application_status = null;
+    if ($application_query->have_posts()) {
+        $application_query->the_post();
+        $app_id = get_the_ID();
+        $terms = wp_get_post_terms($app_id, 'reseller_application_status', array('fields' => 'slugs'));
+        if (!is_wp_error($terms) && !empty($terms)) {
+            $application_status = $terms[0];
+        }
+        wp_reset_postdata();
+    }
+    
+    // Determine redirect based on application status
+    if (!$application_status) {
+        // No application - redirect to become-a-seller
+        $redirect = home_url('/become-a-reseller/');
+    } elseif ($application_status === 'approved') {
+        // Approved - go to dashboard
+        $redirect = home_url('/dashboard/');
     } else {
-        $redirect = home_url('/dashboard/'); // Send to dashboard
+        // Pending, rejected, or suspended - go to dashboard (it will show appropriate message)
+        $redirect = home_url('/dashboard/');
     }
 
     // Check for custom redirect_to param
