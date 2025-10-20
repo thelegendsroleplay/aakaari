@@ -1,0 +1,216 @@
+<?php
+/**
+ * Admin Dashboard Functions
+ *
+ * Contains functions for the custom admin dashboard
+ */
+
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
+
+/**
+ * Register the Admin Dashboard template
+ */
+function aakaari_register_admin_dashboard_template($templates) {
+    $templates['admindashboard.php'] = 'Admin Dashboard';
+    return $templates;
+}
+add_filter('theme_page_templates', 'aakaari_register_admin_dashboard_template');
+
+/**
+ * Enqueue admin dashboard styles and scripts
+ */
+function aakaari_admin_dashboard_enqueue_assets() {
+    if (is_page_template('admindashboard.php')) {
+        wp_enqueue_style('aakaari-admin-dashboard-style', get_template_directory_uri() . '/assets/css/admindashboard.css', array(), '1.0.0');
+        wp_enqueue_script('aakaari-admin-dashboard-script', get_template_directory_uri() . '/assets/js/admindashboard.js', array('jquery'), '1.0.0', true);
+    }
+}
+add_action('wp_enqueue_scripts', 'aakaari_admin_dashboard_enqueue_assets');
+
+/**
+ * Restrict access to admin dashboard to administrators only
+ */
+function aakaari_restrict_admin_dashboard_access() {
+    if (is_page_template('admindashboard.php') && !current_user_can('manage_options')) {
+        wp_redirect(home_url('/adminlogin/'));
+        exit;
+    }
+}
+add_action('template_redirect', 'aakaari_restrict_admin_dashboard_access');
+
+/**
+ * Get mock data for testing the dashboard
+ * In a real scenario, you would fetch this data from the database
+ */
+function aakaari_get_mock_dashboard_data() {
+    return array(
+        'stats' => array(
+            'totalResellers' => 1247,
+            'activeResellers' => 1089,
+            'pendingApplications' => 23,
+            'totalOrders' => 5432,
+            'todayOrders' => 89,
+            'totalRevenue' => 2847650,
+            'thisMonthRevenue' => 456780,
+            'pendingPayouts' => 125340
+        ),
+        'applications' => array(
+            array(
+                'id' => '1',
+                'name' => 'Rajesh Kumar',
+                'email' => 'rajesh@example.com',
+                'phone' => '+91 9876543210',
+                'businessName' => 'Kumar Enterprises',
+                'businessType' => 'Retail Shop',
+                'city' => 'Mumbai',
+                'state' => 'Maharashtra',
+                'appliedDate' => '2025-10-18',
+                'status' => 'pending'
+            ),
+            array(
+                'id' => '2',
+                'name' => 'Priya Sharma',
+                'email' => 'priya@example.com',
+                'phone' => '+91 9876543211',
+                'businessName' => 'Fashion Hub',
+                'businessType' => 'Online Store',
+                'city' => 'Delhi',
+                'state' => 'Delhi',
+                'appliedDate' => '2025-10-17',
+                'status' => 'pending'
+            ),
+            array(
+                'id' => '3',
+                'name' => 'Amit Patel',
+                'email' => 'amit@example.com',
+                'phone' => '+91 9876543212',
+                'businessName' => '',
+                'businessType' => 'Individual/Freelancer',
+                'city' => 'Ahmedabad',
+                'state' => 'Gujarat',
+                'appliedDate' => '2025-10-16',
+                'status' => 'pending'
+            )
+        ),
+        'resellers' => array(
+            array(
+                'id' => '1',
+                'name' => 'Vikram Singh',
+                'email' => 'vikram@example.com',
+                'phone' => '+91 9876543213',
+                'totalOrders' => 145,
+                'totalRevenue' => 287500,
+                'commission' => 28750,
+                'status' => 'active',
+                'joinedDate' => '2025-01-15'
+            ),
+            array(
+                'id' => '2',
+                'name' => 'Anita Desai',
+                'email' => 'anita@example.com',
+                'phone' => '+91 9876543214',
+                'totalOrders' => 89,
+                'totalRevenue' => 156700,
+                'commission' => 15670,
+                'status' => 'active',
+                'joinedDate' => '2025-02-20'
+            ),
+            array(
+                'id' => '3',
+                'name' => 'Mohammed Ali',
+                'email' => 'mohammed@example.com',
+                'phone' => '+91 9876543215',
+                'totalOrders' => 234,
+                'totalRevenue' => 456800,
+                'commission' => 45680,
+                'status' => 'active',
+                'joinedDate' => '2024-12-10'
+            )
+        ),
+        'orders' => array(
+            array(
+                'id' => '1',
+                'orderId' => 'ORD-2025-1234',
+                'reseller' => 'Vikram Singh',
+                'customer' => 'Ramesh Verma',
+                'products' => 3,
+                'amount' => 1899,
+                'status' => 'processing',
+                'date' => '2025-10-20',
+                'paymentStatus' => 'paid'
+            ),
+            array(
+                'id' => '2',
+                'orderId' => 'ORD-2025-1235',
+                'reseller' => 'Anita Desai',
+                'customer' => 'Sunita Rao',
+                'products' => 5,
+                'amount' => 2499,
+                'status' => 'shipped',
+                'date' => '2025-10-19',
+                'paymentStatus' => 'paid'
+            ),
+            array(
+                'id' => '3',
+                'orderId' => 'ORD-2025-1236',
+                'reseller' => 'Mohammed Ali',
+                'customer' => 'Deepak Joshi',
+                'products' => 2,
+                'amount' => 1299,
+                'status' => 'pending',
+                'date' => '2025-10-20',
+                'paymentStatus' => 'pending'
+            )
+        )
+    );
+}
+
+/**
+ * Process application approval
+ * In a real scenario, this would update the database record
+ */
+function aakaari_approve_application() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+    
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    
+    // In a real scenario, update the application status in the database
+    // For now, just return success
+    
+    wp_send_json_success(array('message' => 'Application approved successfully'));
+    exit;
+}
+add_action('wp_ajax_approve_application', 'aakaari_approve_application');
+
+/**
+ * Process application rejection
+ * In a real scenario, this would update the database record
+ */
+function aakaari_reject_application() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+    
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
+    
+    if (empty($reason)) {
+        wp_send_json_error(array('message' => 'Please provide a rejection reason'));
+        exit;
+    }
+    
+    // In a real scenario, update the application status in the database
+    // For now, just return success
+    
+    wp_send_json_success(array('message' => 'Application rejected'));
+    exit;
+}
+add_action('wp_ajax_reject_application', 'aakaari_reject_application');

@@ -39,7 +39,8 @@ $required_files = array(
     'security-features.php',
     'otp-service.php',
     'ajax-handlers.php',
-    'reseller-admin.php',
+    'admin-login-functions.php',
+    'admin-dashboard-functions.php'
 );
 
 // Load each file with error checking
