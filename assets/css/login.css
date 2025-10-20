@@ -278,3 +278,24 @@ body.login-body #wpadminbar {
   font-size: 12px;
   margin-top: 5px;
 }
+
+.login-button-outline {
+    width: 100%;
+    padding: 14px;
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1rem;
+}
+.login-button-outline:hover {
+    background-color: var(--primary-light);
+}
+.login-button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}

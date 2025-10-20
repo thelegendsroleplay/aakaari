@@ -5,23 +5,41 @@
  * @package Aakaari
  */
 
-// Redirect if user is not logged in
+// --- START ACCESS CONTROL ---
+
+// 1. Check if user is logged in
 if (!is_user_logged_in()) {
-    wp_redirect(home_url('/login/'));
+    // Not logged in, redirect to login page
+    wp_safe_redirect(home_url('/login/'));
     exit;
 }
 
-// Get current user info
+// 2. User is logged in, get info
 $current_user = wp_get_current_user();
 $user_display_name = $current_user->display_name;
+$user_id = $current_user->ID;
 
-// Check if onboarding is completed
-$onboarding_status = get_user_meta($current_user->ID, 'onboarding_status', true);
-if ($onboarding_status !== 'approved') {
-    // Redirect to the become-reseller page to complete onboarding
-    wp_redirect(home_url('/become-a-reseller/'));
+// 3. Check email verification status
+$email_verified = get_user_meta($user_id, 'email_verified', true);
+if (!$email_verified) {
+    // Email is not verified, redirect to the registration page (which will show OTP screen)
+    wp_safe_redirect(home_url('/register/'));
     exit;
 }
+
+// 4. Check onboarding status (as requested: 'completed')
+$onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
+if ($onboarding_status !== 'completed') {
+    // Email is verified, but onboarding form is not filled.
+    // Redirect to the become-reseller page to complete onboarding.
+    $reseller_page_id = get_option('reseller_page_id');
+    $reseller_page_url = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
+    wp_safe_redirect($reseller_page_url);
+    exit;
+}
+
+// 5. All checks passed. User can view the dashboard.
+// --- END ACCESS CONTROL ---
 
 // Get user's orders from WooCommerce
 $customer_orders = wc_get_orders(array(

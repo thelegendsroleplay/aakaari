@@ -5,46 +5,9 @@
  * @package Aakaari
  */
 
-// Only logged in users can access this page
-if (!is_user_logged_in()) {
-    $custom_login_page = home_url('/login/');
-    $redirect_after_login = get_permalink();
-    $login_url = add_query_arg('redirect_to', urlencode($redirect_after_login), $custom_login_page);
-    wp_safe_redirect($login_url);
-    exit;
-}
-
 $submitted = false;
 $form_errors = [];
 $blocked_submission = false;
-
-// Get current user info
-$current_user = wp_get_current_user();
-$user_id = $current_user->ID;
-
-// Check if the user already has a pending or approved application
-$onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-
-// If the user is already approved, send them to dashboard
-if ($onboarding_status === 'approved') {
-    wp_redirect(home_url('/dashboard/'));
-    exit;
-}
-
-// Pre-fill form data if user metadata exists
-$fullName = get_user_meta($user_id, 'full_name', true) ?: $current_user->display_name;
-$email = $current_user->user_email;
-$phone = get_user_meta($user_id, 'phone', true) ?: '';
-$businessName = get_user_meta($user_id, 'business_name', true) ?: '';
-$address = get_user_meta($user_id, 'address', true) ?: '';
-$city = get_user_meta($user_id, 'city', true) ?: '';
-$state = get_user_meta($user_id, 'state', true) ?: '';
-$pincode = get_user_meta($user_id, 'pincode', true) ?: '';
-$gstin = get_user_meta($user_id, 'gstin', true) ?: '';
-$bankName = get_user_meta($user_id, 'bank_name', true) ?: '';
-$accountNumber = get_user_meta($user_id, 'account_number', true) ?: '';
-$ifsc = get_user_meta($user_id, 'ifsc_code', true) ?: '';
-
 
 // Get user IP
 $user_ip = $_SERVER['REMOTE_ADDR'];
@@ -59,17 +22,17 @@ if ($recent_submission && !$onboarding_status) {
 }
 
 // <<< ADD HERE
-if ( ! is_user_logged_in() ) {
-    // 👇 Change this slug if your reseller login page URL differs
-    $custom_login_page = home_url( '/login/' );
+// --- NEW: Get user ID and onboarding status ---
+$current_user = wp_get_current_user();
+$user_id = $current_user->ID;
+$onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
 
-    // Redirect back to the reseller page after login
-    $redirect_after_login = get_permalink();
-    $login_url = add_query_arg( 'redirect_to', urlencode( $redirect_after_login ), $custom_login_page );
-
-    wp_safe_redirect( $login_url );
+// If the user's onboarding is already marked as completed, send them to the dashboard
+if ($onboarding_status === 'completed') {
+    wp_safe_redirect(home_url('/dashboard/'));
     exit;
 }
+// --- END NEW ---
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application']) && ! $blocked_submission) {
@@ -167,7 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
 
                     $submitted = true;
                     setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
-                } else {
+                // --- NEW: Update user onboarding status to 'completed' ---
+                    // This removes the need for a manual admin approval step to unlock the dashboard.
+                    // The admin still gets the CPT entry for review.
+                    update_user_meta($user_id, 'onboarding_status', 'completed');
+                    // --- END NEW ---
+
+                } else { // This 'else' belongs to the if(!is_wp_error($post_id)) check
+
                     $form_errors['general'] = 'Error creating application. Please try again.';
                 }
             } else {

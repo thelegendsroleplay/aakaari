@@ -19,10 +19,23 @@ get_header(); ?>
           </h1>
           <p class="hero-subtext">Start your dropshipping business with 50-100% profit margins. No inventory, no risk. We handle storage, packing, and shipping — you focus on selling.</p>
 
-          <div class="hero-ctas">
-            <a class="btn btn-primary" href="<?php echo esc_url(home_url('/become-a-reseller')); ?>">Become a Reseller</a>
-            <a class="btn btn-outline" href="<?php echo esc_url(home_url('/contact')); ?>">Contact Sales</a>
-          </div>
+<div class="hero-ctas">
+    <?php
+    // We define the links again here in case header.php logic isn't available
+    $reseller_page_id = get_option('reseller_page_id');
+    $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
+    $login_link = home_url('/login/');
+    $dashboard_link = home_url('/dashboard/');
+
+    if (is_user_logged_in()) {
+        $final_reseller_href = $dashboard_link;
+    } else {
+        $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
+    }
+    ?>
+    <a class="btn btn-primary" href="<?php echo esc_url($final_reseller_href); ?>">Become a Reseller</a>
+    <a class="btn btn-outline" href="<?php echo esc_url(home_url('/contact')); ?>">Contact Sales</a>
+</div>
 
           <ul class="hero-stats">
             <li><strong>10K+</strong><span>Active Resellers</span></li>
@@ -238,13 +251,26 @@ get_header(); ?>
       <h2>Ready to Start Your Journey?</h2>
       <p>Join 10,000+ resellers who are building successful businesses with Aakaari</p>
       <div class="cta-button-wrapper">
-        <a href="<?php echo esc_url(get_permalink(get_option('reseller_page_id'))); ?>" class="btn-reseller">
-          Become a Reseller Today
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+    <?php
+    // Use the same logic as the hero button
+    $reseller_page_id = get_option('reseller_page_id');
+    $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
+    $login_link = home_url('/login/');
+    $dashboard_link = home_url('/dashboard/');
+
+    if (is_user_logged_in()) {
+        $final_reseller_href = $dashboard_link;
+    } else {
+        $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
+    }
+    ?>
+    <a href="<?php echo esc_url($final_reseller_href); ?>" class="btn-reseller">
+        Become a Reseller Today
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
             <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-          </svg>
-        </a>
-      </div>
+        </svg>
+    </a>
+</div>
     </div>
   </section>
 

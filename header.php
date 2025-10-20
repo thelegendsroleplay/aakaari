@@ -50,7 +50,22 @@
                     </svg>
                     <span>Reseller Login</span>
                 </a>
-                <a href="<?php echo esc_url(get_permalink(get_option('reseller_page_id'))); ?>" class="btn-reseller-header">Become a Reseller</a>
+                <?php
+$reseller_page_id = get_option('reseller_page_id');
+$reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/'); // Fallback
+$login_link = home_url('/login/');
+$dashboard_link = home_url('/dashboard/');
+
+if (is_user_logged_in()) {
+    // User is logged in, send them to the dashboard.
+    $final_reseller_href = $dashboard_link;
+} else {
+    // User is not logged in. Send them to the login page.
+    // We'll pass a redirect so they land on the application page after login.
+    $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
+}
+?>
+<a href="<?php echo esc_url($final_reseller_href); ?>" class="btn-reseller-header">Become a Reseller</a>
             </div>
         </nav>
 

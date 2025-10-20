@@ -35,7 +35,10 @@ $required_files = array(
     'reseller-application.php',
     'reseller-registration.php',
     'reseller-dashboard.php',
-    'product-customizer.php'
+    'product-customizer.php',
+    'security-features.php',
+    'otp-service.php',
+    'ajax-handlers.php'
 );
 
 // Load each file with error checking
