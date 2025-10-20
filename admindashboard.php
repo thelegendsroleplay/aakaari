@@ -17,17 +17,53 @@ $admin_email = $current_user->user_email;
 $admin_display_name = $current_user->display_name;
 $admin_initials = substr($admin_display_name, 0, 1);
 
-// Mock data for dashboard
-// In a real implementation, you would fetch this data from your database
+// Calculate statistics from real data
+$total_resellers = count(get_users(array('role' => 'reseller')));
+$active_resellers = 0;
+$pending_applications_count = 0;
+
+// Count pending applications
+foreach ($applications as $app) {
+    if ($app['status'] === 'pending') {
+        $pending_applications_count++;
+    }
+}
+
+// Get orders data if WooCommerce is active
+$total_orders = 0;
+$today_orders = 0;
+$total_revenue = 0;
+$this_month_revenue = 0;
+
+if (class_exists('WooCommerce')) {
+    $all_orders = wc_get_orders(array('limit' => -1));
+    $total_orders = count($all_orders);
+    
+    foreach ($all_orders as $order) {
+        $order_total = $order->get_total();
+        $total_revenue += $order_total;
+        
+        $order_date = $order->get_date_created();
+        if ($order_date) {
+            if ($order_date->format('Y-m-d') === date('Y-m-d')) {
+                $today_orders++;
+            }
+            if ($order_date->format('Y-m') === date('Y-m')) {
+                $this_month_revenue += $order_total;
+            }
+        }
+    }
+}
+
 $stats = array(
-    'totalResellers' => 1247,
-    'activeResellers' => 1089,
-    'pendingApplications' => 23,
-    'totalOrders' => 5432,
-    'todayOrders' => 89,
-    'totalRevenue' => 2847650,
-    'thisMonthRevenue' => 456780,
-    'pendingPayouts' => 125340
+    'totalResellers' => $total_resellers,
+    'activeResellers' => $total_resellers, // Can be refined based on actual activity
+    'pendingApplications' => $pending_applications_count,
+    'totalOrders' => $total_orders,
+    'todayOrders' => $today_orders,
+    'totalRevenue' => $total_revenue,
+    'thisMonthRevenue' => $this_month_revenue,
+    'pendingPayouts' => 0 // Can be calculated from commission data
 );
 
 // Fetch actual reseller applications
@@ -372,11 +408,17 @@ get_header('minimal'); // Use a minimal header or create one
                                 <h3>Pending Applications</h3>
                             </div>
                             <div class="aakaari-card-content">
-                                <?php foreach ($applications as $app): ?>
+                                <?php 
+                                $pending_count = 0;
+                                foreach ($applications as $app): 
+                                    if ($app['status'] !== 'pending') continue;
+                                    $pending_count++;
+                                    if ($pending_count > 3) break; // Show only first 3
+                                ?>
                                     <div class="aakaari-activity-item">
                                         <div>
                                             <div class="aakaari-item-title"><?php echo esc_html($app['name']); ?></div>
-                                            <div class="aakaari-item-subtitle"><?php echo esc_html($app['businessType']); ?></div>
+                                            <div class="aakaari-item-subtitle"><?php echo esc_html($app['businessType'] ?: 'Individual/Freelancer'); ?></div>
                                         </div>
                                         <button class="aakaari-button aakaari-button-sm" 
                                                 data-application-id="<?php echo esc_attr($app['id']); ?>">
@@ -384,6 +426,9 @@ get_header('minimal'); // Use a minimal header or create one
                                         </button>
                                     </div>
                                 <?php endforeach; ?>
+                                <?php if ($pending_count === 0): ?>
+                                    <p style="text-align: center; color: #6b7280; padding: 20px;">No pending applications</p>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
