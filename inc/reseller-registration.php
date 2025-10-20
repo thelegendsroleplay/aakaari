@@ -153,10 +153,30 @@ function handle_reseller_registration() {
     }
 
     // Check if email already exists
-    if (email_exists($email)) {
-        wp_send_json_error(array('message' => 'This email address is already registered. Please login instead.'));
+if (email_exists($email)) {
+    // NEW: Check if user exists but is unverified
+    $existing_user = get_user_by('email', $email);
+    if ($existing_user && !get_user_meta($existing_user->ID, 'email_verified', true)) {
+        // User exists but is unverified - resend OTP and redirect to verification
+        aakaari_generate_and_send_otp($existing_user->ID, $email);
+        
+        // Store the user ID in session
+        if (function_exists('WC') && WC()->session) {
+            WC()->session->set('aakaari_user_verifying', $existing_user->ID);
+        }
+        
+        wp_send_json_success(array(
+            'message' => 'Account found but not verified. We\'ve sent a new verification code to your email.',
+            'otp_required' => true,
+            'email' => $email
+        ));
         exit;
     }
+    
+    // Otherwise, standard error for existing email
+    wp_send_json_error(array('message' => 'This email address is already registered. Please login instead.'));
+    exit;
+}
 
     // Check if phone number already exists
     $users_with_phone = get_users(array(

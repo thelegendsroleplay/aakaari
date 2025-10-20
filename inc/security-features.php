@@ -162,13 +162,22 @@ if (!$email_verified) {
             error_log("Aakaari: Failed to send OTP during login verification for user ID: $user_id");
             $error_message .= 'We attempted to send a new OTP, but there was an issue. ';
         }
-        $error_message .= 'Please check your email and verify your account on the <a href="' . esc_url(home_url('/register/')) . '">verification page</a>.';
-
+        
+        // UPDATED: Include email parameter in the verification URL
+        $verification_url = add_query_arg(
+            array(
+                'action' => 'verify',
+                'email' => urlencode($user->user_email)
+            ),
+            home_url('/register/')
+        );
+        
+        $error_message .= 'Please check your email and verify your account on the <a href="' . esc_url($verification_url) . '">verification page</a>.';
 
         // Return an error telling them to check their email
         return new WP_Error(
             'email_not_verified',
-             $error_message // Use wp_kses_post if needed, but WP_Error often handles HTML okay
+             $error_message
         );
     }
 
@@ -217,9 +226,7 @@ function aakaari_modify_registration_flow($user_id) {
     }
     
     // 3. Set a session/cookie to identify the user on the OTP page
-    if (function_exists('WC') && WC()->session) {
-         WC()->session->set('aakaari_user_verifying', $user_id);
-    }
+aakaari_set_verifying_user_id($user_id);
 }
 
 

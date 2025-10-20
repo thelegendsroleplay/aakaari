@@ -15,8 +15,27 @@ if (is_user_logged_in()) {
 // Check if a user is in the process of verifying their email
 $user_verifying_id = null;
 $user_verifying_email = '';
+
+// NEW: Check if we have an action=verify parameter
+$verification_action = isset($_GET['action']) && $_GET['action'] === 'verify';
+
+
 if (function_exists('WC') && WC()->session) {
     $user_verifying_id = WC()->session->get('aakaari_user_verifying');
+}
+// NEW: If we have an email parameter and the verify action, try to find the user
+if ($verification_action && isset($_GET['email'])) {
+    $email = sanitize_email($_GET['email']);
+    $user_data = get_user_by('email', $email);
+    if ($user_data && !get_user_meta($user_data->ID, 'email_verified', true)) {
+        $user_verifying_id = $user_data->ID;
+        $user_verifying_email = $email;
+        
+        // Save this to session to maintain state
+        if (function_exists('WC') && WC()->session) {
+            WC()->session->set('aakaari_user_verifying', $user_verifying_id);
+        }
+    }
 }
 
 if ($user_verifying_id) {

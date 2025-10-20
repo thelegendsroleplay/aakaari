@@ -60,7 +60,7 @@ if (is_wp_error($user)) {
     if ($user->get_error_code() === 'email_not_verified') {
         // The verification hook (in security-features.php) has already re-sent the OTP 
         // and set the session needed for the registration/verification page to load.
-        wp_safe_redirect(home_url('/register/'));
+        wp_safe_redirect(home_url('/register/?action=verify'));
         exit;
     }
     // ******************************************************************************
