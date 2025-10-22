@@ -1,0 +1,97 @@
+/* assets/css/shop-page-custom.css */
+
+/* Style the category dropdown arrow (since Tailwind doesn't do this automatically) */
+#category-select {
+    appearance: none; /* Remove default arrow */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem; /* Make space for the arrow */
+}
+
+/* Ensure Lucide icons render correctly if theme doesn't style them */
+[data-lucide] {
+    display: inline-block;
+    vertical-align: middle;
+    width: 1em; /* Adjust size as needed via parent font-size or specific classes */
+    height: 1em;
+    stroke-width: 2;
+    stroke: currentColor;
+    fill: none;
+}
+
+/* assets/css/shop-page-custom.css */
+
+/* --- WooCommerce Specific Styles for this Template --- */
+
+/* Sorting Dropdown */
+.woocommerce-ordering {
+    position: relative;
+    margin-left: auto; /* Push to the right */
+}
+.woocommerce-ordering select {
+    /* Tailwind classes mostly handle this, but ensure appearance */
+    height: 2.5rem; /* h-10 */
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    border: 1px solid #D1D5DB; /* border-gray-300 */
+    border-radius: 0.375rem; /* rounded-md */
+    font-size: 0.875rem; /* text-sm */
+    background-color: white;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    min-width: 180px;
+}
+
+/* Product Grid Structure */
+#product-grid { /* Target the specific ID */
+    /* Grid classes applied inline in PHP handle layout */
+    list-style: none; /* Ensure no bullets */
+    padding: 0;
+    margin: 0;
+}
+#product-grid > div { /* Target the direct child div cards */
+    margin: 0;
+    float: none;
+    width: auto;
+    /* Card styling classes applied inline in PHP handle appearance */
+    display: flex; /* Helps ensure consistent height */
+    flex-direction: column;
+    height: 100%; /* Make cards fill grid cell height */
+}
+
+/* Pagination Styling */
+.woocommerce-pagination { margin-top: 2rem; text-align: center; }
+.woocommerce-pagination ul { display: inline-flex; gap: 0.5rem; list-style: none; padding: 0; margin: 0; }
+.woocommerce-pagination ul li a,
+.woocommerce-pagination ul li span { display: inline-block; padding: 0.5rem 1rem; border: 1px solid #E5E7EB; border-radius: 0.375rem; font-size: 0.875rem; text-decoration: none; color: #4B5563; transition: all 0.2s ease; }
+.woocommerce-pagination ul li a:hover { background-color: #F9FAFB; border-color: #D1D5DB; }
+.woocommerce-pagination ul li span.current { background-color: #2563EB; color: white; border-color: #2563EB; font-weight: 500; }
+
+
+/* Category Dropdown Styling */
+#category-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+/* Ensure Lucide icons render correctly */
+[data-lucide] {
+    display: inline-block;
+    vertical-align: middle;
+    width: 1em;
+    height: 1em;
+    stroke-width: 2;
+    stroke: currentColor;
+    fill: none;
+}
+/* Add any other specific overrides needed for this page template */
+/* Example: */
+/* #shop-page-content h1 { font-size: 3rem !important; } */

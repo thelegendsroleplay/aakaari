@@ -1,0 +1,37 @@
+/* assets/css/product-customizer.css */
+
+.hidden {
+    display: none !important; /* Use !important if needed to override other styles */
+}
+
+/* Ensure canvas maintains aspect ratio if container size changes */
+#interactive-canvas {
+    display: block; /* Removes extra space below */
+    max-width: 100%; /* Prevent overflow */
+    height: auto;   /* Maintain aspect ratio */
+    background-color: white; /* Default background if no image */
+}
+#canvas-container {
+    /* Optional: set a max-width if needed */
+    /* max-width: 500px; */ /* Match canvas width */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Style for the selected design list item border */
+#design-list-container .border-blue-600 {
+    border-color: #2563EB; /* Tailwind primary */
+}
+#design-list-container .bg-blue-50\/50 { /* Escaped '/' for CSS */
+    background-color: rgba(239, 246, 255, 0.5); /* Tailwind primary/5 */
+}
+
+/* Style for color swatch selection ring */
+#color-selector-container .ring-2 {
+     box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #2563EB; /* Ring offset + ring primary */
+}
+
+/* Ensure radio buttons in print type are clickable via label */
+#print-type-container label { display: block; }
+
+/* Add any other specific overrides needed */

@@ -92,6 +92,7 @@
             </div>
         </button>
     </div>
+    <script src="https://cdn.tailwindcss.com"></script>
 </header>
 
 <?php wp_footer(); ?>

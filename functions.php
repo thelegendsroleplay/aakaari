@@ -35,13 +35,15 @@ $required_files = array(
     'reseller-application.php',
     'reseller-registration.php',
     'reseller-dashboard.php',
-    'product-customizer.php',
     'security-features.php',
     'otp-service.php',
     'ajax-handlers.php',
     'admin-login-functions.php',
     'admin-dashboard-functions.php',
     'print-studio-init.php',
+    'shop-page-setup.php',
+    'product-customizer-functions.php',
+    'product-customizer-cart.php',
 );
 
 // Load each file with error checking
