@@ -1,0 +1,11 @@
+reviews:
+  enable: true
+  comment_mode: "smart"  # options: all, smart, off
+  summary: true
+  max_comments: 10
+  reviewers:
+    - "AI Senior Developer"
+  rules:
+    - "Check for potential performance bottlenecks"
+    - "Enforce security best practices"
+    - "Ensure consistent code style"
