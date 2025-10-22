@@ -137,7 +137,12 @@ function handle_reseller_registration() {
         wp_send_json_error(array('message' => 'Please fill all required fields.'));
         exit;
     }
-    
+
+    if (empty($_POST['acceptTerms'])) {
+    wp_send_json_error(array('message' => 'You must accept the Terms & Conditions.'));
+    exit;
+    }
+
     if ($password !== $confirmPassword) {
         wp_send_json_error(array('message' => 'Passwords do not match.'));
         exit;
@@ -151,7 +156,10 @@ function handle_reseller_registration() {
         wp_send_json_error(array('message' => 'Password does not meet security requirements.'));
         exit;
     }
-
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    wp_send_json_error(array('message' => 'Please enter a valid email address.'));
+    exit;
+}
     // Check if email already exists
 if (email_exists($email)) {
     // NEW: Check if user exists but is unverified

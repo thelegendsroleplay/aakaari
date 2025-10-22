@@ -1,7 +1,6 @@
+// registration_form.js
+
 document.addEventListener('DOMContentLoaded', function () {
-    // Check if jQuery is available - we'll use it for AJAX calls
-    const useJQuery = (typeof jQuery !== 'undefined');
-    
     // Get DOM elements
     const regFormContainer = document.getElementById('registration-form-container');
     const otpFormContainer = document.getElementById('otp-verification-container');
@@ -36,12 +35,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (passwordInput) {
         passwordInput.addEventListener('input', function() {
             const pass = this.value;
-            let validCount = 0;
 
             // Length
             if (pass.length >= 8) {
                 strengthMeter.length.classList.add('valid');
-                validCount++;
             } else {
                 strengthMeter.length.classList.remove('valid');
             }
@@ -49,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Uppercase
             if (/[A-Z]/.test(pass)) {
                 strengthMeter.uppercase.classList.add('valid');
-                validCount++;
             } else {
                 strengthMeter.uppercase.classList.remove('valid');
             }
@@ -57,7 +53,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Number
             if (/[0-9]/.test(pass)) {
                 strengthMeter.number.classList.add('valid');
-                validCount++;
             } else {
                 strengthMeter.number.classList.remove('valid');
             }
@@ -65,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Special
             if (/[!@#$%^&*()]/.test(pass)) {
                 strengthMeter.special.classList.add('valid');
-                validCount++;
             } else {
                 strengthMeter.special.classList.remove('valid');
             }
@@ -100,13 +94,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const phoneMsg = document.getElementById('phone-validation-msg');
     let emailTimer, phoneTimer;
 
+    function isValidEmail(email) {
+        // Simple but effective regex for email format
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Corrected: Only ONE event listener for email input, with format check BEFORE AJAX!
     if (emailInput) {
         emailInput.addEventListener('input', () => {
             clearTimeout(emailTimer);
+
+            if (!isValidEmail(emailInput.value)) {
+                emailMsg.textContent = 'Please enter a valid email address.';
+                emailMsg.className = 'validation-message';
+                emailMsg.style.display = 'block';
+                return; // Do NOT proceed to AJAX availability check
+            }
+
             emailMsg.textContent = 'Checking...';
             emailMsg.className = 'validation-message loading';
             emailMsg.style.display = 'block';
-            
+
             emailTimer = setTimeout(() => {
                 validateField('email', emailInput.value, emailMsg, 'check_email_exists');
             }, 800);
@@ -181,6 +189,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const pass = passwordInput.value;
             if (pass.length < 8 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass) || !/[!@#$%^&*()]/.test(pass)) {
                 showToast('Password does not meet all security requirements.');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Create Account';
+                return;
+            }
+
+            // Final email format check before submit
+            if (!isValidEmail(emailInput.value)) {
+                showToast('Please enter a valid email address.');
                 submitButton.disabled = false;
                 submitButton.textContent = 'Create Account';
                 return;
