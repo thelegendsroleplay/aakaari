@@ -1,0 +1,271 @@
+/* assets/print-studio/print-studio.css
+   - Canvas is now responsive (square aspect ratio).
+   - Added wrapper styles for better editor layout responsiveness.
+   - Minor adjustments to spacing and alignment.
+*/
+:root {
+  --background: 0 0% 100%;
+  --foreground: 214 80% 20%;
+  --card: 0 0% 100%;
+  --card-foreground: 214 80% 20%;
+  --primary: 214 80% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 214 80% 95%;
+  --secondary-foreground: 214 80% 35%;
+  --muted: 214 20% 95%;
+  --muted-foreground: 214 30% 40%;
+  --accent: 30 95% 60%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 20% 85%;
+  --input: 214 20% 80%;
+  --ring: 214 80% 50%;
+  --radius: 0.5rem;
+  --transition-duration: 150ms;
+}
+
+/* Base reset for the print studio area */
+#custom-print-studio-app {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+#custom-print-studio-app * {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+}
+
+/* Typography */
+#custom-print-studio-app h2 {
+  font-size: 1.5rem; line-height: 1.25; font-weight: 700; color: hsl(var(--primary));
+}
+#custom-print-studio-app h3 {
+  font-size: 1.25rem; line-height: 1.3; font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem;
+}
+#custom-print-studio-app h4 {
+  font-size: 1.1rem; line-height: 1.3; font-weight: 600; margin-bottom: 0.1rem;
+}
+
+/* Card */
+.ps-card {
+  background: hsl(var(--card)); color: hsl(var(--card-foreground));
+  border-radius: var(--radius); border: 1px solid hsl(var(--border));
+  padding: 1rem; box-shadow: 0 1px 3px rgba(30,64,175,0.06);
+}
+
+/* Layout helpers */
+.ps-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; /* Default mobile */ }
+.ps-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ps-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ps-row { display:flex; gap: 0.5rem; align-items:center; flex-wrap: wrap; /* Allow wrapping */ }
+.ps-hr { border-top: 1px solid hsl(var(--border)); margin: 1rem 0; }
+
+/* Responsive Layout */
+.ps-sidepanel {
+    border-left: none; padding-left: 0; margin-top: 1rem;
+    border-top: 1px solid hsl(var(--border)); padding-top: 1rem;
+}
+
+/* Desktop Layout (Applied >= 1024px) */
+@media (min-width: 1024px) {
+  #custom-print-studio-app { padding: 1.5rem; }
+  .ps-grid--dashboard { grid-template-columns: 1fr; }
+  .ps-grid--editor { grid-template-columns: 1fr 350px; gap: 1.5rem; } /* Added gap */
+  .ps-sidepanel {
+      border-left: 1px solid hsl(var(--border)); padding-left: 1.5rem; /* Increased padding */
+      margin-top: 0; border-top: none; padding-top: 0;
+  }
+}
+
+/* Buttons */
+.ps-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+  border-radius: .375rem; padding: .5rem .75rem; font-weight: 600; font-size: 0.875rem;
+  cursor: pointer; transition: all var(--transition-duration) ease;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.ps-btn:focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring)); }
+.ps-btn:disabled { pointer-events: none; opacity: 0.5; }
+
+/* Button variants */
+.ps-btn--primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.ps-btn--primary:hover { background: hsl(var(--primary) / 0.9); }
+.ps-btn--outline { background: transparent; border-color: hsl(var(--input)); color: hsl(var(--foreground)); }
+.ps-btn--outline:hover { background: hsl(var(--secondary)); }
+.ps-btn--destructive { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
+.ps-btn--destructive:hover { background: hsl(var(--destructive) / 0.9); }
+.ps-btn--icon { padding: 0.5rem; }
+
+/* Button sizes */
+.ps-btn--small { padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 0.25rem; }
+.ps-icon { width: 1rem; height: 1rem; stroke-width: 2; } /* Default stroke */
+.ps-icon-small { width: 0.75rem; height: 0.75rem; stroke-width: 2; }
+.ps-btn--small .ps-icon { width: 0.875rem; height: 0.875rem; }
+.ps-btn--icon .ps-icon { margin: 0; } /* Remove gap for icon-only */
+
+
+/* Table */
+.ps-table { width:100%; border-collapse: collapse; margin-top: 1rem; }
+.ps-table th {
+  text-align:left; font-size: .75rem; color: hsl(var(--primary)); padding: .75rem .5rem;
+  border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--secondary));
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ps-table td {
+  padding: .75rem .5rem; border-bottom: 1px solid hsl(var(--border));
+  vertical-align: middle; font-size: 0.9rem;
+}
+.ps-table tr:hover { background: hsl(var(--muted) / 0.5); }
+.ps-table td:last-child { text-align: right; white-space: nowrap; } /* Prevent actions wrapping */
+.ps-table td .ps-btn { margin-left: 0.25rem; }
+.ps-table-empty { text-align: center; padding: 2rem; color: hsl(var(--muted-foreground)); font-size: 0.9rem; }
+
+
+/* Tabs */
+.ps-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; border-bottom: 1px solid hsl(var(--border)); }
+.ps-tab-trigger {
+    padding: 0.6rem 1rem; font-size: 0.9rem; font-weight: 500; border: none; background: transparent;
+    cursor: pointer; color: hsl(var(--muted-foreground)); border-bottom: 2px solid transparent;
+    transition: all var(--transition-duration) ease; display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.ps-tab-trigger:hover { color: hsl(var(--foreground)); }
+.ps-tab-trigger.active { color: hsl(var(--primary)); border-bottom-color: hsl(var(--primary)); }
+.ps-tab-content { margin-top: 1rem; }
+.ps-tab-content-header {
+    display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; margin-bottom: 0.5rem;
+}
+@media (min-width: 640px) {
+    .ps-tab-content-header { flex-direction: row; justify-content: space-between; align-items: center; }
+}
+
+
+/* Forms */
+.ps-form-column { display: grid; gap: 1rem; }
+.ps-form-group { display: grid; gap: 0.25rem; }
+
+.ps-label, .ps-checkbox-label { font-size: 0.875rem; font-weight: 500; display: block; }
+.ps-label--inline { display: inline-block; margin-right: 0.5rem; margin-bottom: 0; } /* For inline labels */
+.ps-checkbox-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+
+.ps-input, .ps-textarea, .ps-select {
+  font-size: 0.875rem; border-radius: var(--radius); border: 1px solid hsl(var(--input));
+  background-color: hsl(var(--background)); padding: 0.5rem 0.75rem; width: 100%;
+  transition: all var(--transition-duration) ease;
+}
+.ps-input:focus, .ps-textarea:focus, .ps-select:focus {
+  outline: none; box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3); border-color: hsl(var(--ring));
+}
+.ps-textarea { min-height: 80px; }
+
+/* Form Switch */
+.ps-switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+.ps-switch input { opacity: 0; width: 0; height: 0; }
+.ps-slider { position: absolute; cursor: pointer; inset: 0; background-color: hsl(var(--border)); transition: var(--transition-duration); border-radius: 20px; }
+.ps-slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: var(--transition-duration); border-radius: 50%; }
+.ps-switch input:checked + .ps-slider { background-color: hsl(var(--primary)); }
+.ps-switch input:checked + .ps-slider:before { transform: translateX(14px); }
+
+/* Color Picker */
+.ps-color-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.ps-color-chip { position: relative; display: block; width: 40px; height: 40px; border-radius: 50%; border: 2px solid hsl(var(--border)); background-color: var(--chip-color); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.ps-color-chip input { display: none; }
+.ps-color-chip-check { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,0.3); color: white; opacity: 0; transition: all var(--transition-duration) ease; }
+.ps-color-chip input:checked + .ps-color-chip-check { opacity: 1; }
+.ps-color-chip input:checked { border: 2px solid hsl(var(--primary)); }
+
+/* --- Editor Layout --- */
+.ps-editor-header {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem 1rem; /* Row and column gap */
+    margin-bottom: 1rem;
+}
+.ps-editor-main {
+    display: grid;
+    gap: 1rem;
+}
+.ps-editor-sides {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap; /* Allow sides tabs to wrap */
+}
+.ps-editor-sides .ps-tabs { border-bottom: none; } /* Remove border from side tabs */
+
+.ps-canvas-container { display: grid; gap: 0.25rem; }
+.ps-canvas-wrapper {
+    border: 1px solid hsl(var(--border));
+    padding: .5rem;
+    border-radius: .370rem;
+    background: hsl(var(--muted));
+    /* NEW: Control max size */
+    max-width: 900px; /* Increased from 600px */
+    width: 100%;
+    min-height: 320px; /* ensure the canvas has a usable height on small screens */
+    margin-left: auto; /* Center canvas area if smaller */
+    margin-right: auto;
+    touch-action: none; /* helps with pinch/drag behavior on touch devices */
+}
+
+/* Desktop: allow an even larger canvas if the container has space */
+@media (min-width: 1280px) {
+  .ps-canvas-wrapper { max-width: 1100px; }
+}
+.ps-editor-tools { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.ps-tool-buttons { display: flex; gap: 0.5rem; }
+
+
+/* Canvas Editor Side Panel */
+.ps-canvas-sidebar {
+    display: grid; gap: 1rem; padding: 0; border: none; box-shadow: none; background: transparent;
+}
+.ps-area-list { display: grid; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.5rem; }
+.ps-area-item {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.75rem;
+    padding: 0.6rem 0.75rem; border-radius: .375rem; border: 1px solid hsl(var(--border));
+    background: hsl(var(--background)); cursor: pointer; width: 100%; text-align: left;
+}
+.ps-area-item .ps-icon { display: none; }
+.ps-area-item:hover { background: hsl(var(--muted)); }
+.ps-area-item.active { border-color: hsl(var(--primary)); background: hsl(var(--secondary)); color: hsl(var(--primary)); font-weight: 500; }
+.ps-area-item.is-restriction.active { border-color: hsl(var(--destructive)); background: hsl(var(--destructive) / 0.05); color: hsl(var(--destructive)); }
+.ps-area-item__name { font-size: 0.875rem; }
+.ps-area-item__dims { font-size: 0.8rem; color: hsl(var(--muted-foreground)); }
+
+/* Canvas */
+#print-area-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  touch-action: none; /* avoid default touch gestures */
+}
+
+/* Small utilities */
+.ps-helper { font-size: .85rem; color: hsl(var(--muted-foreground)); }
+.ps-badge { display:inline-block; padding: .15rem .5rem; border-radius:999px; font-size:.75rem; background:hsl(var(--secondary)); color:hsl(var(--secondary-foreground)); font-weight: 500; }
+
+/* Modal/dialog */
+.dialog-overlay { position: fixed; inset:0; display:grid; place-items:center; background: rgba(0,0,0,0.35); z-index:9999; padding: 1rem; }
+.dialog-content { width: 100%; max-width: 640px; background: hsl(var(--card)); border-radius: var(--radius); border:1px solid hsl(var(--border)); max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(30,64,175,0.15); }
+.ps-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid hsl(var(--border)); }
+.ps-modal-header h3 { font-size: 1.15rem; font-weight: 600; margin: 0; } /* Removed margin */
+.ps-modal-body { padding: 1.5rem; overflow-y: auto; }
+.ps-modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.5rem; border-top: 1px solid hsl(var(--border)); background: hsl(var(--muted) / 0.5); }
+
+/* Style for file input */
+.ps-input--file { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
+.ps-input--file::file-selector-button { border: none; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 500; padding: 0.25rem 0.75rem; border-radius: .25rem; margin-right: 0.75rem; cursor: pointer; transition: all var(--transition-duration) ease; }
+.ps-input--file::file-selector-button:hover { background: hsl(var(--primary) / 0.9); }

@@ -1192,7 +1192,6 @@ h3 {
     border-radius: 9999px;
 }
 
-
 /* Add these styles to admin-dashboard-styles2.php */
 
 /* Payout Result Styles */
@@ -1247,3 +1246,174 @@ h3 {
     color: var(--red-color);
     margin-top: 0;
 }
+
+/* Custom Products Admin Integration Styles */
+/* These styles are from admin.css but adapted to match your dashboard theme */
+
+.aakaari-cp-wrap { 
+    max-width: 1200px; 
+    margin: 20px auto; 
+    background: var(--bg-white); 
+    padding: 20px; 
+    border: 1px solid var(--border-color); 
+    border-radius: 8px; 
+}
+
+.aakaari-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); 
+    gap: 12px; 
+    margin-bottom: 18px; 
+}
+
+.aakaari-controls { 
+    display: flex; 
+    gap: 8px; 
+    margin-bottom: 12px; 
+}
+
+.aakaari-list { 
+    border: 1px solid var(--border-color); 
+    padding: 12px; 
+    border-radius: 6px; 
+    background: var(--bg-white); 
+    margin-bottom: 1rem;
+}
+
+.aakaari-btn { 
+    padding: 8px 10px; 
+    border: 1px solid var(--border-color); 
+    background: var(--bg-white); 
+    border-radius: 4px; 
+    cursor: pointer; 
+    transition: all 0.2s;
+}
+
+.aakaari-btn:hover { 
+    background-color: var(--bg-light);
+}
+
+/* Canvas editor styles */
+.aakaari-modal-backdrop { 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0,0,0,0.45); 
+    z-index: 9998; 
+}
+
+.aakaari-modal { 
+    position: fixed; 
+    left: 50%; 
+    top: 50%; 
+    transform: translate(-50%,-50%); 
+    z-index: 9999; 
+    background: var(--bg-white); 
+    border: 1px solid var(--border-color); 
+    padding: 16px; 
+    box-shadow: var(--shadow-lg); 
+    width: 92%; 
+    max-width: 1000px; 
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 8px; 
+}
+
+.aakaari-canvas-wrap { 
+    border: 1px solid var(--border-color); 
+    background: var(--bg-light); 
+    padding: 8px; 
+    border-radius: 6px; 
+    display: inline-block; 
+}
+
+.aakaari-canvas-toolbar { 
+    display: flex; 
+    gap: 8px; 
+    margin-bottom: 8px; 
+}
+
+.aakaari-muted {
+    color: var(--text-medium);
+    font-size: 0.813rem;
+}
+
+/* Custom Products embedded styles */
+.aakaari-cp-embedded {
+    padding: 20px 0;
+}
+
+.aakaari-cp-embedded .wrap {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.aakaari-cp-embedded h1,
+.aakaari-cp-embedded h1.page-title {
+    display: none;
+}
+
+.aakaari-cp-embedded .description {
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--text-medium);
+}
+
+#aakaari-cp-app {
+    width: 100%;
+    min-height: 500px;
+    background-color: var(--bg-white);
+    border-radius: var(--border-radius-md);
+    padding: 1.5rem;
+}
+
+/* Ensure buttons match your theme */
+.aakaari-cp-embedded button,
+.aakaari-cp-embedded .button,
+.aakaari-cp-embedded .button-primary {
+    background: var(--primary-color);
+    color: white;
+    border-radius: var(--border-radius-sm);
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.aakaari-cp-embedded button:hover,
+.aakaari-cp-embedded .button:hover,
+.aakaari-cp-embedded .button-primary:hover {
+    background: var(--primary-hover);
+}
+
+/* Form field styles to match */
+.aakaari-cp-embedded input[type="text"],
+.aakaari-cp-embedded input[type="number"],
+.aakaari-cp-embedded select,
+.aakaari-cp-embedded textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--bg-light);
+}
+
+/* Tables */
+.aakaari-cp-embedded table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.aakaari-cp-embedded table th,
+.aakaari-cp-embedded table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.aakaari-cp-embedded table th {
+    background-color: var(--bg-light);
+    font-weight: 600;
+}
+
+

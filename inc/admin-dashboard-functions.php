@@ -1290,3 +1290,4 @@ function aakaari_register_payout_post_type() {
     register_post_type('reseller_payout', $args);
 }
 add_action('init', 'aakaari_register_payout_post_type');
+

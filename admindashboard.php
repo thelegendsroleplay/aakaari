@@ -796,75 +796,27 @@ get_header('minimal'); // Use a minimal header or create one
                 </div>
             <?php endif; ?>
 
-            <!-- Products Tab -->
-            <?php if ($active_tab === 'products'): ?>
-                <div class="aakaari-tab-content">
-                    <div class="aakaari-tab-header aakaari-flex-between">
-                        <div>
-                            <h2>Product Management</h2>
-                            <p>Manage your product catalog and pricing</p>
-                        </div>
-                        <?php if (current_user_can('edit_products')): ?>
-                            <a href="<?php echo esc_url(admin_url('post-new.php?post_type=product')); ?>" class="aakaari-button" target="_blank">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                Add New Product
-                            </a>
-                        <?php endif; ?>
-                    </div>
+<?php if ($active_tab === 'products'): ?>
+    <div class="aakaari-tab-content">
+        <div class="aakaari-tab-header">
+            <div>
+                <h2>Custom Print Products</h2>
+                <p>Manage your customizable print products and options</p>
+            </div>
+        </div>
 
-                    <div class="aakaari-stats-grid aakaari-stats-grid-3">
-                        <div class="aakaari-stat-card aakaari-stat-center">
-                            <div class="aakaari-stat-icon-large">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                            </div>
-                            <p class="aakaari-stat-value"><?php echo esc_html($product_stats['total']); ?></p>
-                            <p class="aakaari-stat-label">Total Products</p>
-                        </div>
-                        
-                        <div class="aakaari-stat-card aakaari-stat-center">
-                            <div class="aakaari-stat-icon-large icon-green">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            </div>
-                            <p class="aakaari-stat-value"><?php echo esc_html($product_stats['inStock']); ?></p>
-                            <p class="aakaari-stat-label">In Stock</p>
-                        </div>
-                        
-                        <div class="aakaari-stat-card aakaari-stat-center">
-                            <div class="aakaari-stat-icon-large icon-orange">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                            </div>
-                            <p class="aakaari-stat-value"><?php echo esc_html($product_stats['lowStock']); ?></p>
-                            <p class="aakaari-stat-label">Low Stock</p>
-                        </div>
-                    </div>
-
-                    <div class="aakaari-card">
-                        <div class="aakaari-card-content">
-                            <?php if (function_exists('wc_get_products')): ?>
-                                <p class="aakaari-text-center">To manage products, please use the WooCommerce Products section in the WordPress admin.</p>
-                                <div class="aakaari-action-center">
-                                                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=product')); ?>" class="aakaari-button" target="_blank">
-                                        Go to Products Admin
-                                    </a>
-                                </div>
-                                
-                                <?php if ($product_stats['lowStock'] > 0): ?>
-                                <div class="aakaari-alert aakaari-alert-warning aakaari-mt-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                                    <div>
-                                        <h4>Low Stock Alert</h4>
-                                        <p>You have <?php echo esc_html($product_stats['lowStock']); ?> products with low stock. Please check the <a href="<?php echo esc_url(admin_url('admin.php?page=wc-reports&tab=stock&report=low_in_stock')); ?>" target="_blank">Low Stock Report</a>.</p>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <p class="aakaari-text-center">WooCommerce is not active. Please activate WooCommerce to manage products.</p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
+        <!-- Print Studio UI directly integrated -->
+        <div id="custom-print-studio-app">
+            <!-- This div will be populated by JavaScript -->
+            <div class="cps-loading">
+                <div class="aakaari-loading-spinner"></div>
+                <p>Loading print studio interface...</p>
+            </div>
+        </div>
+        
+        <div id="dialog-container"></div>
+    </div>
+<?php endif; ?>
             <!-- Payouts Tab -->
             <?php if ($active_tab === 'payouts'): ?>
                 <div class="aakaari-tab-content">

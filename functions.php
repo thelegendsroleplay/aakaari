@@ -40,7 +40,8 @@ $required_files = array(
     'otp-service.php',
     'ajax-handlers.php',
     'admin-login-functions.php',
-    'admin-dashboard-functions.php'
+    'admin-dashboard-functions.php',
+    'print-studio-init.php',
 );
 
 // Load each file with error checking

@@ -1,5 +1,6 @@
 /**
  * Aakaari Admin Dashboard JavaScript
+ * - Includes both dashboard core functionality and custom products admin
  */
 (function($) {
     'use strict';
@@ -393,241 +394,1220 @@
             if (!string) return '';
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
-    });
-    // Handle notification bell clicks
-$(document).on('click', '#notification-bell-button', function(e) {
-    e.stopPropagation();
-    const $dropdown = $(this).closest('.aakaari-dropdown');
-    
-    // If we're opening the dropdown, mark notifications as seen
-    if (!$dropdown.hasClass('active')) {
-        markNotificationsAsSeen();
-    }
-    
-    // Toggle dropdown
-    $dropdown.toggleClass('active');
-    
-    // Close other dropdowns
-    $('.aakaari-dropdown').not($dropdown).removeClass('active');
-});
 
-/**
- * Mark notifications as seen via AJAX
- */
-function markNotificationsAsSeen() {
-    // Current timestamp
-    const timestamp = Math.floor(Date.now() / 1000);
-    
-    // Hide notification badge immediately for better UX
-    $('#notification-badge').fadeOut(200);
-    
-    // Send AJAX request to mark notifications as seen
-    $.ajax({
-        url: aakaari_admin_ajax.ajax_url,
-        type: 'POST',
-        data: {
-            action: 'mark_notifications_seen',
-            timestamp: timestamp,
-            nonce: aakaari_admin_ajax.nonce
-        },
-        success: function(response) {
-            if (response.success) {
-                // Badge already hidden above
+        // Handle notification bell clicks
+        $(document).on('click', '#notification-bell-button', function(e) {
+            e.stopPropagation();
+            const $dropdown = $(this).closest('.aakaari-dropdown');
+            
+            // If we're opening the dropdown, mark notifications as seen
+            if (!$dropdown.hasClass('active')) {
+                markNotificationsAsSeen();
             }
-        },
-        error: function() {
-            // If there's an error, show the badge again
-            $('#notification-badge').fadeIn(200);
+            
+            // Toggle dropdown
+            $dropdown.toggleClass('active');
+            
+            // Close other dropdowns
+            $('.aakaari-dropdown').not($dropdown).removeClass('active');
+        });
+
+        /**
+         * Mark notifications as seen via AJAX
+         */
+        function markNotificationsAsSeen() {
+            // Current timestamp
+            const timestamp = Math.floor(Date.now() / 1000);
+            
+            // Hide notification badge immediately for better UX
+            $('#notification-badge').fadeOut(200);
+            
+            // Send AJAX request to mark notifications as seen
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'mark_notifications_seen',
+                    timestamp: timestamp,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Badge already hidden above
+                    }
+                },
+                error: function() {
+                    // If there's an error, show the badge again
+                    $('#notification-badge').fadeIn(200);
+                }
+            });
+        }
+
+        // Handle individual payout button
+        $(document).on('click', '[data-action="process-payout"]', function(e) {
+            e.preventDefault();
+            const resellerId = $(this).data('id');
+            const amount = parseFloat($(this).data('amount'));
+            
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Invalid payout amount', 'error');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to process a payout of ₹${amount.toLocaleString()} for this reseller?`)) {
+                processSinglePayout(resellerId, amount, $(this));
+            }
+        });
+
+        // Handle bulk payout button
+        $('#processPayoutsBtn').on('click', function() {
+            if (confirm('Are you sure you want to process payouts for all eligible resellers? This will clear their wallet balances.')) {
+                processBulkPayouts($(this));
+            }
+        });
+
+        /**
+         * Process a single reseller payout
+         */
+        function processSinglePayout(resellerId, amount, button) {
+            // Show processing state
+            const originalText = button.html();
+            button.prop('disabled', true).html('Processing...');
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'process_single_payout',
+                    reseller_id: resellerId,
+                    amount: amount,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Payout processed successfully!', 'success');
+                        
+                        // Update UI - remove the row or update the balance
+                        const row = button.closest('tr');
+                        row.fadeOut(400, function() {
+                            row.remove();
+                            
+                            // Check if table is now empty
+                            const tbody = $('.aakaari-table tbody');
+                            if (tbody.children('tr').length === 0) {
+                                tbody.append(`
+                                    <tr>
+                                        <td colspan="6" class="aakaari-text-center aakaari-py-8">
+                                            <p class="aakaari-text-muted">No pending payouts found.</p>
+                                        </td>
+                                    </tr>
+                                `);
+                            }
+                        });
+                        
+                        // Update stats
+                        updatePayoutStats(-amount);
+                    } else {
+                        showToast(response.data.message || 'Failed to process payout', 'error');
+                        button.prop('disabled', false).html(originalText);
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                    button.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+
+        /**
+         * Process bulk payouts
+         */
+        function processBulkPayouts(button) {
+            // Show processing state
+            const originalText = button.html();
+            button.prop('disabled', true).html('Processing...');
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'process_bulk_payouts',
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast(response.data.message, 'success');
+                        
+                        // Populate the modal content
+                        let resultContent = `
+                            <div class="payout-result-summary">
+                                <h4>Payout Summary</h4>
+                                <p>Successfully processed ${response.data.successful_payouts.length} payouts</p>
+                                <p class="total-amount">Total: ₹${response.data.total_amount.toLocaleString()}</p>
+                            </div>
+                            
+                            <div class="payout-result-list">
+                                <h4>Processed Payouts</h4>
+                        `;
+                        
+                        if (response.data.successful_payouts.length > 0) {
+                            response.data.successful_payouts.forEach(payout => {
+                                resultContent += `
+                                    <div class="payout-result-item">
+                                        <div>${payout.name}</div>
+                                        <div class="amount">₹${payout.amount.toLocaleString()}</div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            resultContent += `<p>No payouts were processed</p>`;
+                        }
+                        
+                        resultContent += `</div>`;
+                        
+                        if (response.data.failed_payouts.length > 0) {
+                            resultContent += `
+                                <div class="payout-errors">
+                                    <h4>Failed Payouts (${response.data.failed_payouts.length})</h4>
+                                    <ul>
+                            `;
+                            
+                            response.data.failed_payouts.forEach(failed => {
+                                resultContent += `<li>${failed.name}: ${failed.error}</li>`;
+                            });
+                            
+                            resultContent += `</ul></div>`;
+                        }
+                        
+                        // Show the modal with results
+                        $('#payoutResultContent').html(resultContent);
+                        $('#payoutResultModal').addClass('active');
+                        
+                        // Add a close handler for the modal
+                        $('#closePayoutResultBtn').on('click', function() {
+                            $('#payoutResultModal').removeClass('active');
+                            // Reload the page after closing the modal
+                            window.location.reload();
+                        });
+                    } else {
+                        showToast(response.data.message || 'No eligible payouts found', 'warning');
+                        button.prop('disabled', false).html(originalText);
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                    button.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+
+        /**
+         * Update payout statistics after processing payouts
+         */
+        function updatePayoutStats(amountChange) {
+            // Update pending amount display
+            const pendingAmountElement = $('.aakaari-stats-grid').first().find('.aakaari-stat-value').first();
+            const currentAmount = parseFloat(pendingAmountElement.text().replace('₹', '').replace(/,/g, ''));
+            
+            if (!isNaN(currentAmount)) {
+                const newAmount = currentAmount + amountChange;
+                pendingAmountElement.text('₹' + newAmount.toLocaleString());
+            }
+            
+            // Update pending resellers count
+            const pendingResellersElement = $('.aakaari-stats-grid').first().find('.aakaari-stat-trend').first();
+            const currentCount = parseInt(pendingResellersElement.text().split(' ')[0]);
+            
+            if (!isNaN(currentCount) && currentCount > 0) {
+                const newCount = currentCount - 1;
+                pendingResellersElement.text(newCount + ' resellers pending');
+            }
+        }
+
+        // Initialize Custom Products Admin if we're on the products tab
+        if ($('#aakaari-cp-app').length > 0) {
+            initializeCustomProductsAdmin();
         }
     });
-}
 
-// Handle individual payout button
-$(document).on('click', '[data-action="process-payout"]', function(e) {
-    e.preventDefault();
-    const resellerId = $(this).data('id');
-    const amount = parseFloat($(this).data('amount'));
+    /**
+     * Custom Products Admin Module
+     * Converted from the original vanilla JS to jQuery-based implementation
+     */
+function initializeCustomProductsAdmin() {
+    // Check if we have the required Ajax configuration
+    const ajax = window.aakaari_cp_ajax || {};
+    const $root = $('#aakaari-cp-app');
     
-    if (isNaN(amount) || amount <= 0) {
-        showToast('Invalid payout amount', 'error');
-        return;
-    }
-    
-    if (confirm(`Are you sure you want to process a payout of ₹${amount.toLocaleString()} for this reseller?`)) {
-        processSinglePayout(resellerId, amount, $(this));
-    }
-});
+    if (!$root.length) return;
 
-// Handle bulk payout button
-$('#processPayoutsBtn').on('click', function() {
-    if (confirm('Are you sure you want to process payouts for all eligible resellers? This will clear their wallet balances.')) {
-        processBulkPayouts($(this));
-    }
-});
-
-/**
- * Process a single reseller payout
- */
-function processSinglePayout(resellerId, amount, button) {
-    // Show processing state
-    const originalText = button.html();
-    button.prop('disabled', true).html('Processing...');
+    // Add this check for plugin activation state
+    const pluginIsActive = typeof ajax.ajax_url !== 'undefined' && 
+                           typeof ajax.nonce !== 'undefined' &&
+                           !$('#aakaari-cp-app .aakaari-plugin-not-active').length;
     
-    $.ajax({
-        url: aakaari_admin_ajax.ajax_url,
-        type: 'POST',
-        data: {
-            action: 'process_single_payout',
-            reseller_id: resellerId,
-            amount: amount,
-            nonce: aakaari_admin_ajax.nonce
-        },
-        success: function(response) {
-            if (response.success) {
-                showToast('Payout processed successfully!', 'success');
-                
-                // Update UI - remove the row or update the balance
-                const row = button.closest('tr');
-                row.fadeOut(400, function() {
-                    row.remove();
-                    
-                    // Check if table is now empty
-                    const tbody = $('.aakaari-table tbody');
-                    if (tbody.children('tr').length === 0) {
-                        tbody.append(`
-                            <tr>
-                                <td colspan="6" class="aakaari-text-center aakaari-py-8">
-                                    <p class="aakaari-text-muted">No pending payouts found.</p>
-                                </td>
-                            </tr>
-                        `);
+    // If plugin isn't active, show the mock interface instead
+    if (!pluginIsActive) {
+        console.log('Custom Products plugin not active or not properly initialized, showing mock interface');
+        mockCustomProductsInterface();
+        return; // Exit early - don't try to use the real plugin code
+    }
+        // State
+        let state = {
+            products: [],
+            fabrics: [],
+            print_types: [],
+            woo_colors: [],
+            categories: []
+        };
+
+        // Fetch initial data
+        function fetchData() {
+            return $.ajax({
+                url: ajax.ajax_url,
+                method: 'POST',
+                data: {
+                    action: 'aakaari_cp_get_products',
+                    _ajax_nonce: ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        state = $.extend(state, response.data);
+                        render();
+                    } else {
+                        console.error('Fetch error', response);
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ajax error:', status, error);
+                }
+            });
+        }
+
+        // Save data
+        function saveData() {
+            return $.ajax({
+                url: ajax.ajax_url,
+                method: 'POST',
+                data: {
+                    action: 'aakaari_cp_save_products',
+                    _ajax_nonce: ajax.nonce,
+                    data: JSON.stringify(state)
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Custom products saved successfully!', 'success');
+                    } else {
+                        console.error('Save error', response);
+                        showToast('Error saving products', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ajax error:', status, error);
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+
+        // Reset data
+        function resetData() {
+            if (!confirm('Reset stored Aakaari configuration?')) return;
+            
+            return $.ajax({
+                url: ajax.ajax_url,
+                method: 'POST',
+                data: {
+                    action: 'aakaari_cp_reset',
+                    _ajax_nonce: ajax.nonce
+                },
+                success: function() {
+                    showToast('Configuration reset successfully', 'success');
+                    fetchData();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ajax error:', status, error);
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+
+        // UI rendering
+        function render() {
+            $root.empty();
+            
+            // Stats cards
+            const totalProducts = state.products.length;
+            const activeProducts = state.products.filter(p => p.isActive).length;
+            const totalSides = state.products.reduce((s, p) => s + (p.sides ? p.sides.length : 0), 0);
+
+            const $grid = $('<div>').addClass('aakaari-grid');
+            $grid.append(makeCard('Total Products', String(totalProducts), `${activeProducts} active`));
+            $grid.append(makeCard('Total Sides', String(totalSides), 'Across all products'));
+            $grid.append(makeCard('Fabrics', String(state.fabrics.length), 'Available materials'));
+            $grid.append(makeCard('Print Types', String(state.print_types.length), 'Printing methods'));
+            $root.append($grid);
+
+            const $controls = $('<div>').addClass('aakaari-controls');
+            $controls.append(button('Add Product', () => openProductModal(createEmptyProduct())));
+            $controls.append(button('Save All', saveData));
+            $controls.append(button('Reset', resetData));
+            $root.append($controls);
+
+            // Products table
+            const $list = $('<div>').addClass('aakaari-list');
+            const $table = $('<table>').addClass('aakaari-table');
+            const $thead = $('<thead>');
+            const $tr = $('<tr>');
+            
+            $tr.append($('<th>').text('Product'));
+            $tr.append($('<th>').text('Category'));
+            $tr.append($('<th>').text('Price'));
+            $tr.append($('<th>').text('Sides'));
+            $tr.append($('<th>').text('Status'));
+            $tr.append($('<th>').text('Action'));
+            
+            $thead.append($tr);
+            $table.append($thead);
+
+            const $tbody = $('<tbody>');
+            (state.products || []).forEach(p => {
+                const $tr = $('<tr>');
+                
+                // Product name and description
+                const $td1 = $('<td>');
+                const $div1 = $('<div>');
+                $div1.append($('<div>').text(p.name || '(unnamed)'));
+                $div1.append($('<div>').addClass('aakaari-muted').text((p.description || '').substring(0, 60) + '...'));
+                $td1.append($div1);
+                
+                // Category
+                const $td2 = $('<td>').text(p.category || '');
+                
+                // Price
+                const $td3 = $('<td>').text(p.basePrice ? '₹' + Number(p.basePrice).toFixed(2) : '-');
+                
+                // Sides count
+                const $td4 = $('<td>').text(String((p.sides || []).length));
+                
+                // Status toggle
+                const $td5 = $('<td>');
+                const $statusDiv = $('<div>');
+                const $checkbox = $('<input>').attr({type: 'checkbox'});
+                $checkbox.prop('checked', !!p.isActive);
+                $checkbox.on('change', () => {
+                    p.isActive = $checkbox.prop('checked');
+                });
+                $statusDiv.append($checkbox);
+                $statusDiv.append($('<span>').css('margin-left', '6px').text($checkbox.prop('checked') ? 'Active' : 'Inactive'));
+                $td5.append($statusDiv);
+                
+                // Action button
+                const $td6 = $('<td>');
+                $td6.append(button('Edit', () => openProductModal(cloneDeep(p))));
+                
+                $tr.append($td1, $td2, $td3, $td4, $td5, $td6);
+                $tbody.append($tr);
+            });
+            
+            $table.append($tbody);
+            $list.append($table);
+            $root.append($list);
+        }
+
+        // Helper UI builders
+        function makeCard(title, big, small) {
+            const $card = $('<div>').addClass('aakaari-card');
+            $card.append($('<div>').css({fontWeight: '600', marginBottom: '6px'}).text(title));
+            $card.append($('<div>').css({fontSize: '22px', marginBottom: '4px'}).text(big));
+            $card.append($('<div>').css({fontSize: '12px', color: '#666'}).text(small));
+            return $card;
+        }
+
+        function button(label, cb) {
+            const $button = $('<button>').addClass('aakaari-btn').text(label);
+            $button.on('click', cb);
+            return $button;
+        }
+
+        function cloneDeep(v) {
+            return JSON.parse(JSON.stringify(v));
+        }
+
+        function createEmptyProduct() {
+            return {
+                id: 'p-' + Date.now(),
+                name: '',
+                description: '',
+                basePrice: 0,
+                salePrice: null,
+                category: '',
+                woocommerceId: '',
+                isActive: false,
+                colors: [],
+                availablePrintTypes: [],
+                availableFabrics: [],
+                sides: []
+            };
+        }
+
+        // Modal product editor
+        let currentModal = null;
+        
+        function openProductModal(product) {
+            closeModal();
+
+            const $backdrop = $('<div>').addClass('aakaari-modal-backdrop');
+            const $modal = $('<div>').addClass('aakaari-modal');
+
+            // Left column - product details
+            const $left = $('<div>').css({display: 'grid', gap: '8px', marginBottom: '12px'});
+            $left.append(labeled('Name', inputText(product, 'name')));
+            $left.append(labeled('Description', inputText(product, 'description')));
+            $left.append(labeled('Base Price', inputNumber(product, 'basePrice')));
+            $left.append(labeled('Sale Price', inputNumber(product, 'salePrice')));
+            $left.append(labeled('Category', selectCategory(product)));
+            $left.append(labeled('WooCommerce ID', inputText(product, 'woocommerceId')));
+            $left.append(labeled('Active', checkboxInput(product, 'isActive')));
+
+            // Sides area
+            const $sidesList = $('<div>').attr('id', 'aakaari-sides-list');
+            renderSides(product).forEach(node => $sidesList.append(node));
+            
+            const $addSideBtn = button('Add Side', () => {
+                const s = {
+                    id: 'side-' + Date.now(),
+                    name: 'New Side',
+                    printAreas: [],
+                    restrictionAreas: []
+                };
+                product.sides = product.sides || [];
+                product.sides.push(s);
+                $sidesList.empty();
+                renderSides(product).forEach(node => $sidesList.append(node));
+            });
+
+            // Save / cancel
+            const $actions = $('<div>').css({
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'flex-end',
+                marginTop: '12px'
+            });
+            
+            $actions.append(button('Cancel', closeModal));
+            $actions.append(button('Save', () => {
+                const idx = state.products.findIndex(p => p.id === product.id);
+                if (idx === -1) {
+                    state.products.push(product);
+                } else {
+                    state.products[idx] = product;
+                }
+                closeModal();
+                render();
+            }));
+
+            $modal.append($left);
+            $modal.append($('<div>').append(
+                $('<h3>').text('Sides'),
+                $sidesList,
+                $addSideBtn
+            ));
+            $modal.append($actions);
+
+            $('body').append($backdrop);
+            $('body').append($modal);
+            currentModal = {
+                backdrop: $backdrop,
+                modal: $modal,
+                product: product
+            };
+
+            $backdrop.on('click', closeModal);
+        }
+
+        function closeModal() {
+            if (!currentModal) return;
+            currentModal.modal.remove();
+            currentModal.backdrop.remove();
+            currentModal = null;
+        }
+
+        function labeled(label, inputEl) {
+            const $container = $('<div>');
+            $container.append($('<div>').css({fontWeight: '600', marginBottom: '4px'}).text(label));
+            $container.append(inputEl);
+            return $container;
+        }
+
+        function inputText(obj, prop) {
+            const $input = $('<input>').addClass('aakaari-input').val(obj[prop] || '');
+            $input.on('input', (e) => obj[prop] = $(e.target).val());
+            return $input;
+        }
+
+        function inputNumber(obj, prop) {
+            const $input = $('<input>').addClass('aakaari-input').attr({
+                type: 'number',
+                step: '0.01'
+            }).val((obj[prop] !== null && obj[prop] !== undefined) ? obj[prop] : '');
+            
+            $input.on('input', (e) => {
+                obj[prop] = $(e.target).val() === '' ? null : parseFloat($(e.target).val());
+            });
+            
+            return $input;
+        }
+
+        function checkboxInput(obj, prop) {
+            const $wrap = $('<label>');
+            const $checkbox = $('<input>').attr({type: 'checkbox'});
+            $checkbox.prop('checked', !!obj[prop]);
+            $checkbox.on('change', () => obj[prop] = $checkbox.prop('checked'));
+            $wrap.append($checkbox);
+            return $wrap;
+        }
+
+        function selectCategory(product) {
+            const $select = $('<select>').addClass('aakaari-input');
+            $select.append($('<option>').attr('value', '').text('-- select --'));
+            (state.categories || []).forEach(c => {
+                $select.append($('<option>').attr('value', c.name).text(c.name));
+            });
+            $select.val(product.category || '');
+            $select.on('change', (e) => product.category = $(e.target).val());
+            return $select;
+        }
+
+        function renderSides(product) {
+            const nodes = [];
+            (product.sides || []).forEach((s, idx) => {
+                const $wrap = $('<div>').css({
+                    border: '1px solid #eee',
+                    padding: '8px',
+                    marginBottom: '6px',
+                    borderRadius: '4px'
                 });
                 
-                // Update stats
-                updatePayoutStats(-amount);
-            } else {
-                showToast(response.data.message || 'Failed to process payout', 'error');
-                button.prop('disabled', false).html(originalText);
-            }
-        },
-        error: function() {
-            showToast('Server error. Please try again.', 'error');
-            button.prop('disabled', false).html(originalText);
-        }
-    });
-}
-
-/**
- * Process bulk payouts
- */
-function processBulkPayouts(button) {
-    // Show processing state
-    const originalText = button.html();
-    button.prop('disabled', true).html('Processing...');
-    
-    $.ajax({
-        url: aakaari_admin_ajax.ajax_url,
-        type: 'POST',
-        data: {
-            action: 'process_bulk_payouts',
-            nonce: aakaari_admin_ajax.nonce
-        },
-        success: function(response) {
-            if (response.success) {
-                showToast(response.data.message, 'success');
+                const $nameInput = $('<input>').addClass('aakaari-input').val(s.name);
+                $nameInput.on('input', (e) => s.name = $(e.target).val());
                 
-                // Reload the page to reflect changes
-                setTimeout(function() {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                showToast(response.data.message || 'No eligible payouts found', 'warning');
-                button.prop('disabled', false).html(originalText);
-            }
-        },
-        error: function() {
-            showToast('Server error. Please try again.', 'error');
-            button.prop('disabled', false).html(originalText);
+                const $areasSummary = $('<div>');
+                $areasSummary.append($('<div>').text('Print Areas: ' + ((s.printAreas || []).length)));
+                $areasSummary.append($('<div>').text('Restriction Areas: ' + ((s.restrictionAreas || []).length)));
+                
+                // Button to open full side editor (includes canvas)
+                const $openEditor = button('Open Side Editor', () => openSideEditor(product, idx));
+                
+                const $removeBtn = button('Remove Side', () => {
+                    product.sides.splice(idx, 1);
+                    const $list = $('#aakaari-sides-list');
+                    $list.empty();
+                    renderSides(product).forEach(node => $list.append(node));
+                });
+                
+                $wrap.append($nameInput);
+                $wrap.append($areasSummary);
+                $wrap.append($openEditor);
+                $wrap.append($removeBtn);
+                nodes.push($wrap);
+            });
+            return nodes;
         }
-    });
-}
 
-/**
- * Update payout statistics after processing payouts
- */
-function updatePayoutStats(amountChange) {
-    // Update pending amount display
-    const pendingAmountElement = $('.aakaari-stats-grid').first().find('.aakaari-stat-value').first();
-    const currentAmount = parseFloat(pendingAmountElement.text().replace('₹', '').replace(/,/g, ''));
-    
-    if (!isNaN(currentAmount)) {
-        const newAmount = currentAmount + amountChange;
-        pendingAmountElement.text('₹' + newAmount.toLocaleString());
-    }
-    
-    // Update pending resellers count
-    const pendingResellersElement = $('.aakaari-stats-grid').first().find('.aakaari-stat-trend').first();
-    const currentCount = parseInt(pendingResellersElement.text().split(' ')[0]);
-    
-    if (!isNaN(currentCount) && currentCount > 0) {
-        const newCount = currentCount - 1;
-        pendingResellersElement.text(newCount + ' resellers pending');
-    }
-}
+        /**
+         * Side Editor with Canvas
+         * Ported from React/TSX to jQuery
+         */
+        function openSideEditor(product, sideIndex) {
+            const side = product.sides[sideIndex];
+            if (!side) return;
 
-// In your processBulkPayouts function's success callback:
-if (response.success) {
-    // Populate the modal content
-    let resultContent = `
-        <div class="payout-result-summary">
-            <h4>Payout Summary</h4>
-            <p>Successfully processed ${response.data.successful_payouts.length} payouts</p>
-            <p class="total-amount">Total: ₹${response.data.total_amount.toLocaleString()}</p>
-        </div>
-        
-        <div class="payout-result-list">
-            <h4>Processed Payouts</h4>
-    `;
-    
-    if (response.data.successful_payouts.length > 0) {
-        response.data.successful_payouts.forEach(payout => {
-            resultContent += `
-                <div class="payout-result-item">
-                    <div>${payout.name}</div>
-                    <div class="amount">₹${payout.amount.toLocaleString()}</div>
-                </div>
-            `;
-        });
-    } else {
-        resultContent += `<p>No payouts were processed</p>`;
+            // modal setup
+            const $backdrop = $('<div>').addClass('aakaari-modal-backdrop');
+            const $modal = $('<div>').addClass('aakaari-modal');
+
+            // toolbar
+            const $toolbar = $('<div>').addClass('aakaari-canvas-toolbar');
+            const $selectBtn = button('Select', () => setTool('select'));
+            const $drawPrintBtn = button('Draw Print', () => setTool('draw-print'));
+            const $drawRestrBtn = button('Draw Restriction', () => setTool('draw-restriction'));
+            $toolbar.append($selectBtn, $drawPrintBtn, $drawRestrBtn);
+
+            // canvas wrapper
+            const $canvasWrap = $('<div>').addClass('aakaari-canvas-wrap');
+            const CANVAS_WIDTH = 700;
+            const CANVAS_HEIGHT = 700;
+            const $canvas = $('<canvas>').attr({
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT
+            }).css({
+                cursor: 'default',
+                display: 'block'
+            });
+            $canvasWrap.append($canvas);
+
+            // right panel for area management
+            const $right = $('<div>').css({
+                marginLeft: '12px',
+                minWidth: '240px',
+                maxWidth: '320px'
+            });
+
+            // Add area buttons
+            const $addPrintBtn = button('Add Print Area', () => {
+                side.printAreas = side.printAreas || [];
+                side.printAreas.push({
+                    id: 'area-' + Date.now(),
+                    name: 'Print Area',
+                    x: 50,
+                    y: 50,
+                    width: 120,
+                    height: 120
+                });
+                redraw();
+                refreshSideList();
+            });
+            
+            const $addRestrBtn = button('Add Restriction Area', () => {
+                side.restrictionAreas = side.restrictionAreas || [];
+                side.restrictionAreas.push({
+                    id: 'res-' + Date.now(),
+                    name: 'Restriction',
+                    x: 200,
+                    y: 200,
+                    width: 80,
+                    height: 80
+                });
+                redraw();
+                refreshSideList();
+            });
+
+            $right.append($addPrintBtn, $addRestrBtn, $('<hr>'));
+            const $sideList = $('<div>');
+            $right.append($sideList);
+
+            const $footer = $('<div>').css({
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'flex-end',
+                marginTop: '12px'
+            });
+            
+            $footer.append(button('Close', () => {
+                $backdrop.remove();
+                $modal.remove();
+                render();
+            }));
+            
+            $footer.append(button('Save Side', () => {
+                $backdrop.remove();
+                $modal.remove();
+                render();
+            }));
+
+            // layout
+            const $container = $('<div>').css({
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'flex-start'
+            });
+            $container.append($('<div>').append($toolbar, $canvasWrap));
+            $container.append($right);
+            $modal.append($container);
+            $modal.append($footer);
+
+            $('body').append($backdrop, $modal);
+
+            // Canvas logic state
+            const canvas = $canvas[0];
+            const ctx = canvas.getContext('2d');
+            let toolMode = 'select'; // 'select' | 'draw-print' | 'draw-restriction'
+            let interactionMode = 'none'; // 'none' | 'drawing' | 'moving' | 'resizing'
+            let selectedType = null; // 'print' | 'restriction' | null
+            let selectedIndex = null;
+            let dragStart = null;
+            let tempArea = null;
+            const HANDLE_SIZE = 8;
+            let resizeHandle = null;
+            let hoveredHandle = null;
+            let cursor = 'default';
+
+            function setTool(mode) {
+                toolMode = mode;
+                selectedType = null;
+                selectedIndex = null;
+                interactionMode = 'none';
+                redraw();
+            }
+
+            function redraw() {
+                // clear + bg
+                ctx.fillStyle = '#F8FAFC';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // grid
+                ctx.strokeStyle = '#E2E8F0';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= CANVAS_WIDTH; i += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, CANVAS_HEIGHT);
+                    ctx.stroke();
+                }
+                for (let i = 0; i <= CANVAS_HEIGHT; i += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(CANVAS_WIDTH, i);
+                    ctx.stroke();
+                }
+
+                // draw restriction areas first
+                (side.restrictionAreas || []).forEach((area, idx) => {
+                    ctx.fillStyle = (selectedType === 'restriction' && selectedIndex === idx) ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)';
+                    ctx.fillRect(area.x, area.y, area.width, area.height);
+                    ctx.strokeStyle = '#EF4444';
+                    ctx.lineWidth = (selectedType === 'restriction' && selectedIndex === idx) ? 2 : 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeRect(area.x, area.y, area.width, area.height);
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#EF4444';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(area.name || 'Restriction', area.x + 6, area.y + 15);
+                    if (selectedType === 'restriction' && selectedIndex === idx) drawHandles(area);
+                });
+
+                // draw print areas
+                (side.printAreas || []).forEach((area, idx) => {
+                    ctx.strokeStyle = (selectedType === 'print' && selectedIndex === idx) ? '#F97316' : '#2563EB';
+                    ctx.lineWidth = (selectedType === 'print' && selectedIndex === idx) ? 3 : 2;
+                    ctx.setLineDash([8, 4]);
+                    ctx.strokeRect(area.x, area.y, area.width, area.height);
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = (selectedType === 'print' && selectedIndex === idx) ? '#F97316' : '#2563EB';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(area.name || 'Print', area.x + 6, area.y - 6);
+                    if (selectedType === 'print' && selectedIndex === idx) drawHandles(area);
+                });
+
+                canvas.style.cursor = cursor;
+            }
+
+            function drawHandles(area) {
+                // corners: tl, tr, bl, br; sides: top,right,bottom,left
+                const handles = getHandles(area);
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#333';
+                handles.forEach(h => {
+                    ctx.fillRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+                    ctx.strokeRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+                });
+            }
+
+            function getHandles(area) {
+                const x = area.x,
+                      y = area.y,
+                      w = area.width,
+                      h = area.height;
+                return [{
+                        name: 'tl',
+                        x: x,
+                        y: y
+                    },
+                    {
+                        name: 'tr',
+                        x: x + w,
+                        y: y
+                    },
+                    {
+                        name: 'bl',
+                        x: x,
+                        y: y + h
+                    },
+                    {
+                        name: 'br',
+                        x: x + w,
+                        y: y + h
+                    },
+                    {
+                        name: 'top',
+                        x: x + w / 2,
+                        y: y
+                    },
+                    {
+                        name: 'right',
+                        x: x + w,
+                        y: y + h / 2
+                    },
+                    {
+                        name: 'bottom',
+                        x: x + w / 2,
+                        y: y + h
+                    },
+                    {
+                        name: 'left',
+                        x: x,
+                        y: y + h / 2
+                    }
+                ];
+            }
+
+            function getAreaAtPoint(px, py) {
+                // find topmost (print areas drawn last so select print area first)
+                const printAreas = side.printAreas || [];
+                for (let i = printAreas.length - 1; i >= 0; i--) {
+                    const a = printAreas[i];
+                    if (px >= a.x && px <= a.x + a.width && py >= a.y && py <= a.y + a.height) return {
+                        type: 'print',
+                        index: i,
+                        area: a
+                    };
+                }
+                const resAreas = side.restrictionAreas || [];
+                for (let i = resAreas.length - 1; i >= 0; i--) {
+                    const a = resAreas[i];
+                    if (px >= a.x && px <= a.x + a.width && py >= a.y && py <= a.y + a.height) return {
+                        type: 'restriction',
+                        index: i,
+                        area: a
+                    };
+                }
+                return null;
+            }
+
+            function getHandleUnderPoint(area, px, py) {
+                const handles = getHandles(area);
+                for (const h of handles) {
+                    if (px >= h.x - HANDLE_SIZE / 2 && px <= h.x + HANDLE_SIZE / 2 && py >= h.y - HANDLE_SIZE / 2 && py <= h.y + HANDLE_SIZE / 2) return h.name;
+                }
+                return null;
+            }
+
+            // mouse events
+            $canvas.on('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round(e.clientX - rect.left);
+                const y = Math.round(e.clientY - rect.top);
+
+                if (toolMode === 'draw-print' || toolMode === 'draw-restriction') {
+                    interactionMode = 'drawing';
+                    dragStart = {
+                        x,
+                        y
+                    };
+                    tempArea = {
+                        id: 'tmp',
+                        name: (toolMode === 'draw-print') ? 'New Print' : 'New Restriction',
+                        x,
+                        y,
+                        width: 0,
+                        height: 0
+                    };
+                    redraw();
+                    return;
+                }
+
+                // select mode
+                const hit = getAreaAtPoint(x, y);
+                if (hit) {
+                    selectedType = hit.type;
+                    selectedIndex = hit.index;
+                    const area = hit.area;
+                    const handle = getHandleUnderPoint(area, x, y);
+                    if (handle) {
+                        interactionMode = 'resizing';
+                        resizeHandle = handle;
+                    } else {
+                        interactionMode = 'moving';
+                    }
+                    dragStart = {
+                        x,
+                        y,
+                        origArea: Object.assign({}, area)
+                    };
+                } else {
+                    selectedType = null;
+                    selectedIndex = null;
+                    interactionMode = 'none';
+                }
+                redraw();
+                refreshSideList();
+            });
+
+            $canvas.on('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round(e.clientX - rect.left);
+                const y = Math.round(e.clientY - rect.top);
+
+                // drawing
+                if (interactionMode === 'drawing' && dragStart && tempArea) {
+                    const nx = Math.min(dragStart.x, x);
+                    const ny = Math.min(dragStart.y, y);
+                    const nw = Math.abs(x - dragStart.x);
+                    const nh = Math.abs(y - dragStart.y);
+                    tempArea.x = nx;
+                    tempArea.y = ny;
+                    tempArea.width = nw;
+                    tempArea.height = nh;
+                    // preview: draw existing then temp
+                    redraw();
+                    // draw temp rectangle overlay
+                    ctx.setLineDash([6, 4]);
+                    ctx.strokeStyle = (toolMode === 'draw-print') ? '#2563EB' : '#EF4444';
+                    ctx.strokeRect(tempArea.x, tempArea.y, tempArea.width, tempArea.height);
+                    ctx.setLineDash([]);
+                    return;
+                }
+
+                // moving
+                if (interactionMode === 'moving' && dragStart && selectedType !== null && selectedIndex !== null) {
+                    const dx = x - dragStart.x;
+                    const dy = y - dragStart.y;
+                    const areaList = selectedType === 'print' ? side.printAreas : side.restrictionAreas;
+                    const area = areaList[selectedIndex];
+                    area.x = Math.max(0, dragStart.origArea.x + dx);
+                    area.y = Math.max(0, dragStart.origArea.y + dy);
+                    redraw();
+                    refreshSideList();
+                    return;
+                }
+
+                // resizing
+                if (interactionMode === 'resizing' && dragStart && resizeHandle && selectedType !== null && selectedIndex !== null) {
+                    const areaList = selectedType === 'print' ? side.printAreas : side.restrictionAreas;
+                    const area = areaList[selectedIndex];
+                    const ox = dragStart.origArea.x,
+                          oy = dragStart.origArea.y,
+                          ow = dragStart.origArea.width,
+                          oh = dragStart.origArea.height;
+                    let nx = ox,
+                        ny = oy,
+                        nw = ow,
+                        nh = oh;
+                    if (resizeHandle.includes('l')) {
+                        nx = Math.min(ox + ow - 10, x);
+                        nw = Math.max(10, ox + ow - nx);
+                    }
+                    if (resizeHandle.includes('r')) {
+                        nw = Math.max(10, x - ox);
+                    }
+                    if (resizeHandle.includes('t')) {
+                        ny = Math.min(oy + oh - 10, y);
+                        nh = Math.max(10, oy + oh - ny);
+                    }
+                    if (resizeHandle.includes('b')) {
+                        nh = Math.max(10, y - oy);
+                    }
+                    area.x = Math.max(0, nx);
+                    area.y = Math.max(0, ny);
+                    area.width = Math.max(10, nw);
+                    area.height = Math.max(10, nh);
+                    redraw();
+                    refreshSideList();
+                    return;
+                }
+
+                // hover handle detection (for cursor)
+                const hit = getAreaAtPoint(x, y);
+                if (hit) {
+                    const area = hit.area;
+                    const handle = getHandleUnderPoint(area, x, y);
+                    if (handle) {
+                        cursor = 'nwse-resize';
+                    } else cursor = 'move';
+                } else {
+                    cursor = 'default';
+                }
+                canvas.style.cursor = cursor;
+            });
+
+            $canvas.on('mouseup', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round(e.clientX - rect.left);
+                const y = Math.round(e.clientY - rect.top);
+
+                if (interactionMode === 'drawing' && tempArea) {
+                    if (tempArea.width >= 8 && tempArea.height >= 8) {
+                        if (toolMode === 'draw-print') {
+                            side.printAreas = side.printAreas || [];
+                            side.printAreas.push(Object.assign({}, tempArea, {
+                                id: 'area-' + Date.now()
+                            }));
+                        } else {
+                            side.restrictionAreas = side.restrictionAreas || [];
+                            side.restrictionAreas.push(Object.assign({}, tempArea, {
+                                id: 'res-' + Date.now()
+                            }));
+                        }
+                    }
+                    tempArea = null;
+                    interactionMode = 'none';
+                    dragStart = null;
+                    redraw();
+                    refreshSideList();
+                    return;
+                }
+
+                if (interactionMode === 'moving' || interactionMode === 'resizing') {
+                    interactionMode = 'none';
+                    resizeHandle = null;
+                    dragStart = null;
+                }
+            });
+
+            // side list + edit controls
+            function refreshSideList() {
+                $sideList.empty();
+
+                // Print Areas
+                const $printHeader = $('<div>').append($('<strong>').text('Print Areas'));
+                $sideList.append($printHeader);
+                
+                (side.printAreas || []).forEach((area, i) => {
+                    const $row = $('<div>').css({
+                        border: '1px solid #eee',
+                        padding: '6px',
+                        margin: '6px 0',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    });
+                    
+                    const $info = $('<div>').append(
+                        $('<div>').append($('<strong>').text(area.name || ('Print ' + (i + 1)))),
+                        $('<div>').css('font-size', '12px').css('color', '#666').text(`${area.width}×${area.height} @ (${area.x},${area.y})`)
+                    );
+                    
+                    const $actions = $('<div>');
+                    $actions.append(button('Select', () => {
+                        selectedType = 'print';
+                        selectedIndex = i;
+                        redraw();
+                    }));
+                    $actions.append(button('Delete', () => {
+                        side.printAreas.splice(i, 1);
+                        if (selectedType === 'print' && selectedIndex === i) {
+                            selectedType = null;
+                            selectedIndex = null;
+                        }
+                        redraw();
+                        refreshSideList();
+                    }));
+                    
+                    $row.append($info, $actions);
+                    $sideList.append($row);
+                });
+
+                // Restriction Areas
+                const $resHeader = $('<div>').append($('<strong>').text('Restriction Areas'));
+                $sideList.append($resHeader);
+                
+                (side.restrictionAreas || []).forEach((area, i) => {
+                    const $row = $('<div>').css({
+                        border: '1px solid #fee',
+                        padding: '6px',
+                        margin: '6px 0',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    });
+                    
+                    const $info = $('<div>').append(
+                        $('<div>').append($('<strong>').text(area.name || ('Restr ' + (i + 1)))),
+                        $('<div>').css('font-size', '12px').css('color', '#666').text(`${area.width}×${area.height} @ (${area.x},${area.y})`)
+                    );
+                    
+                    const $actions = $('<div>');
+                    $actions.append(button('Select', () => {
+                        selectedType = 'restriction';
+                        selectedIndex = i;
+                        redraw();
+                    }));
+                    $actions.append(button('Delete', () => {
+                        side.restrictionAreas.splice(i, 1);
+                        if (selectedType === 'restriction' && selectedIndex === i) {
+                            selectedType = null;
+                            selectedIndex = null;
+                        }
+                        redraw();
+                        refreshSideList();
+                    }));
+                    
+                    $row.append($info, $actions);
+                    $sideList.append($row);
+                });
+            }
+
+            refreshSideList();
+            redraw();
+        }
+
+        /**
+         * Show toast notification for Custom Products
+         */
+        function showToast(message, type = 'info') {
+            // Create toast element if it doesn't exist
+            if ($('#aakaari-toast').length === 0) {
+                $('body').append(`
+                    <div id="aakaari-toast" class="aakaari-toast">
+                        <div class="aakaari-toast-message"></div>
+                    </div>
+                `);
+                
+                // Add toast styles
+                $('<style>')
+                    .prop('type', 'text/css')
+                    .html(`
+                        .aakaari-toast {
+                            position: fixed;
+                            bottom: 1rem;
+                            right: 1rem;
+                            background-color: white;
+                            border-radius: 0.375rem;
+                            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                            padding: 1rem 1.5rem;
+                            min-width: 20rem;
+                            transform: translateY(10px);
+                            opacity: 0;
+                            transition: all 0.2s ease;
+                            z-index: 100;
+                            border-left: 4px solid #2563eb;
+                        }
+                        .aakaari-toast.show {
+                            transform: translateY(0);
+                            opacity: 1;
+                        }
+                        .aakaari-toast.success {
+                            border-left-color: #10b981;
+                        }
+                        .aakaari-toast.error {
+                            border-left-color: #ef4444;
+                        }
+                        .aakaari-toast.warning {
+                            border-left-color: #f59e0b;
+                        }
+                    `)
+                    .appendTo('head');
+            }
+            const toast = $('#aakaari-toast');
+            const toastMessage = toast.find('.aakaari-toast-message');
+            
+            // Set message and type
+            toastMessage.text(message);
+            toast.removeClass('success error warning').addClass(type);
+            
+            // Show toast
+            toast.addClass('show');
+            
+            // Hide after delay
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                toast.removeClass('show');
+            }, 3000);
+        }
+
+        // Start the fetch data process
+        fetchData();
     }
-    
-    resultContent += `</div>`;
-    
-    if (response.data.failed_payouts.length > 0) {
-        resultContent += `
-            <div class="payout-errors">
-                <h4>Failed Payouts (${response.data.failed_payouts.length})</h4>
-                <ul>
-        `;
-        
-        response.data.failed_payouts.forEach(failed => {
-            resultContent += `<li>${failed.name}: ${failed.error}</li>`;
-        });
-        
-        resultContent += `</ul></div>`;
-    }
-    
-    // Show the modal with results
-    $('#payoutResultContent').html(resultContent);
-    $('#payoutResultModal').addClass('active');
-    
-    // Add a close handler for the modal
-    $('#closePayoutResultBtn').on('click', function() {
-        $('#payoutResultModal').removeClass('active');
-        // Reload the page after closing the modal
-        window.location.reload();
-    });
-}
 })(jQuery);
