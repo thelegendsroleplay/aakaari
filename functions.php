@@ -41,9 +41,10 @@ $required_files = array(
     'admin-login-functions.php',
     'admin-dashboard-functions.php',
     'print-studio-init.php',
-    'shop-page-setup.php',
+    'print-studio-ajax.php',
     'product-customizer-functions.php',
-    'product-customizer-cart.php',
+    'cp-functions.php',
+
 );
 
 // Load each file with error checking

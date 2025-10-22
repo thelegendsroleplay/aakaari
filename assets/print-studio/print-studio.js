@@ -1,7 +1,8 @@
-/* assets/print-studio/print-studio.js
-   - Updated renderSideModal() to use <input type="file">
-   - Updated delegatedChange() to handle file uploads
-*/
+/*
+ * assets/print-studio/print-studio.js
+ * - Merged WooCommerce API functionality (data loading, saving, deleting)
+ * - Merged file upload logic for product sides
+ */
 (function () {
   'use strict';
 
@@ -10,69 +11,11 @@
     const APP_ROOT = document.getElementById('custom-print-studio-app');
     if (!APP_ROOT) return; // only run where the container exists
 
-    // --- App state (from original) ---
+    // --- App state (from WooCommerce update) ---
     let appState = {
       activeTab: 'products',
       editingProduct: null, // This will be a DEEP COPY of the product being edited
-      products: [
-        {
-          id: 'prod-1',
-          name: 'Classic Unisex T-Shirt',
-          description: 'A comfortable and stylish t-shirt for everyday wear.',
-          basePrice: 15.00,
-          salePrice: 12.50,
-          category: 'T-Shirts',
-          woocommerceId: 'wc-101',
-          isActive: true,
-          colors: ['#000000', '#FFFFFF', '#FF0000'],
-          availablePrintTypes: ['print-1'],
-          sides: [
-            {
-              id: 'side-1',
-              name: 'Front',
-              imageUrl: 'https://i.imgur.com/2s4P2c5.png',
-              printAreas: [
-                { id: 'area-1', name: 'Center Chest', x: 150, y: 100, width: 200, height: 300 }
-              ],
-              restrictionAreas: [
-                { id: 'rest-1', name: 'Collar', x: 180, y: 20, width: 140, height: 50 }
-              ],
-            },
-            {
-              id: 'side-2',
-              name: 'Back',
-              imageUrl: 'https://i.imgur.com/Ph6p2tq.png',
-              printAreas: [
-                { id: 'area-2', name: 'Full Back', x: 100, y: 100, width: 300, height: 400 }
-              ],
-              restrictionAreas: [],
-            }
-          ]
-        },
-        {
-          id: 'prod-2',
-          name: 'Premium Hoodie',
-          description: 'Heavyweight hoodie for maximum comfort.',
-          basePrice: 35.00,
-          salePrice: null,
-          category: 'Hoodies',
-          woocommerceId: 'wc-102',
-          isActive: false,
-          colors: ['#000000', '#3B82F6'],
-          availablePrintTypes: ['print-1', 'print-2'],
-          sides: [
-            {
-              id: 'side-3',
-              name: 'Front',
-              imageUrl: '',
-              printAreas: [
-                { id: 'area-3', name: 'Left Chest', x: 80, y: 120, width: 100, height: 100 }
-              ],
-              restrictionAreas: [],
-            }
-          ]
-        }
-      ],
+      products: [], // Will load from WooCommerce
       fabrics: [
         { id: 'fab-1', name: '100% Cotton', description: 'Standard soft cotton, 180 GSM.', price: 0 },
         { id: 'fab-2', name: 'Premium Tri-Blend', description: 'A soft, durable blend of three fabrics.', price: 2.50 }
@@ -81,14 +24,135 @@
         { id: 'print-1', name: 'DTF (Direct to Film)', description: 'Vibrant colors, durable finish.', pricingModel: 'per-inch', price: 0.15 },
         { id: 'print-2', name: 'Embroidery', description: 'Stitched design for a premium look.', pricingModel: 'fixed', price: 8.00 }
       ],
-      categories: [{ id: 'cat-1', name: 'T-Shirts' }, { id: 'cat-2', name: 'Hoodies' }, { id: 'cat-3', name: 'Mugs' }],
-      wooCommerceColors: [
-        { name: 'Black', hex: '#000000' }, { name: 'White', hex: '#FFFFFF' }, { name: 'Red', hex: '#FF0000' },
-        { name: 'Blue', hex: '#3B82F6' }, { name: 'Green', hex: '#22C55E' }, { name: 'Heather Grey', hex: '#E5E7EB' }
-      ]
+      categories: [], // Will load from WooCommerce
+      wooCommerceColors: [] // Will load from WooCommerce
     };
 
-    // --- Temporary / Form state ---
+    // --- NEW: Add WooCommerce API methods ---
+    const wooCommerceAPI = {
+      // Load categories from WooCommerce
+      loadCategories: function () {
+        return jQuery.ajax({
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_get_categories',
+            nonce: AakaariPS.nonce
+          }
+        }).then(function (response) {
+          if (response.success && response.data) {
+            appState.categories = response.data;
+          }
+          return response;
+        });
+      },
+
+      // Load colors from WooCommerce
+      loadColors: function () {
+        return jQuery.ajax({
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_get_colors',
+            nonce: AakaariPS.nonce
+          }
+        }).then(function (response) {
+          if (response.success && response.data) {
+            appState.wooCommerceColors = response.data;
+          }
+          return response;
+        });
+      },
+
+      // Save product to WooCommerce
+      saveProduct: function (product) {
+        return jQuery.ajax({
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_save_product',
+            nonce: AakaariPS.nonce,
+            product_data: JSON.stringify(product)
+          }
+        }).then(function (response) {
+          if (response.success && response.data) {
+            // Update product with new WooCommerce ID
+            product.woocommerceId = response.data.woocommerce_id;
+          }
+          return response;
+        });
+      },
+
+      // Update product status
+      updateProductStatus: function (productId, isActive) {
+        return jQuery.ajax({
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_update_status',
+            nonce: AakaariPS.nonce,
+            product_id: productId,
+            is_active: isActive ? 1 : 0
+          }
+        });
+      },
+
+      // Save category to WooCommerce
+      saveCategory: function (category) {
+        return jQuery.ajax({
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_save_category',
+            nonce: AakaariPS.nonce,
+            category_data: JSON.stringify(category)
+          }
+        });
+      },
+
+      // Delete category from WooCommerce
+      deleteCategory: function (categoryId) {
+        return jQuery.ajax({
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_delete_category',
+            nonce: AakaariPS.nonce,
+            category_id: categoryId
+          }
+        });
+      }
+    };
+
+    // --- NEW: Initialize with WooCommerce data ---
+    function initWithWooCommerceData() {
+      // Show loading state
+      APP_ROOT.innerHTML = `
+        <div class="ps-card">
+          <h3>Loading Custom Print Studio...</h3>
+          <p class="ps-helper">Loading data from WooCommerce...</p>
+        </div>
+      `;
+
+      // Load categories and colors in parallel
+      Promise.all([
+        wooCommerceAPI.loadCategories(),
+        wooCommerceAPI.loadColors()
+      ]).then(function () {
+        // Now that we have categories and colors, render the app
+        renderApp();
+      }).catch(function (error) {
+        APP_ROOT.innerHTML = `
+          <div class="ps-card">
+            <h3>Error Loading Print Studio</h3>
+            <p class="ps-helper">There was an error loading data from WooCommerce. Please try refreshing the page.</p>
+            <p class="ps-helper">Error: ${error.message || 'Unknown error'}</p>
+          </div>
+        `;
+      });
+    }
+
+    // --- Temporary / Form state (from original) ---
     let tempState = {
       productForm: {},
       sideForm: {},
@@ -101,7 +165,7 @@
       editingSideId: null,
     };
 
-    // --- Canvas-specific state ---
+    // --- Canvas-specific state (from original) ---
     let canvasState = {
       ctx: null,
       canvas: null,
@@ -120,7 +184,7 @@
       CANVAS_HEIGHT: 500,
     };
 
-    // ---------- Utils ----------
+    // ---------- Utils (from original) ----------
     function generateId(prefix = 'id') {
       return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
@@ -130,7 +194,7 @@
       return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
 
-    // ---------- Main Rendering ----------
+    // ---------- Main Rendering (from original) ----------
     function renderApp() {
       const viewHtml = appState.editingProduct ? renderEditorView(appState.editingProduct) : renderDashboardView();
 
@@ -189,11 +253,11 @@
       const side = product.sides[canvasState.selectedSideIndex] || null;
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-            <div>
-              <h3>Edit: ${escapeHtml(product.name)}</h3>
-              <p class="ps-helper">${escapeHtml(product.description || 'No description.')}</p>
-            </div>
-            <button class="ps-btn ps-btn--outline" data-action="show-product-modal" data-product-id="${product.id}">Edit Details</button>
+          <div>
+            <h3>Edit: ${escapeHtml(product.name)}</h3>
+            <p class="ps-helper">${escapeHtml(product.description || 'No description.')}</p>
+          </div>
+          <button class="ps-btn ps-btn--outline" data-action="show-product-modal" data-product-id="${product.id}">Edit Details</button>
         </div>
 
         <div style="display:grid; gap:.75rem;">
@@ -319,14 +383,14 @@
           <div>
             <strong>All Areas on This Side</strong>
             <div class="ps-area-list">
-              ${(side && (side.printAreas || []).length > 0) ? 
-                side.printAreas.map((a, idx) => renderAreaListItem(a, idx, 'printArea')).join('') : 
-                '<p class="ps-helper">No print areas.</p>'}
+              ${(side && (side.printAreas || []).length > 0) ?
+        side.printAreas.map((a, idx) => renderAreaListItem(a, idx, 'printArea')).join('') :
+        '<p class="ps-helper">No print areas.</p>'}
             </div>
             <div class="ps-area-list">
-              ${(side && (side.restrictionAreas || []).length > 0) ? 
-                side.restrictionAreas.map((a, idx) => renderAreaListItem(a, idx, 'restrictionArea')).join('') : 
-                '<p class="ps-helper">No restriction areas.</p>'}
+              ${(side && (side.restrictionAreas || []).length > 0) ?
+        side.restrictionAreas.map((a, idx) => renderAreaListItem(a, idx, 'restrictionArea')).join('') :
+        '<p class="ps-helper">No restriction areas.</p>'}
             </div>
           </div>
         </div>
@@ -349,7 +413,7 @@
       `;
     }
 
-    // ---------- Dashboard Tab Renderers ----------
+    // ---------- Dashboard Tab Renderers (from original) ----------
     function renderTabs() {
       const tabs = [
         { id: 'products', label: 'Products', icon: 'package' },
@@ -518,7 +582,7 @@
       `;
     }
 
-    // ---------- Modal Renderers ----------
+    // ---------- Modal Renderers (from original) ----------
     function renderModal(title, content, footer) {
       return `
         <div class="dialog-content" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
@@ -712,6 +776,7 @@
       return renderModal(title, content, footer);
     }
     
+    // --- UPDATED (from file upload logic) ---
     function renderSideModal() {
       const isEditing = !!tempState.editingSideId;
       const form = tempState.sideForm;
@@ -745,7 +810,7 @@
       return renderModal(title, content, footer);
     }
 
-    // ---------- Canvas init & draw ----------
+    // ---------- Canvas init & draw (from original) ----------
     function initCanvasEditor() {
       const canvas = document.getElementById('print-area-canvas');
       if (!canvas) return;
@@ -931,7 +996,7 @@
         if (canvasState.interactionMode === 'drawing') return 'crosshair';
         if (canvasState.interactionMode === 'moving') return 'move';
         if (canvasState.interactionMode === 'resizing') {
-             const cursors = {
+            const cursors = {
                 'tl': 'nwse-resize', 'tm': 'ns-resize', 'tr': 'nesw-resize',
                 'ml': 'ew-resize', 'mr': 'ew-resize',
                 'bl': 'nesw-resize', 'bm': 'ns-resize', 'br': 'nwse-resize'
@@ -955,7 +1020,7 @@
       return appState.editingProduct.sides[canvasState.selectedSideIndex] || null;
     }
 
-    // ---------- Canvas Event Handlers ----------
+    // ---------- Canvas Event Handlers (from original) ----------
     function handleCanvasMouseDown(e) {
         const pos = getCanvasCoordinates(e);
         const side = getCurrentSide();
@@ -1200,7 +1265,7 @@
         }
     }
 
-    // ---------- Event handling (delegation) ----------
+    // ---------- Event handling (delegation) (from original) ----------
     function setupListeners() {
       // Use event delegation on APP_ROOT
       APP_ROOT.removeEventListener('click', delegatedClick);
@@ -1349,43 +1414,59 @@
       }
     }
     
+    // --- MERGED (from WooCommerce + file upload logic) ---
     function delegatedChange(e) {
-        const target = e.target;
-        const data = target.dataset;
-        const action = target.getAttribute('data-action');
-        
-        // Product active toggle switch
-        if (action === 'toggle-product-active') {
-            const prod = appState.products.find(p => p.id === data.productId);
-            if (prod) prod.isActive = target.checked;
+      const target = e.target;
+      const data = target.dataset;
+      const action = target.getAttribute('data-action');
+      
+      // --- (from WooCommerce update) ---
+      // Product active toggle switch
+      if (action === 'toggle-product-active') {
+        const prod = appState.products.find(p => p.id === data.productId);
+        if (prod) {
+          prod.isActive = target.checked;
+          
+          // Update status in WooCommerce
+          if (prod.woocommerceId) {
+            wooCommerceAPI.updateProductStatus(prod.woocommerceId, prod.isActive).catch(function(error) {
+              alert('Error updating product status: ' + error.message);
+              // Revert UI if there's an error
+              target.checked = !target.checked;
+              prod.isActive = !prod.isActive;
+            });
+          }
         }
-        
-        // Modal Form Inputs (for selects)
-        if (data.form && data.prop && target.tagName === 'SELECT') {
-             tempState[data.form][data.prop] = target.value;
-        }
-        
-        // *** NEW: Handle side image file upload in the modal ***
-        if (target.id === 'side-imageUpload' && target.files && target.files[0]) {
-            const file = target.files[0];
-            
-            // If there's an old blob URL, revoke it to prevent memory leaks
-            if (tempState.sideForm.imageUrl && tempState.sideForm.imageUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(tempState.sideForm.imageUrl);
-            }
-            
-            // Create a local URL for the selected file
-            const localUrl = URL.createObjectURL(file);
-            
-            // Update the temp form state
-            tempState.sideForm.imageUrl = localUrl;
-            
-            // Update the helper text to show the new file name
-            const helperText = document.getElementById('current-image-name');
-            if (helperText) {
-                helperText.textContent = `New file: ${file.name}`;
-            }
-        }
+      }
+      
+      // --- (from original) ---
+      // Modal Form Inputs (for selects)
+      if (data.form && data.prop && target.tagName === 'SELECT') {
+           tempState[data.form][data.prop] = target.value;
+      }
+      
+      // --- (from file upload update) ---
+      // Handle side image file upload in the modal
+      if (target.id === 'side-imageUpload' && target.files && target.files[0]) {
+          const file = target.files[0];
+          
+          // If there's an old blob URL, revoke it to prevent memory leaks
+          if (tempState.sideForm.imageUrl && tempState.sideForm.imageUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(tempState.sideForm.imageUrl);
+          }
+          
+          // Create a local URL for the selected file
+          const localUrl = URL.createObjectURL(file);
+          
+          // Update the temp form state
+          tempState.sideForm.imageUrl = localUrl;
+          
+          // Update the helper text to show the new file name
+          const helperText = document.getElementById('current-image-name');
+          if (helperText) {
+              helperText.textContent = `New file: ${file.name}`;
+          }
+      }
     }
     
     function resetCanvasState(fullReset = true) {
@@ -1400,7 +1481,7 @@
         canvasState.loadedImage = null;
     }
 
-    // ---------- Handlers (Dashboard) ----------
+    // ---------- Handlers (Dashboard) (from original) ----------
     function handleAddNewProduct() {
       const newProd = { 
         id: generateId('prod'), 
@@ -1501,36 +1582,64 @@
       showModal(renderCategoryModal());
     }
     
+    // --- REPLACED (with WooCommerce update) ---
     function handleSaveCategory() {
       const form = tempState.categoryForm;
       if (!form.name) return alert('Category name is required.');
       
-      if (tempState.editingCategoryId) {
-        const index = appState.categories.findIndex(c => c.id === tempState.editingCategoryId);
-        if (index > -1) appState.categories[index] = { ...form };
-      } else {
-        appState.categories.push({ ...form, id: generateId('cat') });
-      }
-      closeModal();
-      renderApp();
+      // Save to WooCommerce
+      wooCommerceAPI.saveCategory(form).then(function(response) {
+        if (response.success && response.data) {
+          if (tempState.editingCategoryId) {
+            const index = appState.categories.findIndex(c => c.id === tempState.editingCategoryId);
+            if (index > -1) {
+              appState.categories[index] = response.data;
+            }
+          } else {
+            appState.categories.push(response.data);
+          }
+          closeModal();
+          renderApp();
+        } else {
+          alert('Error saving category: ' + (response.data || 'Unknown error'));
+        }
+      }).catch(function(error) {
+        alert('Error saving category: ' + error.message);
+      });
     }
     
+    // --- REPLACED (with WooCommerce update) ---
     function handleDelete(type, id) {
-        const typeMap = {
-            'fabric': { stateKey: 'fabrics', name: 'Fabric' },
-            'printType': { stateKey: 'printTypes', name: 'Print Type' },
-            'category': { stateKey: 'categories', name: 'Category' },
-        };
-        const config = typeMap[type];
-        if (!config) return;
+      const typeMap = {
+        'fabric': { stateKey: 'fabrics', name: 'Fabric' },
+        'printType': { stateKey: 'printTypes', name: 'Print Type' },
+        'category': { stateKey: 'categories', name: 'Category' },
+      };
+      const config = typeMap[type];
+      if (!config) return;
 
-        if (confirm(`Are you sure you want to delete this ${config.name}?`)) {
-            appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
-            renderApp();
+      if (confirm(`Are you sure you want to delete this ${config.name}?`)) {
+        if (type === 'category') {
+          // Delete from WooCommerce
+          wooCommerceAPI.deleteCategory(id).then(function(response) {
+            if (response.success) {
+              appState.categories = appState.categories.filter(item => item.id !== id);
+              renderApp();
+            } else {
+              alert('Error deleting category: ' + (response.data || 'Unknown error'));
+            }
+          }).catch(function(error) {
+            alert('Error deleting category: ' + error.message);
+          });
+        } else {
+          // Local deletion for non-WooCommerce items
+          appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
+          renderApp();
         }
+      }
     }
 
-    // ---------- Handlers (Editor) ----------
+    // ---------- Handlers (Editor) (from original) ----------
     function handleShowProductModal() {
       // Load editing product data into the form
       tempState.productForm = JSON.parse(JSON.stringify(appState.editingProduct));
@@ -1554,21 +1663,48 @@
       renderApp(); // Re-render editor to show new name, etc.
     }
     
+    // --- REPLACED (with WooCommerce update) ---
     function handleSaveProductMain() {
-        // This is the "main" save button, not the modal
-        const product = appState.editingProduct;
-        if (!product.name) return alert('Product name is required.');
-        if (!product.sides || product.sides.length === 0) return alert('Product must have at least one side.');
-        
-        const index = appState.products.findIndex(p => p.id === product.id);
-        if (index > -1) {
+      const product = appState.editingProduct;
+      if (!product.name) return alert('Product name is required.');
+      if (!product.sides || product.sides.length === 0) return alert('Product must have at least one side.');
+      
+      // Show saving indicator
+      const saveBtn = document.querySelector('[data-action="save-product-main"]');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<i data-lucide="loader" class="ps-icon rotating"></i> Saving...';
+      saveBtn.disabled = true;
+
+      // Save to WooCommerce first
+      wooCommerceAPI.saveProduct(product).then(function(response) {
+        if (response.success) {
+          // Update with new WooCommerce ID if received
+          if (response.data && response.data.woocommerce_id) {
+            product.woocommerceId = response.data.woocommerce_id;
+          }
+
+          const index = appState.products.findIndex(p => p.id === product.id);
+          if (index > -1) {
             // Save the deep copy back to the main state
             appState.products[index] = JSON.parse(JSON.stringify(product));
+          } else {
+            // It's new, add to products array
+            appState.products.push(JSON.parse(JSON.stringify(product)));
+          }
+          
+          appState.editingProduct = null;
+          resetCanvasState();
+          renderApp();
+        } else {
+          alert('Error saving product: ' + (response.data || 'Unknown error'));
+          saveBtn.innerHTML = originalText;
+          saveBtn.disabled = false;
         }
-        
-        appState.editingProduct = null;
-        resetCanvasState();
-        renderApp();
+      }).catch(function(error) {
+        alert('Error saving product: ' + error.message);
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      });
     }
     
     function handleAddSide() {
@@ -1617,7 +1753,7 @@
                 const oldSide = appState.editingProduct.sides[index];
                 appState.editingProduct.sides[index] = { 
                     ...oldSide, // This keeps printAreas, restrictionAreas
-                    ...form      // This updates name, imageUrl
+                    ...form     // This updates name, imageUrl
                 };
             }
         } else {
@@ -1631,7 +1767,7 @@
         renderApp();
     }
     
-    // ---------- Handlers (Canvas Sidebar) ----------
+    // ---------- Handlers (Canvas Sidebar) (from original) ----------
     function handleDeleteArea() {
       const side = getCurrentSide();
       if (!side || canvasState.selectedType === null || canvasState.selectedIndex === null) return;
@@ -1640,11 +1776,11 @@
       const area = areaArray[canvasState.selectedIndex];
       
       if (confirm(`Are you sure you want to delete "${escapeHtml(area.name)}"?`)) {
-          areaArray.splice(canvasState.selectedIndex, 1);
-          canvasState.selectedType = null;
-          canvasState.selectedIndex = null;
-          renderCanvasSidebarAndIcons();
-          drawCanvas();
+        areaArray.splice(canvasState.selectedIndex, 1);
+        canvasState.selectedType = null;
+        canvasState.selectedIndex = null;
+        renderCanvasSidebarAndIcons();
+        drawCanvas();
       }
     }
     
@@ -1670,7 +1806,7 @@
       drawCanvas();
     }
 
-    // ---------- Modal Helpers ----------
+    // ---------- Modal Helpers (from original) ----------
     function showModal(modalHtml) {
       const overlay = document.getElementById('ps-modal-overlay');
       overlay.innerHTML = modalHtml;
@@ -1703,8 +1839,14 @@
       tempState.editingSideId = null;
     }
 
-    // ---------- kickoff ----------
-    renderApp();
+    // ---------- kickoff (REPLACED with WooCommerce logic) ----------
+    if (typeof AakaariPS !== 'undefined' && AakaariPS.is_woocommerce_active) {
+      initWithWooCommerceData();
+    } else {
+      // Fallback to regular initialization with default data
+      console.warn("WooCommerce data (AakaariPS) not found. Running in fallback mode.");
+      renderApp();
+    }
     
     // Expose some small API for debugging if needed:
     window.AakaariPrintStudio = { appState, tempState, canvasState };

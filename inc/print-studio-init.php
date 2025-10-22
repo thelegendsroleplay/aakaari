@@ -35,20 +35,21 @@ add_action( 'wp_enqueue_scripts', function() {
     wp_enqueue_script( 'lucide-icons', 'https://unpkg.com/lucide@latest', array(), null, true );
 
     // JS - depends on lucide
-    wp_enqueue_script(
+wp_enqueue_script(
         'aakaari-print-studio',
         $asset_dir . '/print-studio.js',
-        array('lucide-icons'),
-        filemtime( get_template_directory() . '/assets/print-studio/print-studio.js' ),
+        array('jquery', 'lucide-icons'), // <-- MODIFIED: Added 'jquery'
+        filemtime(get_template_directory() . '/assets/print-studio/print-studio.js'),
         true
     );
 
     // Pass WP data to script (nonce + ajax if needed later)
-    wp_localize_script( 'aakaari-print-studio', 'AakaariPS', array(
-        'ajax_url' => admin_url( 'admin-ajax.php' ),
-        'nonce'    => wp_create_nonce( 'aakaari_print_studio_nonce' ),
-        'siteUrl'  => get_site_url(),
-    ) );
+     wp_localize_script( 'aakaari-print-studio', 'AakaariPS', array(
+         'ajax_url' => admin_url( 'admin-ajax.php' ),
+         // Make sure the nonce name here MATCHES the one checked in PHP
+         'nonce'    => wp_create_nonce( 'aakaari_print_studio_nonce' ), 
+         'siteUrl'  => get_site_url(),
+     ) );
 } );
 
 /**
