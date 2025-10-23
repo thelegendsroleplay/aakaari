@@ -61,6 +61,7 @@
         setupCanvas();
         setupSideSelector();
         setupColorSelector();
+        setupFabricSelector();
         setupPrintTypeSelector();
         setupEventListeners();
         
@@ -167,6 +168,54 @@
         console.log('Color selector setup complete with', colors.length, 'colors');
     }
     
+    function setupFabricSelector() {
+        // Get fabrics for this product
+        const fabrics = state.product.fabrics || [];
+        const fabricContainer = $('#fabric-selector-container');
+        
+        console.log('Setting up fabric selector with fabrics:', fabrics);
+        
+        // Hide selector if no fabrics
+        if (fabrics.length === 0) {
+            $('#fabric-selector-card').addClass('hidden');
+            console.log('Fabric selector hidden - no fabrics available');
+            return;
+        }
+        
+        // Show the fabric selector card
+        $('#fabric-selector-card').removeClass('hidden');
+        
+        // Clear fabric container
+        fabricContainer.empty();
+        
+        // Add fabric options
+        fabrics.forEach((fabric, index) => {
+            const isSelected = index === 0; // Select first fabric by default
+            const fabricPrice = fabric.price ? ` (+$${parseFloat(fabric.price).toFixed(2)})` : '';
+            const fabricDesc = fabric.description ? `<div style="color:#6B7280; font-size:12px; margin-top:2px;">${fabric.description}</div>` : '';
+            
+            console.log(`Adding fabric option: ${fabric.name} - Price: ${fabric.price}`);
+            
+            const fabricHtml = `
+                <div class="design-item ${isSelected ? 'selected' : ''}" data-fabric="${index}" style="cursor:pointer; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:600;">${fabric.name}${fabricPrice}</div>
+                        ${fabricDesc}
+                    </div>
+                    <div style="width:20px; height:20px; border:2px solid ${isSelected ? 'var(--primary)' : '#E5E7EB'}; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                        ${isSelected ? '<div style="width:10px; height:10px; background:var(--primary); border-radius:50%;"></div>' : ''}
+                    </div>
+                </div>
+            `;
+            
+            fabricContainer.append(fabricHtml);
+        });
+        
+        // Set initial selected fabric
+        state.selectedFabric = 0;
+        console.log('Fabric selector setup complete with', fabrics.length, 'fabrics');
+    }
+    
     function setupPrintTypeSelector() {
         // Get print types for this product
         const printTypes = state.printTypes || [];
@@ -209,6 +258,12 @@
         $('#color-selector-container').on('click', '.color-swatch', function() {
             const colorIndex = parseInt($(this).data('color'));
             selectColor(colorIndex);
+        });
+        
+        // Fabric selector
+        $('#fabric-selector-container').on('click', '.design-item', function() {
+            const fabricIndex = parseInt($(this).data('fabric'));
+            selectFabric(fabricIndex);
         });
         
         // Print type selector
@@ -582,6 +637,39 @@
         }
     }
     
+    // Function to select a fabric
+    function selectFabric(index) {
+        // Validate fabric index
+        if (!state.product.fabrics || index >= state.product.fabrics.length || index < 0) {
+            console.error('Invalid fabric index:', index);
+            return;
+        }
+        
+        // Update selected fabric
+        state.selectedFabric = index;
+        
+        // Update UI
+        $('#fabric-selector-container .design-item').removeClass('selected');
+        const selectedItem = $(`#fabric-selector-container .design-item[data-fabric="${index}"]`);
+        selectedItem.addClass('selected');
+        
+        // Update radio button style
+        $('#fabric-selector-container .design-item').each(function() {
+            const isSelected = $(this).hasClass('selected');
+            $(this).find('> div:last-child').css('border-color', isSelected ? 'var(--primary)' : '#E5E7EB');
+            if (isSelected) {
+                $(this).find('> div:last-child').html('<div style="width:10px; height:10px; background:var(--primary); border-radius:50%;"></div>');
+            } else {
+                $(this).find('> div:last-child').html('');
+            }
+        });
+        
+        // Update pricing
+        updatePricing();
+        
+        console.log('Selected fabric:', state.product.fabrics[index].name);
+    }
+    
     // Function to select a print type
     function selectPrintType(typeId) {
         // Find print type in available types
@@ -670,11 +758,21 @@
             }
         }
         
+        // Get fabric price
+        let fabricPrice = 0;
+        if (state.product.fabrics && state.selectedFabric !== undefined && state.selectedFabric >= 0) {
+            const selectedFabric = state.product.fabrics[state.selectedFabric];
+            if (selectedFabric && selectedFabric.price) {
+                fabricPrice = parseFloat(selectedFabric.price);
+            }
+        }
+        
         // Update state
         state.printCost = printCost;
+        state.fabricPrice = fabricPrice;
         
         // Calculate total price
-        state.totalPrice = state.basePrice + printCost;
+        state.totalPrice = state.basePrice + printCost + fabricPrice;
         
         // Update UI
         $('#print-cost-value').text(`+$${printCost.toFixed(2)}`);
@@ -687,6 +785,12 @@
         
         if (printType && state.designs.length > 0) {
             calculationHtml += `<div>Base Price: $${state.basePrice.toFixed(2)}</div>`;
+            
+            // Add fabric price if selected
+            if (fabricPrice > 0) {
+                const selectedFabric = state.product.fabrics[state.selectedFabric];
+                calculationHtml += `<div>Fabric (${selectedFabric.name}): +$${fabricPrice.toFixed(2)}</div>`;
+            }
             
             if (printType.pricingModel === 'per-inch') {
                 // Show area calculation
@@ -704,7 +808,7 @@
             }
             
             calculationHtml += `<div>Print Cost: $${printCost.toFixed(2)}</div>`;
-            calculationHtml += `<div style="font-weight:600;">Total: $${state.totalPrice.toFixed(2)}</div>`;
+            calculationHtml += `<div style="font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid #E5E7EB;">Total: $${state.totalPrice.toFixed(2)}</div>`;
         }
         
         $('#pricing-calculation-content').html(calculationHtml);

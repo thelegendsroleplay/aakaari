@@ -98,6 +98,12 @@ get_header();
           <h4 style="margin:0 0 8px 0;">Select Color</h4>
           <div id="color-selector-container"></div>
         </div>
+
+        <!-- Fabric selector (hidden if no fabrics) -->
+        <div id="fabric-selector-card" class="card hidden">
+          <h4 style="margin:0 0 8px 0;">Select Fabric</h4>
+          <div id="fabric-selector-container"></div>
+        </div>
       </div>
 
       <div class="customizer-right">

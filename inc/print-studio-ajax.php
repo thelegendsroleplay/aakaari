@@ -92,8 +92,6 @@ function aakaari_ps_load_data() {
         }
 
         // --- Get Colors ---
-        // Fetch colors from WooCommerce product attribute 'pa_color'
-        // This automatically syncs with Products > Attributes > Color > Terms
         $color_terms = get_terms([
             'taxonomy'   => 'pa_color', // WooCommerce color attribute
             'hide_empty' => false,
@@ -103,13 +101,11 @@ function aakaari_ps_load_data() {
         
         $colors = [];
         if (is_wp_error($color_terms) || empty($color_terms)) {
-            // Check if the attribute exists, if not log a warning
             $attribute_exists = taxonomy_exists('pa_color');
             if (!$attribute_exists) {
                 error_log('Aakaari Print Studio: pa_color attribute does not exist. Please create it in WooCommerce > Products > Attributes.');
             }
             
-            // Provide fallback colors if the attribute doesn't exist or has no terms
             $colors = [
                 ['id' => 'wc_black', 'name' => 'Black', 'hex' => '#000000'],
                 ['id' => 'wc_white', 'name' => 'White', 'hex' => '#FFFFFF'],
@@ -120,22 +116,69 @@ function aakaari_ps_load_data() {
             ];
         } else {
             foreach ($color_terms as $term) {
-                // Try to get color value from term meta (WooCommerce stores it as 'product_attribute_color')
-                // Also check for custom 'hex_code' meta
                 $hex = get_term_meta($term->term_id, 'product_attribute_color', true);
                 if (empty($hex)) {
                     $hex = get_term_meta($term->term_id, 'hex_code', true);
                 }
                 
-                // If still no hex, try to derive from term name or use default
                 if (empty($hex)) {
                     $hex = aakaari_ps_color_name_to_hex($term->name);
                 }
                 
                 $colors[] = [
-                    'id'   => 'color_' . $term->term_id, // Prefix for uniqueness
+                    'id'   => 'color_' . $term->term_id,
                     'name' => $term->name,
                     'hex'  => $hex ? sanitize_hex_color($hex) : '#808080',
+                    'slug' => $term->slug,
+                ];
+            }
+        }
+        
+        // --- Get Fabrics ---
+        $fabric_terms = get_terms([
+            'taxonomy'   => 'pa_fabric',
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC'
+        ]);
+        
+        $fabrics = [];
+        if (!is_wp_error($fabric_terms) && !empty($fabric_terms)) {
+            foreach ($fabric_terms as $term) {
+                $description = get_term_meta($term->term_id, 'description', true) ?: $term->description;
+                $price = get_term_meta($term->term_id, 'price', true) ?: 0;
+                
+                $fabrics[] = [
+                    'id' => 'fab_' . $term->term_id,
+                    'name' => $term->name,
+                    'description' => $description,
+                    'price' => floatval($price),
+                    'slug' => $term->slug,
+                ];
+            }
+        }
+        
+        // --- Get Print Types ---
+        $print_type_terms = get_terms([
+            'taxonomy'   => 'pa_print_type',
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC'
+        ]);
+        
+        $print_types = [];
+        if (!is_wp_error($print_type_terms) && !empty($print_type_terms)) {
+            foreach ($print_type_terms as $term) {
+                $description = get_term_meta($term->term_id, 'description', true) ?: $term->description;
+                $pricing_model = get_term_meta($term->term_id, 'pricing_model', true) ?: 'fixed';
+                $price = get_term_meta($term->term_id, 'price', true) ?: 0;
+                
+                $print_types[] = [
+                    'id' => 'pt_' . $term->term_id,
+                    'name' => $term->name,
+                    'description' => $description,
+                    'pricingModel' => $pricing_model,
+                    'price' => floatval($price),
                     'slug' => $term->slug,
                 ];
             }
@@ -144,8 +187,8 @@ function aakaari_ps_load_data() {
         // --- Get Existing Print Studio Products ---
         $product_query = new WP_Query([
             'post_type'      => 'product',
-            'posts_per_page' => -1, // Get all of them
-            'post_status'    => ['publish', 'draft'], // Include drafts too
+            'posts_per_page' => -1,
+            'post_status'    => ['publish', 'draft'],
             'meta_query'     => [
                 [
                     'key'     => '_aakaari_print_studio_data',
@@ -189,9 +232,11 @@ function aakaari_ps_load_data() {
         wp_reset_postdata();
 
         wp_send_json_success([
-            'products'   => $products,
-            'categories' => $categories,
-            'colors'     => $colors,
+            'products'    => $products,
+            'categories'  => $categories,
+            'colors'      => $colors,
+            'fabrics'     => $fabrics,
+            'printTypes'  => $print_types,
         ]);
 
     } catch (Exception $e) {
@@ -297,15 +342,22 @@ function aakaari_ps_save_product() {
 
         $studio_data = [
             'colors'     => isset($product_data['colors']) ? array_map('sanitize_text_field', $product_data['colors']) : [],
+            'fabrics'    => isset($product_data['fabrics']) ? array_map('sanitize_text_field', $product_data['fabrics']) : [],
             'printTypes' => isset($product_data['availablePrintTypes']) ? array_map('sanitize_text_field', $product_data['availablePrintTypes']) : [],
             'sides'      => $sanitized_sides, // Use sanitized sides
         ];
 
         $product->update_meta_data('_aakaari_print_studio_data', $studio_data);
         
-        // **NEW**: Sync colors to WooCommerce product attribute (pa_color)
+        // **Sync to WooCommerce product attributes**
         if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
             aakaari_ps_sync_colors_to_attribute($product, $studio_data['colors']);
+        }
+        if (!empty($studio_data['fabrics']) && is_array($studio_data['fabrics'])) {
+            aakaari_ps_sync_fabrics_to_attribute($product, $studio_data['fabrics']);
+        }
+        if (!empty($studio_data['printTypes']) && is_array($studio_data['printTypes'])) {
+            aakaari_ps_sync_print_types_to_attribute($product, $studio_data['printTypes']);
         }
 
         $new_product_id = $product->save();
@@ -331,6 +383,7 @@ function aakaari_ps_save_product() {
             'isActive'            => $saved_wc_product->get_status() === 'publish',
             // Read back sanitized data
             'colors'              => is_array($final_studio_data) && isset($final_studio_data['colors']) ? $final_studio_data['colors'] : [],
+            'fabrics'             => is_array($final_studio_data) && isset($final_studio_data['fabrics']) ? $final_studio_data['fabrics'] : [],
             'availablePrintTypes' => is_array($final_studio_data) && isset($final_studio_data['printTypes']) ? $final_studio_data['printTypes'] : [],
             'sides'               => is_array($final_studio_data) && isset($final_studio_data['sides']) ? $final_studio_data['sides'] : [],
         ];
@@ -638,6 +691,108 @@ function aakaari_ps_hex_to_color_name($hex) {
     );
     
     return isset($color_map[$hex]) ? $color_map[$hex] : '#' . $hex;
+}
+
+/**
+ * Sync Print Studio fabrics (IDs) to WooCommerce product attribute (pa_fabric)
+ * This updates the product's fabric attribute with the selected fabrics
+ * 
+ * @param WC_Product $product The product object
+ * @param array $fabric_ids Array of fabric IDs like ['fab_123', 'fab_456']
+ */
+function aakaari_ps_sync_fabrics_to_attribute($product, $fabric_ids) {
+    if (empty($fabric_ids) || !is_array($fabric_ids)) {
+        return;
+    }
+    
+    $attribute_taxonomy = 'pa_fabric';
+    
+    if (!taxonomy_exists($attribute_taxonomy)) {
+        error_log('Warning: pa_fabric taxonomy does not exist. Fabrics not synced to product attribute.');
+        return;
+    }
+    
+    $term_ids = array();
+    
+    foreach ($fabric_ids as $fabric_id) {
+        // Extract term ID from 'fab_123' format
+        $term_id = intval(str_replace('fab_', '', $fabric_id));
+        
+        if ($term_id > 0 && term_exists($term_id, $attribute_taxonomy)) {
+            $term_ids[] = $term_id;
+        } else {
+            error_log("Fabric term ID $term_id not found in pa_fabric taxonomy");
+        }
+    }
+    
+    if (!empty($term_ids)) {
+        wp_set_object_terms($product->get_id(), $term_ids, $attribute_taxonomy);
+        
+        $attributes = $product->get_attributes();
+        
+        $fabric_attribute = new WC_Product_Attribute();
+        $fabric_attribute->set_id(wc_attribute_taxonomy_id_by_name($attribute_taxonomy));
+        $fabric_attribute->set_name($attribute_taxonomy);
+        $fabric_attribute->set_options($term_ids);
+        $fabric_attribute->set_visible(true);
+        $fabric_attribute->set_variation(false);
+        
+        $attributes[$attribute_taxonomy] = $fabric_attribute;
+        $product->set_attributes($attributes);
+        
+        error_log('Synced ' . count($term_ids) . ' fabrics to product attribute pa_fabric');
+    }
+}
+
+/**
+ * Sync Print Studio print types (IDs) to WooCommerce product attribute (pa_print_type)
+ * This updates the product's print type attribute with the selected print types
+ * 
+ * @param WC_Product $product The product object
+ * @param array $print_type_ids Array of print type IDs like ['pt_123', 'pt_456']
+ */
+function aakaari_ps_sync_print_types_to_attribute($product, $print_type_ids) {
+    if (empty($print_type_ids) || !is_array($print_type_ids)) {
+        return;
+    }
+    
+    $attribute_taxonomy = 'pa_print_type';
+    
+    if (!taxonomy_exists($attribute_taxonomy)) {
+        error_log('Warning: pa_print_type taxonomy does not exist. Print types not synced to product attribute.');
+        return;
+    }
+    
+    $term_ids = array();
+    
+    foreach ($print_type_ids as $print_type_id) {
+        // Extract term ID from 'pt_123' format
+        $term_id = intval(str_replace('pt_', '', $print_type_id));
+        
+        if ($term_id > 0 && term_exists($term_id, $attribute_taxonomy)) {
+            $term_ids[] = $term_id;
+        } else {
+            error_log("Print type term ID $term_id not found in pa_print_type taxonomy");
+        }
+    }
+    
+    if (!empty($term_ids)) {
+        wp_set_object_terms($product->get_id(), $term_ids, $attribute_taxonomy);
+        
+        $attributes = $product->get_attributes();
+        
+        $print_type_attribute = new WC_Product_Attribute();
+        $print_type_attribute->set_id(wc_attribute_taxonomy_id_by_name($attribute_taxonomy));
+        $print_type_attribute->set_name($attribute_taxonomy);
+        $print_type_attribute->set_options($term_ids);
+        $print_type_attribute->set_visible(true);
+        $print_type_attribute->set_variation(false);
+        
+        $attributes[$attribute_taxonomy] = $print_type_attribute;
+        $product->set_attributes($attributes);
+        
+        error_log('Synced ' . count($term_ids) . ' print types to product attribute pa_print_type');
+    }
 }
 
 // Hook the new upload handler

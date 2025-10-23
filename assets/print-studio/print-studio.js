@@ -40,33 +40,30 @@ const wooCommerceAPI = {
             url: AakaariPS.ajax_url,
             type: 'POST',
             data: {
-                action: 'aakaari_ps_load_data', // This one is correct
+                action: 'aakaari_ps_load_data',
                 nonce: AakaariPS.nonce
             }
         });
     },
 
-    // Save product to WooCommerce
     saveProduct: function (product) {
         return jQuery.ajax({
             url: AakaariPS.ajax_url,
             type: 'POST',
             data: {
-                action: 'aakaari_ps_save_product', // <<< FIXED
+                action: 'aakaari_ps_save_product',
                 nonce: AakaariPS.nonce,
                 product_data: JSON.stringify(product)
             }
         });
-        // .then is removed here, handled by the calling function
     },
 
-    // Update product status
     updateProductStatus: function (productId, isActive) {
         return jQuery.ajax({
             url: AakaariPS.ajax_url,
             type: 'POST',
             data: {
-                action: 'aakaari_ps_update_status', // <<< FIXED
+                action: 'aakaari_ps_update_status',
                 nonce: AakaariPS.nonce,
                 product_id: productId,
                 is_active: isActive ? 1 : 0
@@ -74,28 +71,74 @@ const wooCommerceAPI = {
         });
     },
 
-    // Save category to WooCommerce
     saveCategory: function (category) {
         return jQuery.ajax({
             url: AakaariPS.ajax_url,
             type: 'POST',
             data: {
-                action: 'aakaari_ps_save_category', // <<< FIXED
+                action: 'aakaari_ps_save_category',
                 nonce: AakaariPS.nonce,
                 category_data: JSON.stringify(category)
             }
         });
     },
 
-    // Delete category from WooCommerce
     deleteCategory: function (categoryId) {
         return jQuery.ajax({
             url: AakaariPS.ajax_url,
             type: 'POST',
             data: {
-                action: 'aakaari_ps_delete_category', // <<< FIXED
+                action: 'aakaari_ps_delete_category',
                 nonce: AakaariPS.nonce,
                 category_id: categoryId
+            }
+        });
+    },
+    
+    saveFabric: function (fabric) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_fabric',
+                nonce: AakaariPS.nonce,
+                fabric_data: JSON.stringify(fabric)
+            }
+        });
+    },
+    
+    deleteFabric: function (fabricId) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_delete_fabric',
+                nonce: AakaariPS.nonce,
+                fabric_id: fabricId
+            }
+        });
+    },
+    
+    savePrintType: function (printType) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_print_type',
+                nonce: AakaariPS.nonce,
+                print_type_data: JSON.stringify(printType)
+            }
+        });
+    },
+    
+    deletePrintType: function (printTypeId) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_delete_print_type',
+                nonce: AakaariPS.nonce,
+                print_type_id: printTypeId
             }
         });
     }
@@ -112,9 +155,11 @@ const wooCommerceAPI = {
 
                  if (response.success && response.data) {
                      // Populate appState with data received from aakaari_ps_load_data
-                     appState.fetchedProducts = response.data.products || []; // Store fetched products
+                     appState.fetchedProducts = response.data.products || [];
                      appState.categories = response.data.categories || [];
-                     appState.wooCommerceColors = response.data.colors || []; // Uses 'colors' key from PHP response
+                     appState.wooCommerceColors = response.data.colors || [];
+                     appState.fabrics = response.data.fabrics || [];
+                     appState.printTypes = response.data.printTypes || [];
 
                       // Now merge fetched products into the main products list if needed, or just use fetchedProducts
                       // For simplicity, let's just replace the default products array
@@ -124,12 +169,13 @@ const wooCommerceAPI = {
                      console.log("✓ Loaded " + appState.products.length + " print studio products");
                      console.log("✓ Loaded " + appState.categories.length + " categories");
                      console.log("✓ Loaded " + appState.wooCommerceColors.length + " colors from WooCommerce");
+                     console.log("✓ Loaded " + appState.fabrics.length + " fabrics from WooCommerce");
+                     console.log("✓ Loaded " + appState.printTypes.length + " print types from WooCommerce");
                      
                      if (appState.wooCommerceColors.length > 0) {
                          console.log("Colors available:", appState.wooCommerceColors.map(c => c.name).join(', '));
                      } else {
                          console.warn("⚠ No colors loaded! Please add colors in WooCommerce > Products > Attributes > Color");
-                         console.warn("See PRINT_STUDIO_COLOR_SETUP.md for setup instructions");
                      }
 
                      // Check if essential data is present
@@ -813,12 +859,31 @@ const wooCommerceAPI = {
             <p class="ps-helper" style="color: #f59e0b;">
               <i data-lucide="alert-circle" class="ps-icon"></i>
               No colors found. Please add colors in <strong>WooCommerce > Products > Attributes > Color</strong>.
-              <br><small>See PRINT_STUDIO_COLOR_SETUP.md for setup instructions.</small>
+            </p>
+            `}
+          </div>
+          <div class="ps-form-group">
+            <label class="ps-label">Available Fabrics</label>
+            ${appState.fabrics.length > 0 ? `
+            <div class="ps-form-column">
+              ${appState.fabrics.map(f => `
+                <label class="ps-checkbox-label">
+                  <input type="checkbox" value="${f.id}" data-form="productForm" data-prop="fabrics"
+                         ${form.fabrics && form.fabrics.includes(f.id) ? 'checked' : ''}>
+                  <span>${escapeHtml(f.name)}</span>
+                </label>
+              `).join('')}
+            </div>
+            ` : `
+            <p class="ps-helper" style="color: #f59e0b;">
+              <i data-lucide="alert-circle" class="ps-icon"></i>
+              No fabrics found. Please add fabrics in the <strong>Fabrics</strong> tab.
             </p>
             `}
           </div>
           <div class="ps-form-group">
             <label class="ps-label">Available Print Types</label>
+            ${appState.printTypes.length > 0 ? `
             <div class="ps-form-column">
               ${appState.printTypes.map(pt => `
                 <label class="ps-checkbox-label">
@@ -828,6 +893,12 @@ const wooCommerceAPI = {
                 </label>
               `).join('')}
             </div>
+            ` : `
+            <p class="ps-helper" style="color: #f59e0b;">
+              <i data-lucide="alert-circle" class="ps-icon"></i>
+              No print types found. Please add print types in the <strong>Print Types</strong> tab.
+            </p>
+            `}
           </div>
         </div>
       `;
@@ -1810,18 +1881,60 @@ const wooCommerceAPI = {
     
     function handleSaveFabric() {
       const form = tempState.fabricForm;
-      if (!form.name) return alert('Fabric name is required.');
+      console.log('handleSaveFabric called with form:', form);
       
-      if (tempState.editingFabricId) {
-        // Update
-        const index = appState.fabrics.findIndex(f => f.id === tempState.editingFabricId);
-        if (index > -1) appState.fabrics[index] = { ...form };
-      } else {
-        // Create
-        appState.fabrics.push({ ...form, id: generateId('fab') });
+      if (!form.name || form.name.trim() === '') {
+          alert('Fabric name is required.');
+          return;
       }
-      closeModal();
-      renderApp();
+      
+      const saveBtn = document.querySelector('#ps-modal-overlay [data-action="save-fabric"]');
+      if(saveBtn) saveBtn.disabled = true;
+
+      console.log('Sending fabric data to API:', form);
+      
+      // Save to WooCommerce via API
+      wooCommerceAPI.saveFabric(form).then(function(response) {
+        console.log('Fabric save response:', response);
+        if (response.success && response.data) {
+          // response.data contains the updated/new fabric object { id, name, description, price }
+          if (tempState.editingFabricId) {
+            // Find and update in state
+            const index = appState.fabrics.findIndex(f => f.id === tempState.editingFabricId);
+            if (index > -1) {
+              appState.fabrics[index] = response.data;
+            }
+          } else {
+            // Add new to state
+            appState.fabrics.push(response.data);
+          }
+          closeModal();
+          renderApp(); // Redraw the dashboard
+          showToast(tempState.editingFabricId ? 'Fabric updated!' : 'Fabric added!', 'success');
+        } else {
+          console.error('Fabric save failed:', response);
+          alert('Error saving fabric: ' + (response.data?.message || response.data || 'Unknown error'));
+          if(saveBtn) saveBtn.disabled = false;
+        }
+      }).catch(function(error) {
+        console.error('Failed to save fabric - full error:', error);
+        console.error('Error response:', error.responseJSON);
+        console.error('Error status:', error.status);
+        console.error('Error text:', error.statusText);
+        
+        let errorMsg = 'Network error saving fabric.';
+        if (error.responseJSON && error.responseJSON.data) {
+          errorMsg = error.responseJSON.data;
+          
+          // Show helpful message for missing attribute
+          if (errorMsg.includes('does not exist')) {
+            errorMsg += '\n\nPlease go to: WooCommerce > Products > Attributes\nAnd create an attribute with:\n- Name: Fabric\n- Slug: fabric';
+          }
+        }
+        
+        alert(errorMsg);
+        if(saveBtn) saveBtn.disabled = false;
+      });
     }
     
     function handleShowPrintTypeModal(printTypeId = null) {
@@ -1838,16 +1951,52 @@ const wooCommerceAPI = {
     
     function handleSavePrintType() {
       const form = tempState.printTypeForm;
-      if (!form.name) return alert('Print type name is required.');
-      
-      if (tempState.editingPrintTypeId) {
-        const index = appState.printTypes.findIndex(p => p.id === tempState.editingPrintTypeId);
-        if (index > -1) appState.printTypes[index] = { ...form };
-      } else {
-        appState.printTypes.push({ ...form, id: generateId('print') });
+      if (!form.name || form.name.trim() === '') {
+          alert('Print type name is required.');
+          return;
       }
-      closeModal();
-      renderApp();
+      
+      const saveBtn = document.querySelector('#ps-modal-overlay [data-action="save-print-type"]');
+      if(saveBtn) saveBtn.disabled = true;
+
+      // Save to WooCommerce via API
+      wooCommerceAPI.savePrintType(form).then(function(response) {
+        if (response.success && response.data) {
+          // response.data contains the updated/new print type object { id, name, description, pricingModel, price }
+          if (tempState.editingPrintTypeId) {
+            // Find and update in state
+            const index = appState.printTypes.findIndex(p => p.id === tempState.editingPrintTypeId);
+            if (index > -1) {
+              appState.printTypes[index] = response.data;
+            }
+          } else {
+            // Add new to state
+            appState.printTypes.push(response.data);
+          }
+          closeModal();
+          renderApp(); // Redraw the dashboard
+          showToast(tempState.editingPrintTypeId ? 'Print type updated!' : 'Print type added!', 'success');
+        } else {
+          alert('Error saving print type: ' + (response.data?.message || 'Unknown error'));
+          if(saveBtn) saveBtn.disabled = false;
+        }
+      }).catch(function(error) {
+        console.error('Failed to save print type:', error);
+        console.error('Error response:', error.responseJSON);
+        
+        let errorMsg = 'Network error saving print type.';
+        if (error.responseJSON && error.responseJSON.data) {
+          errorMsg = error.responseJSON.data;
+          
+          // Show helpful message for missing attribute
+          if (errorMsg.includes('does not exist')) {
+            errorMsg += '\n\nPlease go to: WooCommerce > Products > Attributes\nAnd create an attribute with:\n- Name: Print Type\n- Slug: print_type';
+          }
+        }
+        
+        alert(errorMsg);
+        if(saveBtn) saveBtn.disabled = false;
+      });
     }
     
 // --- CORRECTED Category Modal Handler ---
@@ -1911,16 +2060,34 @@ const wooCommerceAPI = {
     
     function handleDelete(type, id) {
         const typeMap = {
-            'fabric': { stateKey: 'fabrics', name: 'Fabric' },
-            'printType': { stateKey: 'printTypes', name: 'Print Type' },
-            'category': { stateKey: 'categories', name: 'Category' },
+            'fabric': { stateKey: 'fabrics', name: 'Fabric', apiMethod: 'deleteFabric' },
+            'printType': { stateKey: 'printTypes', name: 'Print Type', apiMethod: 'deletePrintType' },
+            'category': { stateKey: 'categories', name: 'Category', apiMethod: 'deleteCategory' },
         };
         const config = typeMap[type];
         if (!config) return;
 
         if (confirm(`Are you sure you want to delete this ${config.name}?`)) {
-            appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
-            renderApp();
+            // Call the API to delete from WooCommerce
+            if (config.apiMethod && wooCommerceAPI[config.apiMethod]) {
+                wooCommerceAPI[config.apiMethod](id).then(function(response) {
+                    if (response.success) {
+                        // Remove from state
+                        appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
+                        renderApp();
+                        showToast(`${config.name} deleted!`, 'success');
+                    } else {
+                        alert(`Error deleting ${config.name}: ` + (response.data?.message || 'Unknown error'));
+                    }
+                }).catch(function(error) {
+                    console.error(`Failed to delete ${config.name}:`, error);
+                    alert('Network error. Check console.');
+                });
+            } else {
+                // Fallback for items without API (shouldn't happen)
+                appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
+                renderApp();
+            }
         }
     }
 
@@ -1932,6 +2099,11 @@ const wooCommerceAPI = {
       // Ensure colors array exists
       if (!Array.isArray(tempState.productForm.colors)) {
         tempState.productForm.colors = [];
+      }
+      
+      // Ensure fabrics array exists
+      if (!Array.isArray(tempState.productForm.fabrics)) {
+        tempState.productForm.fabrics = [];
       }
       
       // Ensure availablePrintTypes array exists
@@ -2067,7 +2239,6 @@ const wooCommerceAPI = {
         resetCanvasState(false);
         renderApp();
     }
-    
     
     // ---------- Handlers (Canvas Sidebar) ----------
     function handleDeleteArea() {

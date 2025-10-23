@@ -118,6 +118,73 @@ function aakaari_cp_enqueue_assets_and_localize() {
     
     error_log('Final colors for customizer: ' . print_r($colors_for_customizer, true));
 
+    // IMPROVED: Transform Print Studio fabrics format
+    $fabrics_for_customizer = array();
+    if (!empty($studio_data['fabrics']) && is_array($studio_data['fabrics'])) {
+        // Print Studio saves fabrics as array of IDs: ['fab_123', 'fab_456']
+        // Get full fabric data from pa_fabric taxonomy
+        error_log('Converting ' . count($studio_data['fabrics']) . ' fabrics from Print Studio');
+        foreach ($studio_data['fabrics'] as $fabric_id) {
+            // Extract term ID from 'fab_123' format
+            $term_id = intval(str_replace('fab_', '', $fabric_id));
+            $term = get_term($term_id, 'pa_fabric');
+            
+            if ($term && !is_wp_error($term)) {
+                $description = get_term_meta($term_id, 'description', true) ?: $term->description;
+                $price = get_term_meta($term_id, 'price', true) ?: 0;
+                
+                $fabrics_for_customizer[] = array(
+                    'id' => $fabric_id,
+                    'name' => $term->name,
+                    'description' => $description,
+                    'price' => floatval($price),
+                );
+                error_log("  - Converted fabric: $fabric_id => {$term->name} (\${$price})");
+            }
+        }
+    }
+    
+    error_log('Final fabrics for customizer: ' . print_r($fabrics_for_customizer, true));
+
+    // IMPROVED: Transform Print Studio print types format
+    $print_types_for_customizer = array();
+    if (!empty($studio_data['printTypes']) && is_array($studio_data['printTypes'])) {
+        // Print Studio saves print types as array of IDs: ['pt_123', 'pt_456']
+        // Get full print type data from pa_print_type taxonomy
+        error_log('Converting ' . count($studio_data['printTypes']) . ' print types from Print Studio');
+        foreach ($studio_data['printTypes'] as $print_type_id) {
+            // Extract term ID from 'pt_123' format
+            $term_id = intval(str_replace('pt_', '', $print_type_id));
+            $term = get_term($term_id, 'pa_print_type');
+            
+            if ($term && !is_wp_error($term)) {
+                $description = get_term_meta($term_id, 'description', true) ?: $term->description;
+                $pricing_model = get_term_meta($term_id, 'pricing_model', true) ?: 'fixed';
+                $price = get_term_meta($term_id, 'price', true) ?: 0;
+                
+                $print_types_for_customizer[] = array(
+                    'id' => $print_type_id,
+                    'name' => $term->name,
+                    'description' => $description,
+                    'pricingModel' => $pricing_model,
+                    'price' => floatval($price),
+                );
+                error_log("  - Converted print type: $print_type_id => {$term->name} (Model: {$pricing_model}, Price: \${$price})");
+            }
+        }
+    }
+    
+    // Fallback to defaults if no print types configured
+    if (empty($print_types_for_customizer)) {
+        error_log('No Print Studio print types found, using fallback defaults');
+        $print_types_for_customizer = array(
+            array('id'=>'pt_dtg','name'=>'DTG','description'=>'Per-square-inch pricing','pricingModel'=>'per-inch','price'=>0.12),
+            array('id'=>'pt_vinyl','name'=>'HTV','description'=>'Fixed per-design','pricingModel'=>'fixed','price'=>5.00),
+        );
+    }
+    
+    error_log('Final print types for customizer: ' . print_r($print_types_for_customizer, true));
+
     // Build the product data array
     $product_data = array(
         'id' => $product_id,
@@ -133,51 +200,13 @@ function aakaari_cp_enqueue_assets_and_localize() {
         // IMPROVED: Use studio data directly or fallback to defaults
         'availablePrintTypes' => !empty($studio_data['printTypes']) ? $studio_data['printTypes'] : array( 'pt_dtg', 'pt_vinyl' ),
         'colors' => $colors_for_customizer, // FIXED: Now uses properly formatted color objects
+        'fabrics' => $fabrics_for_customizer, // NEW: Fabric options
         'sides' => !empty($studio_data['sides']) ? $studio_data['sides'] : aakaari_get_product_sides($product),
     );
 
-    // IMPROVED: Get print types with better structure
-    $print_types = array(
-        array('id'=>'pt_dtg','name'=>'DTG','description'=>'Per-square-inch pricing','pricingModel'=>'per-inch','price'=>0.12),
-        array('id'=>'pt_vinyl','name'=>'HTV','description'=>'Fixed per-design','pricingModel'=>'fixed','price'=>5.00),
-    );
-    
-    // Override with custom print types if defined
-    if (!empty($studio_data['printTypes']) && is_array($studio_data['printTypes'])) {
-        // Transform any string IDs to full print type objects
-        $custom_types = array();
-        foreach ($studio_data['printTypes'] as $type_id) {
-            // Look for a matching print type in our defaults
-            $found = false;
-            foreach ($print_types as $default_type) {
-                if ($default_type['id'] === $type_id) {
-                    $custom_types[] = $default_type;
-                    $found = true;
-                    break;
-                }
-            }
-            
-            // If not found, create a basic entry
-            if (!$found) {
-                $custom_types[] = array(
-                    'id' => $type_id,
-                    'name' => ucfirst(str_replace(array('pt_', '_'), array('', ' '), $type_id)),
-                    'description' => 'Custom print method',
-                    'pricingModel' => 'fixed',
-                    'price' => 3.00
-                );
-            }
-        }
-        
-        // Only use custom types if we found any
-        if (!empty($custom_types)) {
-            $print_types = $custom_types;
-        }
-    }
-
-    // Localize arrays
+    // Localize arrays - use the converted print types
     wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_PRODUCTS', array( $product_data ) );
-    wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_PRINT_TYPES', $print_types );
+    wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_PRINT_TYPES', $print_types_for_customizer );
     wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_SETTINGS', array(
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'aakaari_customizer' ),
