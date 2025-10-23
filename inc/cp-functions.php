@@ -58,6 +58,10 @@ function aakaari_cp_enqueue_assets_and_localize() {
 
     // IMPROVED: Get print studio data (with fallback)
     $studio_data = get_post_meta($product_id, '_aakaari_print_studio_data', true);
+    
+    // DEBUG: Log what we got from meta
+    error_log('Print Studio Data for Product #' . $product_id . ': ' . print_r($studio_data, true));
+    
     if (!is_array($studio_data)) {
         $studio_data = array(
             'printTypes' => array(),
@@ -89,6 +93,31 @@ function aakaari_cp_enqueue_assets_and_localize() {
         $image_url = wc_placeholder_img_src('full');
     }
 
+    // IMPROVED: Transform Print Studio colors format (hex array) to product customizer format (object array)
+    $colors_for_customizer = array();
+    if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
+        // Print Studio saves colors as array of hex values: ['#FF0000', '#00FF00']
+        // Product customizer needs: [{name: 'Red', color: '#FF0000'}, ...]
+        error_log('Converting ' . count($studio_data['colors']) . ' colors from Print Studio');
+        foreach ($studio_data['colors'] as $hex) {
+            $color_name = aakaari_hex_to_color_name($hex); // Convert hex back to name
+            $colors_for_customizer[] = array(
+                'name' => $color_name,
+                'color' => $hex,
+                'image' => '', // No per-color image override
+            );
+            error_log("  - Converted: $hex => $color_name");
+        }
+    }
+    
+    // Fallback if no colors configured in Print Studio
+    if (empty($colors_for_customizer)) {
+        error_log('No Print Studio colors found, using fallback colors');
+        $colors_for_customizer = aakaari_get_product_colors($product);
+    }
+    
+    error_log('Final colors for customizer: ' . print_r($colors_for_customizer, true));
+
     // Build the product data array
     $product_data = array(
         'id' => $product_id,
@@ -103,7 +132,7 @@ function aakaari_cp_enqueue_assets_and_localize() {
         'isActive' => true,
         // IMPROVED: Use studio data directly or fallback to defaults
         'availablePrintTypes' => !empty($studio_data['printTypes']) ? $studio_data['printTypes'] : array( 'pt_dtg', 'pt_vinyl' ),
-        'colors' => !empty($studio_data['colors']) ? $studio_data['colors'] : aakaari_get_product_colors($product),
+        'colors' => $colors_for_customizer, // FIXED: Now uses properly formatted color objects
         'sides' => !empty($studio_data['sides']) ? $studio_data['sides'] : aakaari_get_product_sides($product),
     );
 
@@ -166,6 +195,55 @@ function aakaari_cp_enqueue_assets_and_localize() {
     wp_add_inline_script( 'aakaari-product-customizer', $inline );
 }
 add_action( 'wp_enqueue_scripts', 'aakaari_cp_enqueue_assets_and_localize', 20 );
+
+
+/**
+ * Convert hex color to human-readable color name.
+ * Returns the closest matching color name from common colors.
+ */
+function aakaari_hex_to_color_name($hex) {
+    // Remove # if present
+    $hex = ltrim($hex, '#');
+    
+    // Common color mappings (hex => name)
+    $color_map = array(
+        'FF0000' => 'Red',
+        'FF6347' => 'Tomato',
+        'FF4500' => 'Orange Red',
+        'FFA500' => 'Orange',
+        'FFD700' => 'Gold',
+        'FFFF00' => 'Yellow',
+        '00FF00' => 'Lime',
+        '32CD32' => 'Lime Green',
+        '008000' => 'Green',
+        '00FFFF' => 'Cyan',
+        '00CED1' => 'Dark Turquoise',
+        '0000FF' => 'Blue',
+        '0000CD' => 'Medium Blue',
+        '000080' => 'Navy',
+        '800080' => 'Purple',
+        '8B008B' => 'Dark Magenta',
+        'FF00FF' => 'Magenta',
+        'FFC0CB' => 'Pink',
+        'FFFFFF' => 'White',
+        'F5F5F5' => 'White Smoke',
+        'C0C0C0' => 'Silver',
+        '808080' => 'Gray',
+        '000000' => 'Black',
+        'A52A2A' => 'Brown',
+        '8B4513' => 'Saddle Brown',
+    );
+    
+    // Check for exact match
+    $hex_upper = strtoupper($hex);
+    if (isset($color_map[$hex_upper])) {
+        return $color_map[$hex_upper];
+    }
+    
+    // If no exact match, try to find closest color by name similarity
+    // or just return the hex with # prefix
+    return '#' . $hex;
+}
 
 
 /**

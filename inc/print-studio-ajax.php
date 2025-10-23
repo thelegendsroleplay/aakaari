@@ -23,6 +23,51 @@ function aakaari_ps_ajax_check() {
 }
 
 /**
+ * Helper function to convert common color names to hex codes
+ */
+function aakaari_ps_color_name_to_hex($color_name) {
+    $color_map = [
+        'black'   => '#000000',
+        'white'   => '#FFFFFF',
+        'red'     => '#FF0000',
+        'green'   => '#00FF00',
+        'blue'    => '#0000FF',
+        'yellow'  => '#FFFF00',
+        'orange'  => '#FFA500',
+        'purple'  => '#800080',
+        'pink'    => '#FFC0CB',
+        'brown'   => '#A52A2A',
+        'gray'    => '#808080',
+        'grey'    => '#808080',
+        'navy'    => '#000080',
+        'teal'    => '#008080',
+        'lime'    => '#00FF00',
+        'aqua'    => '#00FFFF',
+        'maroon'  => '#800000',
+        'olive'   => '#808000',
+        'silver'  => '#C0C0C0',
+        'gold'    => '#FFD700',
+    ];
+    
+    $name_lower = strtolower(trim($color_name));
+    
+    // Check exact match
+    if (isset($color_map[$name_lower])) {
+        return $color_map[$name_lower];
+    }
+    
+    // Check if color name contains a key
+    foreach ($color_map as $key => $hex) {
+        if (strpos($name_lower, $key) !== false) {
+            return $hex;
+        }
+    }
+    
+    // Default gray if no match
+    return '#808080';
+}
+
+/**
  * AJAX Handler: Fetches all initial data for the app.
  * Action: aakaari_ps_load_data
  */
@@ -47,28 +92,51 @@ function aakaari_ps_load_data() {
         }
 
         // --- Get Colors ---
-        // Assumes you have a product attribute with the slug 'color' (like pa_color)
+        // Fetch colors from WooCommerce product attribute 'pa_color'
+        // This automatically syncs with Products > Attributes > Color > Terms
         $color_terms = get_terms([
-            'taxonomy'   => 'pa_color', // *** ADJUST THIS if your attribute slug is different ***
+            'taxonomy'   => 'pa_color', // WooCommerce color attribute
             'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC'
         ]);
+        
         $colors = [];
         if (is_wp_error($color_terms) || empty($color_terms)) {
+            // Check if the attribute exists, if not log a warning
+            $attribute_exists = taxonomy_exists('pa_color');
+            if (!$attribute_exists) {
+                error_log('Aakaari Print Studio: pa_color attribute does not exist. Please create it in WooCommerce > Products > Attributes.');
+            }
+            
             // Provide fallback colors if the attribute doesn't exist or has no terms
             $colors = [
                 ['id' => 'wc_black', 'name' => 'Black', 'hex' => '#000000'],
                 ['id' => 'wc_white', 'name' => 'White', 'hex' => '#FFFFFF'],
                 ['id' => 'wc_red', 'name' => 'Red', 'hex' => '#FF0000'],
-                 // Add more default colors if needed
+                ['id' => 'wc_blue', 'name' => 'Blue', 'hex' => '#0000FF'],
+                ['id' => 'wc_green', 'name' => 'Green', 'hex' => '#00FF00'],
+                ['id' => 'wc_yellow', 'name' => 'Yellow', 'hex' => '#FFFF00'],
             ];
         } else {
             foreach ($color_terms as $term) {
-                // Tries to get a 'hex_code' value stored with the color term.
-                $hex = get_term_meta($term->term_id, 'hex_code', true);
+                // Try to get color value from term meta (WooCommerce stores it as 'product_attribute_color')
+                // Also check for custom 'hex_code' meta
+                $hex = get_term_meta($term->term_id, 'product_attribute_color', true);
+                if (empty($hex)) {
+                    $hex = get_term_meta($term->term_id, 'hex_code', true);
+                }
+                
+                // If still no hex, try to derive from term name or use default
+                if (empty($hex)) {
+                    $hex = aakaari_ps_color_name_to_hex($term->name);
+                }
+                
                 $colors[] = [
-                    'id'   => $term->term_id, // Use the actual WordPress term ID
+                    'id'   => 'color_' . $term->term_id, // Prefix for uniqueness
                     'name' => $term->name,
-                    'hex'  => $hex ? sanitize_hex_color($hex) : '#000000',
+                    'hex'  => $hex ? sanitize_hex_color($hex) : '#808080',
+                    'slug' => $term->slug,
                 ];
             }
         }
@@ -234,6 +302,11 @@ function aakaari_ps_save_product() {
         ];
 
         $product->update_meta_data('_aakaari_print_studio_data', $studio_data);
+        
+        // **NEW**: Sync colors to WooCommerce product attribute (pa_color)
+        if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
+            aakaari_ps_sync_colors_to_attribute($product, $studio_data['colors']);
+        }
 
         $new_product_id = $product->save();
 
@@ -407,13 +480,166 @@ function aakaari_ps_upload_side_image() {
         wp_send_json_error('Failed to get image URL after upload.', 500);
     }
 
-    // Send back the attachment ID and URL
+        // Send back the attachment ID and URL
     wp_send_json_success(array(
         'message'       => 'File uploaded successfully.',
         'attachment_id' => $attachment_id,
         'url'           => $image_url,
     ));
 }
+add_action('wp_ajax_aakaari_ps_upload_side_image', 'aakaari_ps_upload_side_image');
+
+
+/**
+ * Sync Print Studio colors (hex values) to WooCommerce product attribute (pa_color)
+ * This updates the product's color attribute with the selected colors
+ * 
+ * @param WC_Product $product The product object
+ * @param array $color_hexes Array of hex color values like ['#FF0000', '#00FF00']
+ */
+function aakaari_ps_sync_colors_to_attribute($product, $color_hexes) {
+    if (empty($color_hexes) || !is_array($color_hexes)) {
+        return;
+    }
+    
+    // Get or create the pa_color attribute
+    $attribute_taxonomy = 'pa_color';
+    
+    // Make sure the taxonomy is registered
+    if (!taxonomy_exists($attribute_taxonomy)) {
+        error_log('Warning: pa_color taxonomy does not exist. Colors not synced to product attribute.');
+        return;
+    }
+    
+    $term_ids = array();
+    
+    // For each hex color, find or create the matching term
+    foreach ($color_hexes as $hex) {
+        // Remove # from hex
+        $hex_clean = ltrim($hex, '#');
+        
+        // First, try to get color name to search by name too
+        $expected_name = aakaari_ps_hex_to_color_name($hex_clean);
+        $term = null;
+        
+        // Try to find by name first
+        if (strpos($expected_name, '#') !== 0) {
+            $term = get_term_by('name', $expected_name, $attribute_taxonomy);
+        }
+        
+        // If not found by name, try meta query
+        if (!$term) {
+            $terms = get_terms(array(
+                'taxonomy' => $attribute_taxonomy,
+                'hide_empty' => false,
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'hex_code',
+                        'value' => $hex_clean,
+                        'compare' => '='
+                    ),
+                    array(
+                        'key' => 'product_attribute_color',
+                        'value' => '#' . $hex_clean,
+                        'compare' => '='
+                    )
+                )
+            ));
+            
+            if (!empty($terms) && !is_wp_error($terms)) {
+                $term = $terms[0];
+            }
+        }
+        
+        if ($term) {
+            // Found existing term
+            $term_ids[] = $term->term_id;
+            error_log("Found existing color term: {$term->name} (#{$hex_clean})");
+        } else {
+            // Term not found, create a new one
+            $color_name = aakaari_ps_hex_to_color_name($hex_clean);
+            
+            // If the function returned the hex back, generate a name
+            if (strpos($color_name, '#') === 0) {
+                $color_name = 'Color ' . strtoupper($hex_clean);
+            }
+            
+            $new_term = wp_insert_term($color_name, $attribute_taxonomy);
+            
+            if (!is_wp_error($new_term)) {
+                $term_id = $new_term['term_id'];
+                // Save the hex code as term meta
+                update_term_meta($term_id, 'hex_code', $hex_clean);
+                update_term_meta($term_id, 'product_attribute_color', '#' . $hex_clean);
+                $term_ids[] = $term_id;
+                error_log("Created new color term: $color_name (#{$hex_clean}) with ID $term_id");
+            } else {
+                error_log("Failed to create color term for $hex: " . $new_term->get_error_message());
+            }
+        }
+    }
+    
+    // Now set these terms on the product
+    if (!empty($term_ids)) {
+        wp_set_object_terms($product->get_id(), $term_ids, $attribute_taxonomy);
+        
+        // Also set the attribute data on the product
+        $attributes = $product->get_attributes();
+        
+        $color_attribute = new WC_Product_Attribute();
+        $color_attribute->set_id(wc_attribute_taxonomy_id_by_name($attribute_taxonomy));
+        $color_attribute->set_name($attribute_taxonomy);
+        $color_attribute->set_options($term_ids);
+        $color_attribute->set_visible(true);
+        $color_attribute->set_variation(false); // Set to true if you want variations
+        
+        $attributes[$attribute_taxonomy] = $color_attribute;
+        $product->set_attributes($attributes);
+        
+        error_log('Synced ' . count($term_ids) . ' colors to product attribute pa_color');
+    }
+}
+
+
+/**
+ * Helper function to convert hex to color name
+ * Returns color name if found in map, otherwise returns the hex
+ */
+function aakaari_ps_hex_to_color_name($hex) {
+    $hex = strtoupper(ltrim($hex, '#'));
+    
+    $color_map = array(
+        'FF0000' => 'Red',
+        'FF6347' => 'Tomato',
+        'FF4500' => 'Orange Red',
+        'FFA500' => 'Orange',
+        'FFD700' => 'Gold',
+        'FFFF00' => 'Yellow',
+        '00FF00' => 'Lime',
+        '32CD32' => 'Lime Green',
+        '008000' => 'Green',
+        '00FFFF' => 'Cyan',
+        '00CED1' => 'Dark Turquoise',
+        '0000FF' => 'Blue',
+        '0000CD' => 'Medium Blue',
+        '000080' => 'Navy',
+        '800080' => 'Purple',
+        '8B008B' => 'Dark Magenta',
+        'FF00FF' => 'Magenta',
+        'FFC0CB' => 'Pink',
+        'FFFFFF' => 'White',
+        'F5F5F5' => 'White Smoke',
+        'C0C0C0' => 'Silver',
+        '808080' => 'Gray',
+        '000000' => 'Black',
+        'A52A2A' => 'Brown',
+        '8B4513' => 'Saddle Brown',
+    );
+    
+    return isset($color_map[$hex]) ? $color_map[$hex] : '#' . $hex;
+}
+
 // Hook the new upload handler
 add_action('wp_ajax_aakaari_ps_upload_side_image', 'aakaari_ps_upload_side_image');
 

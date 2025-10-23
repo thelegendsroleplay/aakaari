@@ -44,6 +44,7 @@ $required_files = array(
     'print-studio-ajax.php',
     'product-customizer-functions.php',
     'cp-functions.php',
+    'print-studio-fabric-print-handlers.php',
 
 );
 

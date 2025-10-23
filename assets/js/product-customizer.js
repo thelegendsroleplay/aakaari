@@ -137,11 +137,17 @@
         const colors = state.product.colors || [];
         const colorContainer = $('#color-selector-container');
         
-        // Hide selector if only one color
+        console.log('Setting up color selector with colors:', colors);
+        
+        // Hide selector if only one color or no colors
         if (colors.length <= 1) {
             $('#color-selector-card').addClass('hidden');
+            console.log('Color selector hidden - only', colors.length, 'color(s)');
             return;
         }
+        
+        // Show the color selector card
+        $('#color-selector-card').removeClass('hidden');
         
         // Clear color container
         colorContainer.empty();
@@ -150,12 +156,15 @@
         colors.forEach((color, index) => {
             const isSelected = index === 0; // Select first color by default
             const hexColor = color.color || '#FFFFFF';
-            const swatch = $(`<div class="color-swatch ${isSelected ? 'selected' : ''}" data-color="${index}" style="background-color: ${hexColor};" title="${color.name}"></div>`);
+            const colorName = color.name || hexColor;
+            console.log(`Adding color swatch: ${colorName} (${hexColor})`);
+            const swatch = $(`<div class="color-swatch ${isSelected ? 'selected' : ''}" data-color="${index}" style="background-color: ${hexColor};" title="${colorName}"></div>`);
             colorContainer.append(swatch);
         });
         
         // Set initial selected color
         state.selectedColor = 0;
+        console.log('Color selector setup complete with', colors.length, 'colors');
     }
     
     function setupPrintTypeSelector() {

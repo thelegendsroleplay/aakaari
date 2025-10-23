@@ -1,94 +1,192 @@
-/* assets/print-studio/print-studio.js
-   - Updated renderSideModal() to use <input type="file">
-   - Updated delegatedChange() to handle file uploads
-*/
+/*
+ * assets/print-studio/print-studio.js
+ * - Fixed AJAX action mismatch for initial data load.
+ * - Added persistent side image upload.
+ */
 (function () {
-  'use strict';
+    'use strict';
 
-  // Wait for DOM and ensure container exists
-  document.addEventListener('DOMContentLoaded', () => {
-    const APP_ROOT = document.getElementById('custom-print-studio-app');
-    if (!APP_ROOT) return; // only run where the container exists
+    document.addEventListener('DOMContentLoaded', () => {
+        const APP_ROOT = document.getElementById('custom-print-studio-app');
+        if (!APP_ROOT) return;
 
-    // --- App state (from original) ---
-    let appState = {
-      activeTab: 'products',
-      editingProduct: null, // This will be a DEEP COPY of the product being edited
-      products: [
-        {
-          id: 'prod-1',
-          name: 'Classic Unisex T-Shirt',
-          description: 'A comfortable and stylish t-shirt for everyday wear.',
-          basePrice: 15.00,
-          salePrice: 12.50,
-          category: 'T-Shirts',
-          woocommerceId: 'wc-101',
-          isActive: true,
-          colors: ['#000000', '#FFFFFF', '#FF0000'],
-          availablePrintTypes: ['print-1'],
-          sides: [
-            {
-              id: 'side-1',
-              name: 'Front',
-              imageUrl: 'https://i.imgur.com/2s4P2c5.png',
-              printAreas: [
-                { id: 'area-1', name: 'Center Chest', x: 150, y: 100, width: 200, height: 300 }
-              ],
-              restrictionAreas: [
-                { id: 'rest-1', name: 'Collar', x: 180, y: 20, width: 140, height: 50 }
-              ],
-            },
-            {
-              id: 'side-2',
-              name: 'Back',
-              imageUrl: 'https://i.imgur.com/Ph6p2tq.png',
-              printAreas: [
-                { id: 'area-2', name: 'Full Back', x: 100, y: 100, width: 300, height: 400 }
-              ],
-              restrictionAreas: [],
-            }
-          ]
-        },
-        {
-          id: 'prod-2',
-          name: 'Premium Hoodie',
-          description: 'Heavyweight hoodie for maximum comfort.',
-          basePrice: 35.00,
-          salePrice: null,
-          category: 'Hoodies',
-          woocommerceId: 'wc-102',
-          isActive: false,
-          colors: ['#000000', '#3B82F6'],
-          availablePrintTypes: ['print-1', 'print-2'],
-          sides: [
-            {
-              id: 'side-3',
-              name: 'Front',
-              imageUrl: '',
-              printAreas: [
-                { id: 'area-3', name: 'Left Chest', x: 80, y: 120, width: 100, height: 100 }
-              ],
-              restrictionAreas: [],
-            }
-          ]
-        }
-      ],
-      fabrics: [
-        { id: 'fab-1', name: '100% Cotton', description: 'Standard soft cotton, 180 GSM.', price: 0 },
-        { id: 'fab-2', name: 'Premium Tri-Blend', description: 'A soft, durable blend of three fabrics.', price: 2.50 }
-      ],
-      printTypes: [
-        { id: 'print-1', name: 'DTF (Direct to Film)', description: 'Vibrant colors, durable finish.', pricingModel: 'per-inch', price: 0.15 },
-        { id: 'print-2', name: 'Embroidery', description: 'Stitched design for a premium look.', pricingModel: 'fixed', price: 8.00 }
-      ],
-      categories: [{ id: 'cat-1', name: 'T-Shirts' }, { id: 'cat-2', name: 'Hoodies' }, { id: 'cat-3', name: 'Mugs' }],
-      wooCommerceColors: [
-        { name: 'Black', hex: '#000000' }, { name: 'White', hex: '#FFFFFF' }, { name: 'Red', hex: '#FF0000' },
-        { name: 'Blue', hex: '#3B82F6' }, { name: 'Green', hex: '#22C55E' }, { name: 'Heather Grey', hex: '#E5E7EB' }
-      ]
-    };
-
+        let appState = {
+             activeTab: 'products',
+             editingProduct: null,
+             products: [],
+             // Keep default fabrics/printTypes for fallback or initial structure
+             fabrics: [
+],
+             printTypes: [ ],
+             // These will be filled by AJAX:
+             categories: [],
+             wooCommerceColors: [], // Renamed for clarity, filled from 'colors' in AJAX response
+             fetchedProducts: [] // Store products fetched from AJAX separately initially
+        };
     // --- Temporary / Form state ---
+
+
+// --- WooCommerce API methods (CORRECTED ACTIONS) ---
+const wooCommerceAPI = {
+
+    loadInitialData: function () {
+        console.log("Attempting to load initial data via aakaari_ps_load_data...");
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_load_data', // This one is correct
+                nonce: AakaariPS.nonce
+            }
+        });
+    },
+
+    // Save product to WooCommerce
+    saveProduct: function (product) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_product', // <<< FIXED
+                nonce: AakaariPS.nonce,
+                product_data: JSON.stringify(product)
+            }
+        });
+        // .then is removed here, handled by the calling function
+    },
+
+    // Update product status
+    updateProductStatus: function (productId, isActive) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_update_status', // <<< FIXED
+                nonce: AakaariPS.nonce,
+                product_id: productId,
+                is_active: isActive ? 1 : 0
+            }
+        });
+    },
+
+    // Save category to WooCommerce
+    saveCategory: function (category) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_category', // <<< FIXED
+                nonce: AakaariPS.nonce,
+                category_data: JSON.stringify(category)
+            }
+        });
+    },
+
+    // Delete category from WooCommerce
+    deleteCategory: function (categoryId) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_delete_category', // <<< FIXED
+                nonce: AakaariPS.nonce,
+                category_id: categoryId
+            }
+        });
+    },
+    saveAllPrintTypes: function (printTypes) {
+        console.log("Saving all print types...");
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_print_types',
+                nonce: AakaariPS.nonce,
+                print_types_data: JSON.stringify(printTypes)
+            }
+        });
+    },
+        saveAllFabrics: function (fabrics) {
+        console.log("Saving all fabrics...");
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_fabrics',
+                nonce: AakaariPS.nonce,
+                fabrics_data: JSON.stringify(fabrics)
+            }
+        });
+    }
+};
+
+        // --- Updated: Initialize using the single AJAX call ---
+        function initWithWooCommerceData() {
+            APP_ROOT.innerHTML = `<div class="ps-card"><h3>Loading Custom Print Studio...</h3><p class="ps-helper">Loading data from WooCommerce...</p></div>`;
+
+            // Call the single data loading function
+            wooCommerceAPI.loadInitialData().then(function (response) {
+                 // Check response structure carefully
+                 console.log("Initial data response received:", response);
+
+                 if (response.success && response.data) {
+                     // Populate appState with data received from aakaari_ps_load_data
+                     appState.fetchedProducts = response.data.products || []; // Store fetched products
+                     appState.categories = response.data.categories || [];
+                     appState.wooCommerceColors = response.data.colors || []; // Uses 'colors' key from PHP response
+                     appState.printTypes = response.data.printTypes || []; // --- MODIFIED ---
+                     appState.fabrics = response.data.fabrics || [];       // --- MODIFIED ---
+
+                      // Now merge fetched products into the main products list if needed, or just use fetchedProducts
+                      // For simplicity, let's just replace the default products array
+                      appState.products = appState.fetchedProducts;
+
+                     // Enhanced logging for debugging
+                     console.log("✓ Loaded " + appState.products.length + " print studio products");
+                     console.log("✓ Loaded " + appState.categories.length + " categories");
+                     console.log("✓ Loaded " + appState.wooCommerceColors.length + " colors from WooCommerce");
+                     
+                     if (appState.wooCommerceColors.length > 0) {
+                         console.log("Colors available:", appState.wooCommerceColors.map(c => c.name).join(', '));
+                     } else {
+                         console.warn("⚠ No colors loaded! Please add colors in WooCommerce > Products > Attributes > Color");
+                         console.warn("See PRINT_STUDIO_COLOR_SETUP.md for setup instructions");
+                     }
+
+                     // Check if essential data is present
+                     if (!appState.categories.length) console.warn("⚠ No categories loaded from WooCommerce.");
+                     if (!appState.products.length) console.info("ℹ No print studio products found yet (this is normal for new installations).");
+
+                     // Render the full app UI
+                     renderApp();
+                 } else {
+                      // Handle AJAX error reported by server (e.g., nonce failure)
+                      throw new Error(response.data?.message || 'Failed to load data (server error)');
+                 }
+
+            }).catch(function (jqXHR, textStatus, errorThrown) {
+                // Handle actual AJAX/network errors or errors thrown above
+                 let errorMsg = 'Unknown error';
+                 if (jqXHR.responseJSON && jqXHR.responseJSON.data) {
+                     errorMsg = jqXHR.responseJSON.data.message || jqXHR.responseJSON.data; // Use server message if available
+                 } else if (typeof errorThrown === 'string' && errorThrown) {
+                     errorMsg = errorThrown;
+                 } else if (jqXHR.statusText) {
+                    errorMsg = `Status ${jqXHR.status}: ${jqXHR.statusText}`;
+                 } else if (errorThrown instanceof Error) {
+                     errorMsg = errorThrown.message; // Use message from thrown Error
+                 }
+                 console.error("Error during initial data load:", jqXHR, textStatus, errorThrown);
+
+                APP_ROOT.innerHTML = `
+                    <div class="ps-card">
+                        <h3 style="color: red;">Error Loading Print Studio</h3>
+                        <p class="ps-helper">There was an error loading data from WooCommerce. Please try refreshing the page.</p>
+                        <p class="ps-helper">Details: ${escapeHtml(errorMsg)}</p>
+                        <p class="ps-helper">Check browser console (F12) and PHP error logs for more details.</p>
+                    </div>`;
+            });
+        }
     let tempState = {
       productForm: {},
       sideForm: {},
@@ -120,17 +218,58 @@
       CANVAS_HEIGHT: 500,
     };
 
-    // ---------- Utils ----------
+        // ... (rest of your print-studio.js code: utils, render functions, event handlers, canvas logic, etc.) ...
+        // Ensure that renderProductModal uses appState.wooCommerceColors and appState.printTypes (the default/fallback ones initially)
+        // Ensure render functions for tabs use the correct appState properties.
+
+         // --- Utils ---
     function generateId(prefix = 'id') {
       return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
-
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
 
-    // ---------- Main Rendering ----------
+         // --- Image Upload ---
+        async function uploadSideImage(file) {
+            const formData = new FormData();
+            formData.append('action', 'aakaari_ps_upload_side_image'); // Matches PHP action
+            formData.append('nonce', AakaariPS.nonce);
+            formData.append('side_image_file', file);
+            // Optionally add product ID if needed for context in PHP:
+            // formData.append('product_id', appState.editingProduct?.woocommerceId || 0);
+
+            // Show some indicator maybe?
+            console.log("Uploading side image...");
+
+            try {
+                // Use jQuery AJAX as it's already a dependency
+                const response = await jQuery.ajax({
+                    url: AakaariPS.ajax_url,
+                    type: 'POST',
+                    data: formData,
+                    processData: false, // Important for FormData
+                    contentType: false, // Important for FormData
+                });
+
+                if (response.success && response.data.url) {
+                    console.log("Upload successful:", response.data);
+                    return response.data; // Should return { url: '...', attachment_id: '...' }
+                } else {
+                    throw new Error(response.data?.message || 'Upload failed');
+                }
+            } catch (error) {
+                console.error('Side image upload error:', error);
+                 // Use your showToast function if available, otherwise alert
+                 alert(`Failed to upload side image: ${error.message || 'Unknown error'}`);
+                return null; // Indicate failure
+            } finally {
+                 console.log("Upload attempt finished.");
+                 // Hide indicator
+            }
+        }
+
     function renderApp() {
       const viewHtml = appState.editingProduct ? renderEditorView(appState.editingProduct) : renderDashboardView();
 
@@ -181,6 +320,7 @@
           ${appState.activeTab === 'fabrics' ? renderFabricsTab() : ''}
           ${appState.activeTab === 'printTypes' ? renderPrintTypesTab() : ''}
           ${appState.activeTab === 'categories' ? renderCategoriesTab() : ''}
+          ${appState.activeTab === 'colors' ? renderColorsTab() : ''}
         </div>
       `;
     }
@@ -353,6 +493,7 @@
     function renderTabs() {
       const tabs = [
         { id: 'products', label: 'Products', icon: 'package' },
+        { id: 'colors', label: 'Colors', icon: 'palette' }, // --- NEW ---
         { id: 'fabrics', label: 'Fabrics', icon: 'layers' },
         { id: 'printTypes', label: 'Print Types', icon: 'printer' },
         { id: 'categories', label: 'Categories', icon: 'tag' }
@@ -420,6 +561,7 @@
             <i data-lucide="plus" class="ps-icon"></i> Add Fabric
           </button>
         </div>
+        <p class="ps-helper">Fabric definitions are saved to your WordPress database.</p>
         <table class="ps-table">
           <thead>
             <tr><th>Name</th><th>Description</th><th>Price Adj.</th><th>Actions</th></tr>
@@ -455,6 +597,7 @@
             <i data-lucide="plus" class="ps-icon"></i> Add Print Type
           </button>
         </div>
+        <p class="ps-helper">Print Type definitions are saved to your WordPress database.</p>
         <table class="ps-table">
           <thead>
             <tr><th>Name</th><th>Description</th><th>Pricing</th><th>Actions</th></tr>
@@ -493,6 +636,7 @@
             <i data-lucide="plus" class="ps-icon"></i> Add Category
           </button>
         </div>
+        <p class="ps-helper">This list is loaded from and saves to your WooCommerce product categories.</p>
         <table class="ps-table">
           <thead>
             <tr><th>Name</th><th>Actions</th></tr>
@@ -508,6 +652,43 @@
                     <i data-lucide="edit-3" class="ps-icon"></i> Edit
                   </button>
                   <button class="ps-btn ps-btn--destructive ps-btn--small" data-action="delete-category" data-category-id="${c.id}">
+                    <i data-lucide="trash-2" class="ps-icon"></i>
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+    
+    // --- NEW: Render Colors Tab ---
+    function renderColorsTab() {
+      return `
+        <div class="ps-tab-content-header">
+          <h3>Manage WooCommerce Colors</h3>
+          <button class="ps-btn ps-btn--primary" data-action="show-color-modal">
+            <i data-lucide="plus" class="ps-icon"></i> Add Color
+          </button>
+        </div>
+        <p class="ps-helper">This list is loaded from and saves to your 'pa_color' product attribute.</p>
+        <table class="ps-table">
+          <thead>
+            <tr><th>Color</th><th>Name</th><th>Hex Code</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${appState.wooCommerceColors.length === 0 ? `
+              <tr><td colspan="4" class="ps-table-empty">No colors found.</td></tr>
+            ` : appState.wooCommerceColors.map(c => `
+              <tr>
+                <td><span class="ps-color-swatch" style="--swatch-color: ${escapeHtml(c.hex)};"></span></td>
+                <td>${escapeHtml(c.name)}</td>
+                <td>${escapeHtml(c.hex)}</td>
+                <td>
+                  <button class="ps-btn ps-btn--outline ps-btn--small" data-action="show-color-modal" data-color-id="${c.id}">
+                    <i data-lucide="edit-3" class="ps-icon"></i> Edit
+                  </button>
+                  <button class="ps-btn ps-btn--destructive ps-btn--small" data-action="delete-color" data-color-id="${c.id}">
                     <i data-lucide="trash-2" class="ps-icon"></i>
                   </button>
                 </td>
@@ -634,6 +815,39 @@
       `;
       return renderModal(title, content, footer);
     }
+    
+    // --- NEW: Render Color Modal ---
+    function renderColorModal() {
+      const isEditing = !!tempState.editingColorId;
+      const form = tempState.colorForm;
+      const title = isEditing ? 'Edit Color' : 'Add New Color';
+      const content = `
+        <div class="ps-form-column">
+          <div class="ps-form-group">
+            <label class="ps-label" for="color-name">Color Name</label>
+            <input type="text" id="color-name" class="ps-input" 
+                   value="${escapeHtml(form.name)}" data-form="colorForm" data-prop="name">
+          </div>
+          <div class="ps-form-group">
+            <label class="ps-label" for="color-hex">Hex Code</label>
+            <div class="ps-row">
+                <input type="color" id="color-picker" class="ps-input-color" 
+                       value="${escapeHtml(form.hex)}" data-action="update-color-picker">
+                <input type="text" id="color-hex" class="ps-input" style="width: 100px;"
+                       value="${escapeHtml(form.hex)}" data-form="colorForm" data-prop="hex">
+            </div>
+            <p class="ps-helper">This will create or update a color in 'pa_color' attribute.</p>
+          </div>
+        </div>
+      `;
+      const footer = `
+        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
+        <button class="ps-btn ps-btn--primary" data-action="save-color">
+          ${isEditing ? 'Save Changes' : 'Create Color'}
+        </button>
+      `;
+      return renderModal(title, content, footer);
+    }
 
     function renderProductModal() {
       const form = tempState.productForm;
@@ -666,6 +880,7 @@
             <div class="ps-form-group">
               <label class="ps-label" for="prod-category">Category</label>
               <select id="prod-category" class="ps-select" data-form="productForm" data-prop="category">
+                <option value="">-- Select a Category --</option>
                 ${appState.categories.map(c => `
                   <option value="${escapeHtml(c.name)}" ${form.category === c.name ? 'selected' : ''}>
                     ${escapeHtml(c.name)}
@@ -676,20 +891,30 @@
             <div class="ps-form-group">
               <label class="ps-label" for="prod-wooId">WooCommerce ID</label>
               <input type="text" id="prod-wooId" class="ps-input" 
-                     value="${escapeHtml(form.woocommerceId)}" data-form="productForm" data-prop="woocommerceId">
+                     value="${escapeHtml(form.woocommerceId)}" data-form="productForm" data-prop="woocommerceId"
+                     ${form.woocommerceId ? 'readonly' : ''} >
+                     <p class="ps-helper">${form.woocommerceId ? 'This is managed by WooCommerce.' : 'A new ID will be created on save.'}</p>
             </div>
           </div>
           <div class="ps-form-group">
             <label class="ps-label">Available Colors</label>
+            ${appState.wooCommerceColors.length > 0 ? `
             <div class="ps-color-picker">
               ${appState.wooCommerceColors.map(c => `
                 <label class="ps-color-chip" style="--chip-color: ${c.hex};" title="${escapeHtml(c.name)}">
                   <input type="checkbox" value="${c.hex}" data-form="productForm" data-prop="colors"
-                         ${form.colors.includes(c.hex) ? 'checked' : ''}>
+                         ${(form.colors || []).includes(c.hex) ? 'checked' : ''}>
                   <span class="ps-color-chip-check"><i data-lucide="check" class="ps-icon-small"></i></span>
                 </label>
               `).join('')}
             </div>
+            ` : `
+            <p class="ps-helper" style="color: #f59e0b;">
+              <i data-lucide="alert-circle" class="ps-icon"></i>
+              No colors found. Please add colors in <strong>WooCommerce > Products > Attributes > Color</strong>.
+              <br><small>See PRINT_STUDIO_COLOR_SETUP.md for setup instructions.</small>
+            </p>
+            `}
           </div>
           <div class="ps-form-group">
             <label class="ps-label">Available Print Types</label>
@@ -697,7 +922,7 @@
               ${appState.printTypes.map(pt => `
                 <label class="ps-checkbox-label">
                   <input type="checkbox" value="${pt.id}" data-form="productForm" data-prop="availablePrintTypes"
-                         ${form.availablePrintTypes.includes(pt.id) ? 'checked' : ''}>
+                         ${(form.availablePrintTypes || []).includes(pt.id) ? 'checked' : ''}>
                   <span>${escapeHtml(pt.name)}</span>
                 </label>
               `).join('')}
@@ -716,6 +941,14 @@
       const isEditing = !!tempState.editingSideId;
       const form = tempState.sideForm;
       const title = isEditing ? 'Edit Side' : 'Add New Side';
+      
+      let currentImageText = 'No image set.';
+      if (form.pendingFile) {
+          currentImageText = `New file: ${form.pendingFile.name}`;
+      } else if (form.imageUrl) {
+          currentImageText = 'Current image is set.';
+      }
+
       const content = `
         <div class="ps-form-column">
           <div class="ps-form-group">
@@ -730,7 +963,7 @@
             <p class="ps-helper">
               Upload a PNG or JPG. Recommended 500x500.<br>
               <span id="current-image-name" style="font-weight: 500;">
-                ${form.imageUrl ? 'Current image is set.' : 'No image set.'}
+                ${currentImageText}
               </span>
             </p>
           </div>
@@ -762,7 +995,7 @@
       canvasState.ctx = canvas.getContext('2d');
       canvasState.CANVAS_WIDTH = canvas.width;
       canvasState.CANVAS_HEIGHT = canvas.height;
-      canvasState.loadedImage = null; // Force reload
+      canvasState.loadedImage = null;
       
       canvas.addEventListener('mousedown', handleCanvasMouseDown);
       canvas.addEventListener('mousemove', handleCanvasMouseMove);
@@ -848,6 +1081,10 @@
     }
 
     function drawArea(ctx, a, type, isSelected) {
+       if (!a || typeof a.x !== 'number' || typeof a.y !== 'number' || typeof a.width !== 'number' || typeof a.height !== 'number') {
+           console.warn("Attempted to draw invalid area:", a);
+           return;
+       }
       const isRestriction = type === 'restriction';
       ctx.save();
       ctx.strokeStyle = isRestriction ? 
@@ -862,11 +1099,22 @@
       
       ctx.fillRect(a.x, a.y, a.width, a.height);
       ctx.strokeRect(a.x, a.y, a.width, a.height);
+      ctx.setLineDash([]);
 
       // Draw name
       ctx.fillStyle = isRestriction ? '#d00000' : '#2563EB';
       ctx.font = '600 12px -apple-system, sans-serif';
-      ctx.fillText(a.name, a.x + 5, a.y + 16);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      
+      const text = a.name || (isRestriction ? 'Restriction' : 'Print Area');
+      const textMetrics = ctx.measureText(text);
+      const textBgPadding = 2;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillRect(a.x + 4 - textBgPadding, a.y + 4 - textBgPadding, textMetrics.width + textBgPadding*2, 12 + textBgPadding*2);
+
+      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8';
+      ctx.fillText(text, a.x + 4, a.y + 4);
       
       ctx.restore();
     }
@@ -954,7 +1202,239 @@
       if (!appState.editingProduct || !appState.editingProduct.sides) return null;
       return appState.editingProduct.sides[canvasState.selectedSideIndex] || null;
     }
+    // ---------- START: ADDING MISSING FUNCTIONS ----------
 
+    function renderCategoryModal() {
+      const isEditing = !!tempState.editingCategoryId;
+      const form = tempState.categoryForm;
+      const title = isEditing ? 'Edit Category' : 'Add New Category';
+      const content = `
+        <div class="ps-form-column">
+          <div class="ps-form-group">
+            <label class="ps-label" for="cat-name">Category Name</label>
+            <input type="text" id="cat-name" class="ps-input" 
+                   value="${escapeHtml(form.name)}" data-form="categoryForm" data-prop="name">
+            <p class="ps-helper">This should match a WooCommerce product category.</p>
+          </div>
+        </div>
+      `;
+      const footer = `
+        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
+        <button class="ps-btn ps-btn--primary" data-action="save-category">
+          ${isEditing ? 'Save Changes' : 'Create Category'}
+        </button>
+      `;
+      return renderModal(title, content, footer);
+    }
+
+    function getCanvasCoordinates(e) {
+        if (!canvasState.canvas) return { x: 0, y: 0 }; // Safety check
+        const rect = canvasState.canvas.getBoundingClientRect();
+        // Adjust for potential CSS scaling
+        const scaleX = canvasState.CANVAS_WIDTH / rect.width;
+        const scaleY = canvasState.CANVAS_HEIGHT / rect.height;
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+        return { x, y };
+    }
+
+    function drawArea(ctx, a, type, isSelected) {
+      // Ensure area has valid dimensions
+       if (!a || typeof a.x !== 'number' || typeof a.y !== 'number' || typeof a.width !== 'number' || typeof a.height !== 'number') {
+           console.warn("Attempted to draw invalid area:", a);
+           return;
+       }
+
+      const isRestriction = type === 'restriction';
+      ctx.save();
+      ctx.strokeStyle = isRestriction ? 
+        (isSelected ? '#d00000' : 'rgba(239,68,68,0.9)') : // red
+        (isSelected ? '#2563EB' : 'rgba(59,130,246,0.9)'); // blue
+      ctx.fillStyle = isRestriction ? 
+        (isSelected ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.06)') :
+        (isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)');
+      
+      ctx.lineWidth = isSelected ? 3 : 2;
+      ctx.setLineDash(isRestriction ? [4, 4] : []);
+      
+      ctx.fillRect(a.x, a.y, a.width, a.height);
+      ctx.strokeRect(a.x, a.y, a.width, a.height);
+      ctx.setLineDash([]); // Reset line dash
+
+      // Draw name
+      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Darker text fill
+      ctx.font = '600 12px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      
+      const text = a.name || (isRestriction ? 'Restriction' : 'Print Area');
+      const textMetrics = ctx.measureText(text);
+      const textBgPadding = 2;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Semi-transparent white background
+      ctx.fillRect(a.x + 4 - textBgPadding, a.y + 4 - textBgPadding, textMetrics.width + textBgPadding*2, 12 + textBgPadding*2);
+
+      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Restore text color
+      ctx.fillText(text, a.x + 4, a.y + 4); // Position text inside the area
+      
+      ctx.restore();
+    }
+    
+    function drawResizeHandles(ctx, area) {
+        const { HANDLE_SIZE, hoveredHandle } = canvasState;
+        const handles = getHandleCoordinates(area);
+        
+        ctx.save();
+        Object.keys(handles).forEach(key => {
+            const handle = handles[key];
+            const isHovered = hoveredHandle === key;
+            ctx.fillStyle = isHovered ? 'hsl(var(--primary))' : '#FFFFFF';
+            ctx.strokeStyle = 'hsl(var(--primary))';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+        });
+        ctx.restore();
+    }
+    
+    function getHandleCoordinates(area) {
+        return {
+            'tl': { x: area.x, y: area.y },
+            'tm': { x: area.x + area.width / 2, y: area.y },
+            'tr': { x: area.x + area.width, y: area.y },
+            'ml': { x: area.x, y: area.y + area.height / 2 },
+            'mr': { x: area.x + area.width, y: area.y + area.height / 2 },
+            'bl': { x: area.x, y: area.y + area.height },
+            'bm': { x: area.x + area.width / 2, y: area.y + area.height },
+            'br': { x: area.x + area.width, y: area.y + area.height },
+        };
+    }
+    
+    function getHandleAtPosition(pos, area) {
+        const { HANDLE_SIZE } = canvasState;
+        const handles = getHandleCoordinates(area);
+        
+        for (const key in handles) {
+            const handle = handles[key];
+            if (pos.x >= handle.x - HANDLE_SIZE && pos.x <= handle.x + HANDLE_SIZE &&
+                pos.y >= handle.y - HANDLE_SIZE && pos.y <= handle.y + HANDLE_SIZE) {
+                return key;
+            }
+        }
+        return null;
+    }
+    
+    function isInsideArea(pos, area) {
+        if (!area) return false; // Safety check
+        return pos.x >= area.x && pos.x <= area.x + area.width &&
+               pos.y >= area.y && pos.y <= area.y + area.height;
+    }
+
+// ---------- END: Missing Canvas Helper Functions ----------
+// ---------- START: Missing Canvas Helper Functions ----------
+
+    function drawArea(ctx, a, type, isSelected) {
+      // Ensure area has valid dimensions
+       if (!a || typeof a.x !== 'number' || typeof a.y !== 'number' || typeof a.width !== 'number' || typeof a.height !== 'number') {
+           console.warn("Attempted to draw invalid area:", a);
+           return;
+       }
+
+      const isRestriction = type === 'restriction';
+      ctx.save();
+      ctx.strokeStyle = isRestriction ? 
+        (isSelected ? '#d00000' : 'rgba(239,68,68,0.9)') : // red
+        (isSelected ? '#2563EB' : 'rgba(59,130,246,0.9)'); // blue
+      ctx.fillStyle = isRestriction ? 
+        (isSelected ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.06)') :
+        (isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)');
+      
+      ctx.lineWidth = isSelected ? 3 : 2;
+      ctx.setLineDash(isRestriction ? [4, 4] : []);
+      
+      ctx.fillRect(a.x, a.y, a.width, a.height);
+      ctx.strokeRect(a.x, a.y, a.width, a.height);
+      ctx.setLineDash([]); // Reset line dash
+
+      // Draw name
+      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Darker text fill
+      ctx.font = '600 12px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      
+      const text = a.name || (isRestriction ? 'Restriction' : 'Print Area');
+      const textMetrics = ctx.measureText(text);
+      const textBgPadding = 2;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Semi-transparent white background
+      ctx.fillRect(a.x + 4 - textBgPadding, a.y + 4 - textBgPadding, textMetrics.width + textBgPadding*2, 12 + textBgPadding*2);
+
+      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Restore text color
+      ctx.fillText(text, a.x + 4, a.y + 4); // Position text inside the area
+      
+      ctx.restore();
+    }
+    
+    function drawResizeHandles(ctx, area) {
+        const { HANDLE_SIZE, hoveredHandle } = canvasState;
+        const handles = getHandleCoordinates(area);
+        
+        ctx.save();
+        Object.keys(handles).forEach(key => {
+            const handle = handles[key];
+            const isHovered = hoveredHandle === key;
+            ctx.fillStyle = isHovered ? 'hsl(var(--primary))' : '#FFFFFF';
+            ctx.strokeStyle = 'hsl(var(--primary))';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+        });
+        ctx.restore();
+    }
+    
+    function getHandleCoordinates(area) {
+        return {
+            'tl': { x: area.x, y: area.y },
+            'tm': { x: area.x + area.width / 2, y: area.y },
+            'tr': { x: area.x + area.width, y: area.y },
+            'ml': { x: area.x, y: area.y + area.height / 2 },
+            'mr': { x: area.x + area.width, y: area.y + area.height / 2 },
+            'bl': { x: area.x, y: area.y + area.height },
+            'bm': { x: area.x + area.width / 2, y: area.y + area.height },
+            'br': { x: area.x + area.width, y: area.y + area.height },
+        };
+    }
+    
+    function getHandleAtPosition(pos, area) {
+        const { HANDLE_SIZE } = canvasState;
+        const handles = getHandleCoordinates(area);
+        
+        for (const key in handles) {
+            const handle = handles[key];
+            if (pos.x >= handle.x - HANDLE_SIZE && pos.x <= handle.x + HANDLE_SIZE &&
+                pos.y >= handle.y - HANDLE_SIZE && pos.y <= handle.y + HANDLE_SIZE) {
+                return key;
+            }
+        }
+        return null;
+    }
+    
+    function isInsideArea(pos, area) {
+        if (!area) return false; // Safety check
+        return pos.x >= area.x && pos.x <= area.x + area.width &&
+               pos.y >= area.y && pos.y <= area.y + area.height;
+    }
+    
+    function getCanvasCoordinates(e) {
+        if (!canvasState.canvas) return { x: 0, y: 0 }; // Safety check
+        const rect = canvasState.canvas.getBoundingClientRect();
+        // Adjust for potential CSS scaling
+        const scaleX = canvasState.CANVAS_WIDTH / rect.width;
+        const scaleY = canvasState.CANVAS_HEIGHT / rect.height;
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+        return { x, y };
+    }
+
+    // ---------- END: Missing Canvas Helper Functions ----------
     // ---------- Canvas Event Handlers ----------
     function handleCanvasMouseDown(e) {
         const pos = getCanvasCoordinates(e);
@@ -1237,6 +1717,7 @@
       if (action === 'show-fabric-modal') handleShowFabricModal(data.fabricId);
       if (action === 'show-print-type-modal') handleShowPrintTypeModal(data.printTypeId);
       if (action === 'show-category-modal') handleShowCategoryModal(data.categoryId);
+      if (action === 'show-color-modal') handleShowColorModal(data.colorId); // --- NEW ---
       if (action === 'show-product-modal') handleShowProductModal();
       
       // Modal Actions
@@ -1244,13 +1725,15 @@
       if (action === 'save-fabric') handleSaveFabric();
       if (action === 'save-print-type') handleSavePrintType();
       if (action === 'save-category') handleSaveCategory();
+      if (action === 'save-color') handleSaveColor(); // --- NEW ---
       if (action === 'save-product-details') handleSaveProductDetails();
       if (action === 'save-side') handleSaveSide();
 
       // Delete Actions
-      if (action === 'delete-fabric') handleDelete('fabric', data.fabricId);
-      if (action === 'delete-print-type') handleDelete('printType', data.printTypeId);
-      if (action === 'delete-category') handleDelete('category', data.categoryId);
+      if (action === 'delete-fabric') handleDeleteFabric(data.fabricId); // --- MODIFIED ---
+      if (action === 'delete-print-type') handleDeletePrintType(data.printTypeId); // --- MODIFIED ---
+      if (action === 'delete-category') handleDeleteCategory(data.categoryId);
+      if (action === 'delete-color') handleDeleteColor(data.colorId); // --- NEW ---
       if (action === 'delete-side') handleDeleteSide(data.sideId);
       
       // Editor Actions
@@ -1290,6 +1773,13 @@
       }
       if (action === 'duplicate-area') handleDuplicateArea();
       if (action === 'delete-area') handleDeleteArea();
+      
+      // --- NEW: Color Picker Sync ---
+      if (action === 'update-color-picker') {
+          const hexInput = document.getElementById('color-hex');
+          if (hexInput) hexInput.value = target.value;
+          tempState.colorForm.hex = target.value;
+      }
     }
     
     function delegatedInput(e) {
@@ -1489,30 +1979,63 @@
       renderApp();
     }
     
+// --- CORRECTED Category Modal Handler ---
     function handleShowCategoryModal(categoryId = null) {
       if (categoryId) {
-        const cat = appState.categories.find(c => c.id === categoryId);
-        tempState.categoryForm = JSON.parse(JSON.stringify(cat));
+        // --- This is EDIT mode ---
+        const cat = appState.categories.find(c => c.id == categoryId); // Use == for loose comparison (e.g., '12' vs 12)
+        if (!cat) {
+            console.error(`Category with ID ${categoryId} not found in appState.`);
+            showToast(`Error: Category not found.`, 'error');
+            return; // Stop
+        }
+        tempState.categoryForm = JSON.parse(JSON.stringify(cat)); // Safe to parse
         tempState.editingCategoryId = categoryId;
       } else {
-        tempState.categoryForm = { name: '' };
+        // --- This is ADD NEW mode ---
+        tempState.categoryForm = { name: '' }; // Start with an empty form
         tempState.editingCategoryId = null;
       }
-      showModal(renderCategoryModal());
+      showModal(renderCategoryModal()); // Now show the modal
     }
     
+
+// --- CORRECTED Category Save Handler (Uses API) ---
     function handleSaveCategory() {
       const form = tempState.categoryForm;
-      if (!form.name) return alert('Category name is required.');
-      
-      if (tempState.editingCategoryId) {
-        const index = appState.categories.findIndex(c => c.id === tempState.editingCategoryId);
-        if (index > -1) appState.categories[index] = { ...form };
-      } else {
-        appState.categories.push({ ...form, id: generateId('cat') });
+      if (!form || !form.name || form.name.trim() === '') {
+          alert('Category name is required.');
+          return;
       }
-      closeModal();
-      renderApp();
+      
+      const saveBtn = document.querySelector('#ps-modal-overlay [data-action="save-category"]');
+      if(saveBtn) saveBtn.disabled = true;
+
+      // Save to WooCommerce via API
+      wooCommerceAPI.saveCategory(form).then(function(response) {
+        if (response.success && response.data) {
+          // response.data contains the updated/new category object { id, name }
+          if (tempState.editingCategoryId) {
+            // Find and update in state
+            const index = appState.categories.findIndex(c => c.id == tempState.editingCategoryId);
+            if (index > -1) {
+              appState.categories[index] = response.data;
+            }
+          } else {
+            // Add new to state
+            appState.categories.push(response.data);
+          }
+          closeModal();
+          renderApp(); // Redraw the dashboard
+          showToast(tempState.editingCategoryId ? 'Category updated!' : 'Category added!', 'success');
+        } else {
+          alert('Error saving category: ' (response.data?.message || 'Unknown error'));
+          if(saveBtn) saveBtn.disabled = false;
+        }
+      }).catch(function(error) {
+        alert('AJAX Error saving category: ' + (error.responseJSON?.data?.message || error.statusText || 'Unknown error'));
+        if(saveBtn) saveBtn.disabled = false;
+      });
     }
     
     function handleDelete(type, id) {
@@ -1703,10 +2226,27 @@
       tempState.editingSideId = null;
     }
 
-    // ---------- kickoff ----------
-    renderApp();
-    
-    // Expose some small API for debugging if needed:
-    window.AakaariPrintStudio = { appState, tempState, canvasState };
-  });
+         // --- Toast ---
+         function showToast(message, type = 'info') {
+             // Basic alert fallback
+             alert(`${type.toUpperCase()}: ${message}`);
+         }
+
+
+         // --- Start the app ---
+         function initAdminPrintStudio() {
+             if (typeof AakaariPS === 'undefined' || !AakaariPS.ajax_url || !AakaariPS.nonce) { // Check nonce too
+                 APP_ROOT.innerHTML = '<div class="ps-card"><h3 style="color:red;">Error: Print Studio Core Data Missing</h3><p>Could not load AJAX configuration (AakaariPS object). Please ensure PHP localization is correct.</p></div>';
+                 console.error("AakaariPS object is missing or incomplete:", window.AakaariPS);
+                 return;
+             }
+             // Load initial data from WooCommerce
+             initWithWooCommerceData();
+         }
+
+         initAdminPrintStudio();
+
+         window.AakaariPrintStudio = { appState, tempState, canvasState, api: wooCommerceAPI };
+
+    }); // End DOMContentLoaded
 })();
