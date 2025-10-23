@@ -2,6 +2,8 @@
    - Canvas is now responsive (square aspect ratio).
    - Added wrapper styles for better editor layout responsiveness.
    - Minor adjustments to spacing and alignment.
+   - NEW: Added spinning animation for icons.
+   - NEW: Added toast notification styles.
 */
 :root {
   --background: 0 0% 100%;
@@ -18,6 +20,8 @@
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
   --border: 214 20% 85%;
   --input: 214 20% 80%;
   --ring: 214 80% 50%;
@@ -36,6 +40,8 @@
   margin-right: auto;
   padding: 1rem;
   box-sizing: border-box;
+  position: relative; /* For toast notifications */
+  overflow-x: hidden;
 }
 #custom-print-studio-app * {
     box-sizing: border-box;
@@ -92,7 +98,7 @@
   border: 1px solid transparent; white-space: nowrap;
 }
 .ps-btn:focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring)); }
-.ps-btn:disabled { pointer-events: none; opacity: 0.5; }
+.ps-btn:disabled { pointer-events: none; opacity: 0.65; cursor: not-allowed; }
 
 /* Button variants */
 .ps-btn--primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
@@ -109,6 +115,15 @@
 .ps-icon-small { width: 0.75rem; height: 0.75rem; stroke-width: 2; }
 .ps-btn--small .ps-icon { width: 0.875rem; height: 0.875rem; }
 .ps-btn--icon .ps-icon { margin: 0; } /* Remove gap for icon-only */
+
+/* --- NEW: Spinning Animation --- */
+@keyframes ps-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.ps-icon--spinning {
+  animation: ps-spin 1s linear infinite;
+}
 
 
 /* Table */
@@ -163,6 +178,7 @@
   outline: none; box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3); border-color: hsl(var(--ring));
 }
 .ps-textarea { min-height: 80px; }
+.ps-input[readonly] { background: hsl(var(--muted)); cursor: not-allowed; }
 
 /* Form Switch */
 .ps-switch { position: relative; display: inline-block; width: 34px; height: 20px; }
@@ -171,6 +187,7 @@
 .ps-slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: var(--transition-duration); border-radius: 50%; }
 .ps-switch input:checked + .ps-slider { background-color: hsl(var(--primary)); }
 .ps-switch input:checked + .ps-slider:before { transform: translateX(14px); }
+.ps-switch input:disabled + .ps-slider { background-color: hsl(var(--muted)); cursor: not-allowed; }
 
 /* Color Picker */
 .ps-color-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; }
@@ -191,7 +208,7 @@
 }
 .ps-editor-main {
     display: grid;
-    gap: 1rem;
+    gap: 1.5rem; /* Increased gap */
 }
 .ps-editor-sides {
     display: flex;
@@ -207,16 +224,13 @@
     padding: .5rem;
     border-radius: .370rem;
     background: hsl(var(--muted));
-    /* NEW: Control max size */
-    max-width: 900px; /* Increased from 600px */
+    max-width: 900px;
     width: 100%;
-    min-height: 320px; /* ensure the canvas has a usable height on small screens */
-    margin-left: auto; /* Center canvas area if smaller */
+    min-height: 320px;
+    margin-left: auto;
     margin-right: auto;
-    touch-action: none; /* helps with pinch/drag behavior on touch devices */
+    touch-action: none;
 }
-
-/* Desktop: allow an even larger canvas if the container has space */
 @media (min-width: 1280px) {
   .ps-canvas-wrapper { max-width: 1100px; }
 }
@@ -250,7 +264,7 @@
   background: hsl(var(--secondary));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  touch-action: none; /* avoid default touch gestures */
+  touch-action: none;
 }
 
 /* Small utilities */
@@ -261,7 +275,7 @@
 .dialog-overlay { position: fixed; inset:0; display:grid; place-items:center; background: rgba(0,0,0,0.35); z-index:9999; padding: 1rem; }
 .dialog-content { width: 100%; max-width: 640px; background: hsl(var(--card)); border-radius: var(--radius); border:1px solid hsl(var(--border)); max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(30,64,175,0.15); }
 .ps-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid hsl(var(--border)); }
-.ps-modal-header h3 { font-size: 1.15rem; font-weight: 600; margin: 0; } /* Removed margin */
+.ps-modal-header h3 { font-size: 1.15rem; font-weight: 600; margin: 0; }
 .ps-modal-body { padding: 1.5rem; overflow-y: auto; }
 .ps-modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.5rem; border-top: 1px solid hsl(var(--border)); background: hsl(var(--muted) / 0.5); }
 
@@ -269,3 +283,34 @@
 .ps-input--file { font-size: 0.85rem; padding: 0.35rem 0.5rem; }
 .ps-input--file::file-selector-button { border: none; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 500; padding: 0.25rem 0.75rem; border-radius: .25rem; margin-right: 0.75rem; cursor: pointer; transition: all var(--transition-duration) ease; }
 .ps-input--file::file-selector-button:hover { background: hsl(var(--primary) / 0.9); }
+
+
+/* --- NEW: Toast Notification --- */
+.ps-toast {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius);
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateX(calc(100% + 1rem));
+  transition: transform 0.4s cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+.ps-toast.ps-toast--show {
+  transform: translateX(0);
+}
+.ps-toast--info {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.ps-toast--success {
+  background: hsl(var(--success));
+  color: hsl(var(--success-foreground));
+}
+.ps-toast--error {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
