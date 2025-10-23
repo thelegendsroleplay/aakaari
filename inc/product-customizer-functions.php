@@ -1,6 +1,7 @@
 <?php
 /**
  * Enqueue assets and localize data for the custom Shop Page (archive-product.php).
+ * FIXED: Added proper print type data loading and thumbnail handling
  */
 add_action( 'wp_enqueue_scripts', 'aakaari_enqueue_shop_assets', 30 ); // Use priority 30 to run after customizer check
 function aakaari_enqueue_shop_assets() {
@@ -11,7 +12,6 @@ function aakaari_enqueue_shop_assets() {
     }
 
     // --- Define Asset Paths ---
-    // *** IMPORTANT: Adjust '/assets/' if your js/css folders are elsewhere ***
     $js_folder  = '/assets/js/';
     $css_folder = '/assets/css/';
     $js_dir  = get_template_directory_uri() . $js_folder;
@@ -72,28 +72,72 @@ function aakaari_enqueue_shop_assets() {
                 continue; 
             }
             
-            // Check if customizable (using ACF field as defined in your single-product.php)
-            // Or use the meta field check: $is_customizable = metadata_exists('post', $product_id, '_aakaari_print_studio_data');
-            $is_customizable = function_exists('get_field') ? get_field('is_customizable', $product_id) : false;
+            // IMPROVED: Check if this is a print studio product
+            $is_print_studio_product = metadata_exists('post', $product_id, '_aakaari_print_studio_data');
+            
+            // FIXED: Get print studio data if available
+            $studio_data = array(
+                'printTypes' => array(),
+                'sides' => array()
+            );
+            
+            if ($is_print_studio_product) {
+                $saved_studio_data = get_post_meta($product_id, '_aakaari_print_studio_data', true);
+                if (is_array($saved_studio_data)) {
+                    $studio_data = $saved_studio_data;
+                }
+            }
+            
+            // IMPROVED: Get the image with better error handling
+            $thumbnail_id = $product->get_image_id();
+            $thumbnail_url = '';
+            
+            if ($thumbnail_id) {
+                $thumbnail_url = wp_get_attachment_image_url($thumbnail_id, 'woocommerce_thumbnail');
+            } 
+            
+            // If no product image, check if we have a side image from print studio
+            if (empty($thumbnail_url) && !empty($studio_data['sides']) && is_array($studio_data['sides'])) {
+                // Use the first side's image if available
+                foreach ($studio_data['sides'] as $side) {
+                    if (!empty($side['imageUrl'])) {
+                        $thumbnail_url = $side['imageUrl'];
+                        break;
+                    }
+                }
+            }
+            
+            // If still no image, use placeholder
+            if (empty($thumbnail_url)) {
+                $thumbnail_url = wc_placeholder_img_src();
+            }
             
             // Get category slugs for filtering
-             $term_slugs = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'slugs' ) );
-             $first_category_slug = !is_wp_error($term_slugs) && !empty($term_slugs) ? $term_slugs[0] : '';
+            $term_slugs = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'slugs' ) );
+            $first_category_slug = !is_wp_error($term_slugs) && !empty($term_slugs) ? $term_slugs[0] : '';
+            
+            // Get print types if available
+            $print_types = array();
+            if (!empty($studio_data['printTypes'])) {
+                $print_types = $studio_data['printTypes'];
+            }
 
-
+            // Build the product data array with all needed info
             $products_data[] = array(
                 'id'            => 'prod_' . $product_id, // Consistent ID for JS
                 'wp_id'         => $product_id, // Actual WordPress ID
                 'name'          => $product->get_name(),
-                'description'   => $product->get_short_description() ?: $product->get_description(),
+                'description'   => $product->get_short_description() ?: wp_trim_words($product->get_description(), 20),
                 'basePrice'     => (float) $product->get_regular_price('edit'), // Raw regular price
                 'salePrice'     => $product->is_on_sale('edit') ? (float) $product->get_sale_price('edit') : null, // Raw sale price
                 'displayPrice'  => (float) $product->get_price('edit'), // Current active price
                 'category'      => $first_category_slug, // Use slug for filtering
-                'thumbnail'     => get_the_post_thumbnail_url( $product_id, 'woocommerce_thumbnail' ) ?: wc_placeholder_img_src(), // Get thumbnail or placeholder
+                'thumbnail'     => $thumbnail_url, // FIXED: Get thumbnail with fallback
                 'permalink'     => $product->get_permalink(), // Link to the product page
-                'isCustomizable'=> $is_customizable, // Flag for the button
-                // Add any other simple data needed for the shop card
+                'isCustomizable'=> $is_print_studio_product, // FIXED: Flag based on meta existence
+                'printTypes'    => $print_types, // ADDED: Available print types
+                'sidesCount'    => count($studio_data['sides']), // ADDED: Number of sides
+                'isPrintStudio' => $is_print_studio_product, // Explicit flag
             );
         }
 
@@ -106,6 +150,7 @@ function aakaari_enqueue_shop_assets() {
                 'nonce'      => wp_create_nonce( 'aakaari_shop_nonce' ),
                 'products'   => $products_data,    // Array of all products
                 'categories' => $categories_data,  // Array of categories
+                'defaultImage' => wc_placeholder_img_src(), // ADDED: Default image URL
             )
         );
 
@@ -114,6 +159,6 @@ function aakaari_enqueue_shop_assets() {
     }
 }
 
+// Remove WooCommerce breadcrumbs to keep the clean design
 remove_action( 'woocommerce_before_main_content', 'woocommerce_breadcrumb', 20 );
 ?>
-

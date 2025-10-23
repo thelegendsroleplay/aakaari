@@ -1,7 +1,6 @@
 /*
  * assets/print-studio/print-studio.js
- * - Fixed AJAX action mismatch for initial data load.
- * - Added persistent side image upload.
+ * - Added persistent side image upload
  */
 (function () {
     'use strict';
@@ -10,98 +9,91 @@
         const APP_ROOT = document.getElementById('custom-print-studio-app');
         if (!APP_ROOT) return;
 
-        let appState = {
-             activeTab: 'products',
-             editingProduct: null,
-             products: [],
-             // Keep default fabrics/printTypes for fallback or initial structure
-             fabrics: [
-                { id: 'fab-1', name: '100% Cotton', description: 'Standard soft cotton, 180 GSM.', price: 0 },
-                { id: 'fab-2', name: 'Premium Tri-Blend', description: 'A soft, durable blend.', price: 2.50 }
-             ],
-             printTypes: [
-                 { id: 'pt_dtf', name: 'DTF (Direct to Film)', description: 'Vibrant colors.', pricingModel: 'per-inch', price: 0.15 },
-                 { id: 'pt_embroidery', name: 'Embroidery', description: 'Stitched design.', pricingModel: 'fixed', price: 8.00 }
-             ],
-             // These will be filled by AJAX:
-             categories: [],
-             wooCommerceColors: [], // Renamed for clarity, filled from 'colors' in AJAX response
-             fetchedProducts: [] // Store products fetched from AJAX separately initially
-        };
-    // --- Temporary / Form state ---
+        // ... Keep your existing appState, wooCommerceAPI, tempState, canvasState ...
+         let appState = {
+              activeTab: 'products',
+              editingProduct: null,
+              products: [],
+              fabrics: [ /* defaults */ ],
+              printTypes: [ /* defaults */ ],
+              categories: [],
+              wooCommerceColors: []
+         };
+    const wooCommerceAPI = {
+                  loadInitialData: function () {
+                console.log("Attempting to load initial data via aakaari_ps_load_data...");
+                return jQuery.ajax({
+                    url: AakaariPS.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'aakaari_ps_load_data', // Correct PHP action name
+                        nonce: AakaariPS.nonce
+                    }
+                });
+                // No .then here, let initWithWooCommerceData handle it
+            },
 
-
-// --- WooCommerce API methods (CORRECTED ACTIONS) ---
-const wooCommerceAPI = {
-
-    loadInitialData: function () {
-        console.log("Attempting to load initial data via aakaari_ps_load_data...");
+      // Save product to WooCommerce
+      saveProduct: function (product) {
         return jQuery.ajax({
-            url: AakaariPS.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'aakaari_ps_load_data', // This one is correct
-                nonce: AakaariPS.nonce
-            }
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_save_product',
+            nonce: AakaariPS.nonce,
+            product_data: JSON.stringify(product)
+          }
+        }).then(function (response) {
+          if (response.success && response.data) {
+            // Update product with new WooCommerce ID
+            product.woocommerceId = response.data.woocommerce_id;
+          }
+          return response;
         });
-    },
+      },
 
-    // Save product to WooCommerce
-    saveProduct: function (product) {
+      // Update product status
+      updateProductStatus: function (productId, isActive) {
         return jQuery.ajax({
-            url: AakaariPS.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'aakaari_ps_save_product', // <<< FIXED
-                nonce: AakaariPS.nonce,
-                product_data: JSON.stringify(product)
-            }
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_update_status',
+            nonce: AakaariPS.nonce,
+            product_id: productId,
+            is_active: isActive ? 1 : 0
+          }
         });
-        // .then is removed here, handled by the calling function
-    },
+      },
 
-    // Update product status
-    updateProductStatus: function (productId, isActive) {
+      // Save category to WooCommerce
+      saveCategory: function (category) {
         return jQuery.ajax({
-            url: AakaariPS.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'aakaari_ps_update_status', // <<< FIXED
-                nonce: AakaariPS.nonce,
-                product_id: productId,
-                is_active: isActive ? 1 : 0
-            }
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_save_category',
+            nonce: AakaariPS.nonce,
+            category_data: JSON.stringify(category)
+          }
         });
-    },
+      },
 
-    // Save category to WooCommerce
-    saveCategory: function (category) {
+      // Delete category from WooCommerce
+      deleteCategory: function (categoryId) {
         return jQuery.ajax({
-            url: AakaariPS.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'aakaari_ps_save_category', // <<< FIXED
-                nonce: AakaariPS.nonce,
-                category_data: JSON.stringify(category)
-            }
+          url: AakaariPS.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'print_studio_delete_category',
+            nonce: AakaariPS.nonce,
+            category_id: categoryId
+          }
         });
-    },
+      }
+    };
 
-    // Delete category from WooCommerce
-    deleteCategory: function (categoryId) {
-        return jQuery.ajax({
-            url: AakaariPS.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'aakaari_ps_delete_category', // <<< FIXED
-                nonce: AakaariPS.nonce,
-                category_id: categoryId
-            }
-        });
-    }
-};
-
-        // --- Updated: Initialize using the single AJAX call ---
+    // --- NEW: Initialize with WooCommerce data ---
         function initWithWooCommerceData() {
             APP_ROOT.innerHTML = `<div class="ps-card"><h3>Loading Custom Print Studio...</h3><p class="ps-helper">Loading data from WooCommerce...</p></div>`;
 
@@ -156,6 +148,8 @@ const wooCommerceAPI = {
                     </div>`;
             });
         }
+
+    // --- Temporary / Form state (from original) ---
     let tempState = {
       productForm: {},
       sideForm: {},
@@ -168,7 +162,7 @@ const wooCommerceAPI = {
       editingSideId: null,
     };
 
-    // --- Canvas-specific state ---
+    // --- Canvas-specific state (from original) ---
     let canvasState = {
       ctx: null,
       canvas: null,
@@ -187,11 +181,7 @@ const wooCommerceAPI = {
       CANVAS_HEIGHT: 500,
     };
 
-        // ... (rest of your print-studio.js code: utils, render functions, event handlers, canvas logic, etc.) ...
-        // Ensure that renderProductModal uses appState.wooCommerceColors and appState.printTypes (the default/fallback ones initially)
-        // Ensure render functions for tabs use the correct appState properties.
-
-         // --- Utils ---
+        // ... Keep your existing utils (generateId, escapeHtml) ...
     function generateId(prefix = 'id') {
       return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
@@ -200,7 +190,7 @@ const wooCommerceAPI = {
       return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
 
-         // --- Image Upload ---
+        // --- NEW: Function to upload side image ---
         async function uploadSideImage(file) {
             const formData = new FormData();
             formData.append('action', 'aakaari_ps_upload_side_image'); // Matches PHP action
@@ -239,6 +229,7 @@ const wooCommerceAPI = {
             }
         }
 
+        // ... Keep your existing renderApp, renderDashboardView, renderEditorView, etc. ...
     function renderApp() {
       const viewHtml = appState.editingProduct ? renderEditorView(appState.editingProduct) : renderDashboardView();
 
@@ -280,7 +271,6 @@ const wooCommerceAPI = {
 
       setupListeners(); // attach delegated listeners
     }
-
     function renderDashboardView() {
       return `
         ${renderTabs()}
@@ -292,16 +282,15 @@ const wooCommerceAPI = {
         </div>
       `;
     }
-
     function renderEditorView(product) {
       const side = product.sides[canvasState.selectedSideIndex] || null;
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-            <div>
-              <h3>Edit: ${escapeHtml(product.name)}</h3>
-              <p class="ps-helper">${escapeHtml(product.description || 'No description.')}</p>
-            </div>
-            <button class="ps-btn ps-btn--outline" data-action="show-product-modal" data-product-id="${product.id}">Edit Details</button>
+          <div>
+            <h3>Edit: ${escapeHtml(product.name)}</h3>
+            <p class="ps-helper">${escapeHtml(product.description || 'No description.')}</p>
+          </div>
+          <button class="ps-btn ps-btn--outline" data-action="show-product-modal" data-product-id="${product.id}">Edit Details</button>
         </div>
 
         <div style="display:grid; gap:.75rem;">
@@ -345,7 +334,6 @@ const wooCommerceAPI = {
         </div>
       `;
     }
-
     function renderCanvasSidebar() {
       const side = getCurrentSide();
       const isAreaSelected = canvasState.selectedType && canvasState.selectedIndex !== null;
@@ -427,20 +415,19 @@ const wooCommerceAPI = {
           <div>
             <strong>All Areas on This Side</strong>
             <div class="ps-area-list">
-              ${(side && (side.printAreas || []).length > 0) ? 
-                side.printAreas.map((a, idx) => renderAreaListItem(a, idx, 'printArea')).join('') : 
-                '<p class="ps-helper">No print areas.</p>'}
+              ${(side && (side.printAreas || []).length > 0) ?
+        side.printAreas.map((a, idx) => renderAreaListItem(a, idx, 'printArea')).join('') :
+        '<p class="ps-helper">No print areas.</p>'}
             </div>
             <div class="ps-area-list">
-              ${(side && (side.restrictionAreas || []).length > 0) ? 
-                side.restrictionAreas.map((a, idx) => renderAreaListItem(a, idx, 'restrictionArea')).join('') : 
-                '<p class="ps-helper">No restriction areas.</p>'}
+              ${(side && (side.restrictionAreas || []).length > 0) ?
+        side.restrictionAreas.map((a, idx) => renderAreaListItem(a, idx, 'restrictionArea')).join('') :
+        '<p class="ps-helper">No restriction areas.</p>'}
             </div>
           </div>
         </div>
       `;
     }
-
     function renderAreaListItem(area, index, type) {
       const isSelected = canvasState.selectedType === type && canvasState.selectedIndex === index;
       const icon = type === 'printArea' ? 'square' : 'slash';
@@ -457,7 +444,7 @@ const wooCommerceAPI = {
       `;
     }
 
-    // ---------- Dashboard Tab Renderers ----------
+    // ---------- Dashboard Tab Renderers (from original) ----------
     function renderTabs() {
       const tabs = [
         { id: 'products', label: 'Products', icon: 'package' },
@@ -626,7 +613,7 @@ const wooCommerceAPI = {
       `;
     }
 
-    // ---------- Modal Renderers ----------
+        // ... (all other rendering functions) ...
     function renderModal(title, content, footer) {
       return `
         <div class="dialog-content" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
@@ -645,182 +632,7 @@ const wooCommerceAPI = {
         </div>
       `;
     }
-
-    function renderFabricModal() {
-      const isEditing = !!tempState.editingFabricId;
-      const form = tempState.fabricForm;
-      const title = isEditing ? 'Edit Fabric' : 'Add New Fabric';
-      const content = `
-        <div class="ps-form-column">
-          <div class="ps-form-group">
-            <label class="ps-label" for="fabric-name">Fabric Name</label>
-            <input type="text" id="fabric-name" class="ps-input" 
-                   value="${escapeHtml(form.name)}" data-form="fabricForm" data-prop="name">
-          </div>
-          <div class="ps-form-group">
-            <label class="ps-label" for="fabric-desc">Description</label>
-            <textarea id="fabric-desc" class="ps-textarea" 
-                      data-form="fabricForm" data-prop="description">${escapeHtml(form.description)}</textarea>
-          </div>
-          <div class="ps-form-group">
-            <label class="ps-label" for="fabric-price">Price Adjustment ($)</label>
-            <input type="number" id="fabric-price" class="ps-input" 
-                   value="${form.price}" step="0.01" data-form="fabricForm" data-prop="price">
-            <p class="ps-helper">Extra cost added to the base product price.</p>
-          </div>
-        </div>
-      `;
-      const footer = `
-        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
-        <button class="ps-btn ps-btn--primary" data-action="save-fabric">
-          ${isEditing ? 'Save Changes' : 'Create Fabric'}
-        </button>
-      `;
-      return renderModal(title, content, footer);
-    }
-
-    function renderPrintTypeModal() {
-      const isEditing = !!tempState.editingPrintTypeId;
-      const form = tempState.printTypeForm;
-      const title = isEditing ? 'Edit Print Type' : 'Add New Print Type';
-      const content = `
-        <div class="ps-form-column">
-          <div class="ps-form-group">
-            <label class="ps-label" for="pt-name">Print Type Name</label>
-            <input type="text" id="pt-name" class="ps-input" 
-                   value="${escapeHtml(form.name)}" data-form="printTypeForm" data-prop="name">
-          </div>
-          <div class="ps-form-group">
-            <label class="ps-label" for="pt-desc">Description</label>
-            <textarea id="pt-desc" class="ps-textarea" 
-                      data-form="printTypeForm" data-prop="description">${escapeHtml(form.description)}</textarea>
-          </div>
-          <div class="ps-grid ps-grid--2">
-            <div class="ps-form-group">
-              <label class="ps-label" for="pt-model">Pricing Model</label>
-              <select id="pt-model" class="ps-select" data-form="printTypeForm" data-prop="pricingModel">
-                <option value="per-inch" ${form.pricingModel === 'per-inch' ? 'selected' : ''}>Per Square Inch</option>
-                <option value="fixed" ${form.pricingModel === 'fixed' ? 'selected' : ''}>Fixed Price</option>
-              </select>
-            </div>
-            <div class="ps-form-group">
-              <label class="ps-label" for="pt-price">Price ($)</label>
-              <input type="number" id="pt-price" class="ps-input" 
-                     value="${form.price}" step="0.01" data-form="printTypeForm" data-prop="price">
-            </div>
-          </div>
-        </div>
-      `;
-      const footer = `
-        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
-        <button class="ps-btn ps-btn--primary" data-action="save-print-type">
-          ${isEditing ? 'Save Changes' : 'Create Print Type'}
-        </button>
-      `;
-      return renderModal(title, content, footer);
-    }
-
-    function renderCategoryModal() {
-      const isEditing = !!tempState.editingCategoryId;
-      const form = tempState.categoryForm;
-      const title = isEditing ? 'Edit Category' : 'Add New Category';
-      const content = `
-        <div class="ps-form-column">
-          <div class="ps-form-group">
-            <label class="ps-label" for="cat-name">Category Name</label>
-            <input type="text" id="cat-name" class="ps-input" 
-                   value="${escapeHtml(form.name)}" data-form="categoryForm" data-prop="name">
-            <p class="ps-helper">This should match a WooCommerce product category.</p>
-          </div>
-        </div>
-      `;
-      const footer = `
-        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
-        <button class="ps-btn ps-btn--primary" data-action="save-category">
-          ${isEditing ? 'Save Changes' : 'Create Category'}
-        </button>
-      `;
-      return renderModal(title, content, footer);
-    }
-
-    function renderProductModal() {
-      const form = tempState.productForm;
-      const title = 'Edit Product Details';
-      const content = `
-        <div class="ps-form-column">
-          <div class="ps-form-group">
-            <label class="ps-label" for="prod-name">Product Name</label>
-            <input type="text" id="prod-name" class="ps-input" 
-                   value="${escapeHtml(form.name)}" data-form="productForm" data-prop="name">
-          </div>
-          <div class="ps-form-group">
-            <label class="ps-label" for="prod-desc">Description</label>
-            <textarea id="prod-desc" class="ps-textarea" 
-                      data-form="productForm" data-prop="description">${escapeHtml(form.description)}</textarea>
-          </div>
-          <div class="ps-grid ps-grid--2">
-            <div class="ps-form-group">
-              <label class="ps-label" for="prod-basePrice">Base Price ($)</label>
-              <input type="number" id="prod-basePrice" class="ps-input" 
-                     value="${form.basePrice}" step="0.01" data-form="productForm" data-prop="basePrice">
-            </div>
-            <div class="ps-form-group">
-              <label class="ps-label" for="prod-salePrice">Sale Price ($)</label>
-              <input type="number" id="prod-salePrice" class="ps-input" 
-                     value="${form.salePrice || ''}" step="0.01" placeholder="Optional" data-form="productForm" data-prop="salePrice">
-            </div>
-          </div>
-          <div class="ps-grid ps-grid--2">
-            <div class="ps-form-group">
-              <label class="ps-label" for="prod-category">Category</label>
-              <select id="prod-category" class="ps-select" data-form="productForm" data-prop="category">
-                ${appState.categories.map(c => `
-                  <option value="${escapeHtml(c.name)}" ${form.category === c.name ? 'selected' : ''}>
-                    ${escapeHtml(c.name)}
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-            <div class="ps-form-group">
-              <label class="ps-label" for="prod-wooId">WooCommerce ID</label>
-              <input type="text" id="prod-wooId" class="ps-input" 
-                     value="${escapeHtml(form.woocommerceId)}" data-form="productForm" data-prop="woocommerceId">
-            </div>
-          </div>
-          <div class="ps-form-group">
-            <label class="ps-label">Available Colors</label>
-            <div class="ps-color-picker">
-              ${appState.wooCommerceColors.map(c => `
-                <label class="ps-color-chip" style="--chip-color: ${c.hex};" title="${escapeHtml(c.name)}">
-                  <input type="checkbox" value="${c.hex}" data-form="productForm" data-prop="colors"
-                         ${form.colors.includes(c.hex) ? 'checked' : ''}>
-                  <span class="ps-color-chip-check"><i data-lucide="check" class="ps-icon-small"></i></span>
-                </label>
-              `).join('')}
-            </div>
-          </div>
-          <div class="ps-form-group">
-            <label class="ps-label">Available Print Types</label>
-            <div class="ps-form-column">
-              ${appState.printTypes.map(pt => `
-                <label class="ps-checkbox-label">
-                  <input type="checkbox" value="${pt.id}" data-form="productForm" data-prop="availablePrintTypes"
-                         ${form.availablePrintTypes.includes(pt.id) ? 'checked' : ''}>
-                  <span>${escapeHtml(pt.name)}</span>
-                </label>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-      `;
-      const footer = `
-        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
-        <button class="ps-btn ps-btn--primary" data-action="save-product-details">Save Details</button>
-      `;
-      return renderModal(title, content, footer);
-    }
-    
-    function renderSideModal() {
+             function renderSideModal() {
       const isEditing = !!tempState.editingSideId;
       const form = tempState.sideForm;
       const title = isEditing ? 'Edit Side' : 'Add New Side';
@@ -853,8 +665,8 @@ const wooCommerceAPI = {
       return renderModal(title, content, footer);
     }
 
-    // ---------- Canvas init & draw ----------
-    function initCanvasEditor() {
+        // ... Keep your existing canvas logic (initCanvasEditor, drawCanvas, handlers) ...
+function initCanvasEditor() {
       const canvas = document.getElementById('print-area-canvas');
       if (!canvas) return;
       
@@ -879,7 +691,6 @@ const wooCommerceAPI = {
       
       drawCanvas();
     }
-
     function drawCanvas() {
       const { canvas, ctx, CANVAS_WIDTH, CANVAS_HEIGHT } = canvasState;
       if (!canvas || !ctx) return;
@@ -955,91 +766,12 @@ const wooCommerceAPI = {
       }
     }
 
-    function drawArea(ctx, a, type, isSelected) {
-      const isRestriction = type === 'restriction';
-      ctx.save();
-      ctx.strokeStyle = isRestriction ? 
-        (isSelected ? '#d00000' : 'rgba(239,68,68,0.9)') : // red
-        (isSelected ? '#2563EB' : 'rgba(59,130,246,0.9)'); // blue
-      ctx.fillStyle = isRestriction ? 
-        (isSelected ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.06)') :
-        (isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)');
-      
-      ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.setLineDash(isRestriction ? [4, 4] : []);
-      
-      ctx.fillRect(a.x, a.y, a.width, a.height);
-      ctx.strokeRect(a.x, a.y, a.width, a.height);
-
-      // Draw name
-      ctx.fillStyle = isRestriction ? '#d00000' : '#2563EB';
-      ctx.font = '600 12px -apple-system, sans-serif';
-      ctx.fillText(a.name, a.x + 5, a.y + 16);
-      
-      ctx.restore();
-    }
-    
-    function drawResizeHandles(ctx, area) {
-        const { HANDLE_SIZE, hoveredHandle } = canvasState;
-        const handles = getHandleCoordinates(area);
-        
-        ctx.save();
-        Object.keys(handles).forEach(key => {
-            const handle = handles[key];
-            const isHovered = hoveredHandle === key;
-            ctx.fillStyle = isHovered ? 'hsl(var(--primary))' : '#FFFFFF';
-            ctx.strokeStyle = 'hsl(var(--primary))';
-            ctx.lineWidth = 1.5;
-            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-        });
-        ctx.restore();
-    }
-    
-    function getHandleCoordinates(area) {
-        return {
-            'tl': { x: area.x, y: area.y },
-            'tm': { x: area.x + area.width / 2, y: area.y },
-            'tr': { x: area.x + area.width, y: area.y },
-            'ml': { x: area.x, y: area.y + area.height / 2 },
-            'mr': { x: area.x + area.width, y: area.y + area.height / 2 },
-            'bl': { x: area.x, y: area.y + area.height },
-            'bm': { x: area.x + area.width / 2, y: area.y + area.height },
-            'br': { x: area.x + area.width, y: area.y + area.height },
-        };
-    }
-    
-    function getHandleAtPosition(pos, area) {
-        const { HANDLE_SIZE } = canvasState;
-        const handles = getHandleCoordinates(area);
-        
-        for (const key in handles) {
-            const handle = handles[key];
-            if (pos.x >= handle.x - HANDLE_SIZE && pos.x <= handle.x + HANDLE_SIZE &&
-                pos.y >= handle.y - HANDLE_SIZE && pos.y <= handle.y + HANDLE_SIZE) {
-                return key;
-            }
-        }
-        return null;
-    }
-    
-    function isInsideArea(pos, area) {
-        return pos.x >= area.x && pos.x <= area.x + area.width &&
-               pos.y >= area.y && pos.y <= area.y + area.height;
-    }
-    
-    function getCanvasCoordinates(e) {
-        const rect = canvasState.canvas.getBoundingClientRect();
-        const x = Math.round((e.clientX - rect.left) * (canvasState.CANVAS_WIDTH / rect.width));
-        const y = Math.round((e.clientY - rect.top) * (canvasState.CANVAS_HEIGHT / rect.height));
-        return { x, y };
-    }
-    
+// Add this function inside the DOMContentLoaded handler in print-studio.js
     function getCanvasCursor() {
         if (canvasState.interactionMode === 'drawing') return 'crosshair';
         if (canvasState.interactionMode === 'moving') return 'move';
         if (canvasState.interactionMode === 'resizing') {
-             const cursors = {
+            const cursors = {
                 'tl': 'nwse-resize', 'tm': 'ns-resize', 'tr': 'nesw-resize',
                 'ml': 'ew-resize', 'mr': 'ew-resize',
                 'bl': 'nesw-resize', 'bm': 'ns-resize', 'br': 'nwse-resize'
@@ -1057,245 +789,6 @@ const wooCommerceAPI = {
         }
         return 'default';
     }
-
-    function getCurrentSide() {
-      if (!appState.editingProduct || !appState.editingProduct.sides) return null;
-      return appState.editingProduct.sides[canvasState.selectedSideIndex] || null;
-    }
-    // ---------- START: ADDING MISSING FUNCTIONS ----------
-
-    function renderCategoryModal() {
-      const isEditing = !!tempState.editingCategoryId;
-      const form = tempState.categoryForm;
-      const title = isEditing ? 'Edit Category' : 'Add New Category';
-      const content = `
-        <div class="ps-form-column">
-          <div class="ps-form-group">
-            <label class="ps-label" for="cat-name">Category Name</label>
-            <input type="text" id="cat-name" class="ps-input" 
-                   value="${escapeHtml(form.name)}" data-form="categoryForm" data-prop="name">
-            <p class="ps-helper">This should match a WooCommerce product category.</p>
-          </div>
-        </div>
-      `;
-      const footer = `
-        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
-        <button class="ps-btn ps-btn--primary" data-action="save-category">
-          ${isEditing ? 'Save Changes' : 'Create Category'}
-        </button>
-      `;
-      return renderModal(title, content, footer);
-    }
-
-    function getCanvasCoordinates(e) {
-        if (!canvasState.canvas) return { x: 0, y: 0 }; // Safety check
-        const rect = canvasState.canvas.getBoundingClientRect();
-        // Adjust for potential CSS scaling
-        const scaleX = canvasState.CANVAS_WIDTH / rect.width;
-        const scaleY = canvasState.CANVAS_HEIGHT / rect.height;
-        const x = Math.round((e.clientX - rect.left) * scaleX);
-        const y = Math.round((e.clientY - rect.top) * scaleY);
-        return { x, y };
-    }
-
-    function drawArea(ctx, a, type, isSelected) {
-      // Ensure area has valid dimensions
-       if (!a || typeof a.x !== 'number' || typeof a.y !== 'number' || typeof a.width !== 'number' || typeof a.height !== 'number') {
-           console.warn("Attempted to draw invalid area:", a);
-           return;
-       }
-
-      const isRestriction = type === 'restriction';
-      ctx.save();
-      ctx.strokeStyle = isRestriction ? 
-        (isSelected ? '#d00000' : 'rgba(239,68,68,0.9)') : // red
-        (isSelected ? '#2563EB' : 'rgba(59,130,246,0.9)'); // blue
-      ctx.fillStyle = isRestriction ? 
-        (isSelected ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.06)') :
-        (isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)');
-      
-      ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.setLineDash(isRestriction ? [4, 4] : []);
-      
-      ctx.fillRect(a.x, a.y, a.width, a.height);
-      ctx.strokeRect(a.x, a.y, a.width, a.height);
-      ctx.setLineDash([]); // Reset line dash
-
-      // Draw name
-      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Darker text fill
-      ctx.font = '600 12px -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      
-      const text = a.name || (isRestriction ? 'Restriction' : 'Print Area');
-      const textMetrics = ctx.measureText(text);
-      const textBgPadding = 2;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Semi-transparent white background
-      ctx.fillRect(a.x + 4 - textBgPadding, a.y + 4 - textBgPadding, textMetrics.width + textBgPadding*2, 12 + textBgPadding*2);
-
-      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Restore text color
-      ctx.fillText(text, a.x + 4, a.y + 4); // Position text inside the area
-      
-      ctx.restore();
-    }
-    
-    function drawResizeHandles(ctx, area) {
-        const { HANDLE_SIZE, hoveredHandle } = canvasState;
-        const handles = getHandleCoordinates(area);
-        
-        ctx.save();
-        Object.keys(handles).forEach(key => {
-            const handle = handles[key];
-            const isHovered = hoveredHandle === key;
-            ctx.fillStyle = isHovered ? 'hsl(var(--primary))' : '#FFFFFF';
-            ctx.strokeStyle = 'hsl(var(--primary))';
-            ctx.lineWidth = 1.5;
-            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-        });
-        ctx.restore();
-    }
-    
-    function getHandleCoordinates(area) {
-        return {
-            'tl': { x: area.x, y: area.y },
-            'tm': { x: area.x + area.width / 2, y: area.y },
-            'tr': { x: area.x + area.width, y: area.y },
-            'ml': { x: area.x, y: area.y + area.height / 2 },
-            'mr': { x: area.x + area.width, y: area.y + area.height / 2 },
-            'bl': { x: area.x, y: area.y + area.height },
-            'bm': { x: area.x + area.width / 2, y: area.y + area.height },
-            'br': { x: area.x + area.width, y: area.y + area.height },
-        };
-    }
-    
-    function getHandleAtPosition(pos, area) {
-        const { HANDLE_SIZE } = canvasState;
-        const handles = getHandleCoordinates(area);
-        
-        for (const key in handles) {
-            const handle = handles[key];
-            if (pos.x >= handle.x - HANDLE_SIZE && pos.x <= handle.x + HANDLE_SIZE &&
-                pos.y >= handle.y - HANDLE_SIZE && pos.y <= handle.y + HANDLE_SIZE) {
-                return key;
-            }
-        }
-        return null;
-    }
-    
-    function isInsideArea(pos, area) {
-        if (!area) return false; // Safety check
-        return pos.x >= area.x && pos.x <= area.x + area.width &&
-               pos.y >= area.y && pos.y <= area.y + area.height;
-    }
-
-// ---------- END: Missing Canvas Helper Functions ----------
-// ---------- START: Missing Canvas Helper Functions ----------
-
-    function drawArea(ctx, a, type, isSelected) {
-      // Ensure area has valid dimensions
-       if (!a || typeof a.x !== 'number' || typeof a.y !== 'number' || typeof a.width !== 'number' || typeof a.height !== 'number') {
-           console.warn("Attempted to draw invalid area:", a);
-           return;
-       }
-
-      const isRestriction = type === 'restriction';
-      ctx.save();
-      ctx.strokeStyle = isRestriction ? 
-        (isSelected ? '#d00000' : 'rgba(239,68,68,0.9)') : // red
-        (isSelected ? '#2563EB' : 'rgba(59,130,246,0.9)'); // blue
-      ctx.fillStyle = isRestriction ? 
-        (isSelected ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.06)') :
-        (isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)');
-      
-      ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.setLineDash(isRestriction ? [4, 4] : []);
-      
-      ctx.fillRect(a.x, a.y, a.width, a.height);
-      ctx.strokeRect(a.x, a.y, a.width, a.height);
-      ctx.setLineDash([]); // Reset line dash
-
-      // Draw name
-      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Darker text fill
-      ctx.font = '600 12px -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      
-      const text = a.name || (isRestriction ? 'Restriction' : 'Print Area');
-      const textMetrics = ctx.measureText(text);
-      const textBgPadding = 2;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Semi-transparent white background
-      ctx.fillRect(a.x + 4 - textBgPadding, a.y + 4 - textBgPadding, textMetrics.width + textBgPadding*2, 12 + textBgPadding*2);
-
-      ctx.fillStyle = isRestriction ? '#b91c1c' : '#1d4ed8'; // Restore text color
-      ctx.fillText(text, a.x + 4, a.y + 4); // Position text inside the area
-      
-      ctx.restore();
-    }
-    
-    function drawResizeHandles(ctx, area) {
-        const { HANDLE_SIZE, hoveredHandle } = canvasState;
-        const handles = getHandleCoordinates(area);
-        
-        ctx.save();
-        Object.keys(handles).forEach(key => {
-            const handle = handles[key];
-            const isHovered = hoveredHandle === key;
-            ctx.fillStyle = isHovered ? 'hsl(var(--primary))' : '#FFFFFF';
-            ctx.strokeStyle = 'hsl(var(--primary))';
-            ctx.lineWidth = 1.5;
-            ctx.fillRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-            ctx.strokeRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-        });
-        ctx.restore();
-    }
-    
-    function getHandleCoordinates(area) {
-        return {
-            'tl': { x: area.x, y: area.y },
-            'tm': { x: area.x + area.width / 2, y: area.y },
-            'tr': { x: area.x + area.width, y: area.y },
-            'ml': { x: area.x, y: area.y + area.height / 2 },
-            'mr': { x: area.x + area.width, y: area.y + area.height / 2 },
-            'bl': { x: area.x, y: area.y + area.height },
-            'bm': { x: area.x + area.width / 2, y: area.y + area.height },
-            'br': { x: area.x + area.width, y: area.y + area.height },
-        };
-    }
-    
-    function getHandleAtPosition(pos, area) {
-        const { HANDLE_SIZE } = canvasState;
-        const handles = getHandleCoordinates(area);
-        
-        for (const key in handles) {
-            const handle = handles[key];
-            if (pos.x >= handle.x - HANDLE_SIZE && pos.x <= handle.x + HANDLE_SIZE &&
-                pos.y >= handle.y - HANDLE_SIZE && pos.y <= handle.y + HANDLE_SIZE) {
-                return key;
-            }
-        }
-        return null;
-    }
-    
-    function isInsideArea(pos, area) {
-        if (!area) return false; // Safety check
-        return pos.x >= area.x && pos.x <= area.x + area.width &&
-               pos.y >= area.y && pos.y <= area.y + area.height;
-    }
-    
-    function getCanvasCoordinates(e) {
-        if (!canvasState.canvas) return { x: 0, y: 0 }; // Safety check
-        const rect = canvasState.canvas.getBoundingClientRect();
-        // Adjust for potential CSS scaling
-        const scaleX = canvasState.CANVAS_WIDTH / rect.width;
-        const scaleY = canvasState.CANVAS_HEIGHT / rect.height;
-        const x = Math.round((e.clientX - rect.left) * scaleX);
-        const y = Math.round((e.clientY - rect.top) * scaleY);
-        return { x, y };
-    }
-
-    // ---------- END: Missing Canvas Helper Functions ----------
-    // ---------- Canvas Event Handlers ----------
     function handleCanvasMouseDown(e) {
         const pos = getCanvasCoordinates(e);
         const side = getCurrentSide();
@@ -1515,7 +1008,6 @@ const wooCommerceAPI = {
             canvasState.canvas.style.cursor = getCanvasCursor();
         }
     }
-    
     function updateSidebarInputs(area) {
         const nameInput = document.getElementById('area-name');
         const xInput = document.getElementById('area-x');
@@ -1540,7 +1032,7 @@ const wooCommerceAPI = {
         }
     }
 
-    // ---------- Event handling (delegation) ----------
+        // ... Keep existing setupListeners, delegatedInput, delegatedClick (mostly) ...
     function setupListeners() {
       // Use event delegation on APP_ROOT
       APP_ROOT.removeEventListener('click', delegatedClick);
@@ -1557,21 +1049,19 @@ const wooCommerceAPI = {
         initCanvasEditor();
       }
     }
+         function delegatedClick(e) {
+             const target = e.target.closest('[data-action]');
+             if (!target) return;
+             const action = target.getAttribute('data-action');
+             const data = target.dataset;
 
-    function delegatedClick(e) {
-      const target = e.target.closest('[data-action]');
-      if (!target) return;
+              // --- Trigger handleSaveSide ---
+             if (action === 'save-side') handleSaveSide(); // Make sure this is called
 
-      const action = target.getAttribute('data-action');
-      const data = target.dataset;
-
-      // Dashboard actions
-      if (action === 'set-dashboard-tab') {
-        appState.activeTab = data.tabId;
-        renderApp();
-      }
-      if (action === 'add-product') handleAddNewProduct();
-      if (action === 'edit-product') handleEditProduct(data.productId);
+             // ... (handle all other actions) ...
+              if (action === 'set-dashboard-tab') { /* ... */ }
+              if (action === 'add-product') handleAddNewProduct();
+                    if (action === 'edit-product') handleEditProduct(data.productId);
       
       // Modal Triggers
       if (action === 'show-fabric-modal') handleShowFabricModal(data.fabricId);
@@ -1630,8 +1120,8 @@ const wooCommerceAPI = {
       }
       if (action === 'duplicate-area') handleDuplicateArea();
       if (action === 'delete-area') handleDeleteArea();
-    }
     
+         }
     function delegatedInput(e) {
       const target = e.target.closest('[data-form], [data-action]');
       if (!target) return;
@@ -1688,47 +1178,60 @@ const wooCommerceAPI = {
         drawCanvas();
       }
     }
-    
-    function delegatedChange(e) {
-        const target = e.target;
-        const data = target.dataset;
-        const action = target.getAttribute('data-action');
-        
-        // Product active toggle switch
-        if (action === 'toggle-product-active') {
-            const prod = appState.products.find(p => p.id === data.productId);
-            if (prod) prod.isActive = target.checked;
-        }
-        
-        // Modal Form Inputs (for selects)
-        if (data.form && data.prop && target.tagName === 'SELECT') {
-             tempState[data.form][data.prop] = target.value;
-        }
-        
-        // *** NEW: Handle side image file upload in the modal ***
-        if (target.id === 'side-imageUpload' && target.files && target.files[0]) {
-            const file = target.files[0];
-            
-            // If there's an old blob URL, revoke it to prevent memory leaks
-            if (tempState.sideForm.imageUrl && tempState.sideForm.imageUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(tempState.sideForm.imageUrl);
+
+        // --- UPDATE delegatedChange ---
+        function delegatedChange(e) {
+            const target = e.target;
+            const data = target.dataset;
+            const action = target.getAttribute('data-action');
+
+            // --- Product active toggle switch ---
+            if (action === 'toggle-product-active') {
+                // ... (keep existing logic) ...
+                 const prod = appState.products.find(p => p.id === data.productId);
+                if (prod && prod.woocommerceId) {
+                  prod.isActive = target.checked;
+                  wooCommerceAPI.updateProductStatus(prod.woocommerceId, prod.isActive).catch(/* ... error handling ... */);
+                }
             }
-            
-            // Create a local URL for the selected file
-            const localUrl = URL.createObjectURL(file);
-            
-            // Update the temp form state
-            tempState.sideForm.imageUrl = localUrl;
-            
-            // Update the helper text to show the new file name
-            const helperText = document.getElementById('current-image-name');
-            if (helperText) {
-                helperText.textContent = `New file: ${file.name}`;
+
+            // --- Modal Form Inputs (for selects) ---
+            if (data.form && data.prop && target.tagName === 'SELECT') {
+                 tempState[data.form][data.prop] = target.value;
+            }
+
+            // --- Handle side image file selection (Preview Only) ---
+            if (target.id === 'side-imageUpload' && target.files && target.files[0]) {
+                const file = target.files[0];
+                 const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+                 if (!allowedTypes.includes(file.type)) {
+                     alert('Invalid file type. Please select a PNG, JPG, GIF, or WEBP file.');
+                     target.value = ''; // Clear selection
+                     return;
+                 }
+
+                // Revoke old blob URL if it exists
+                if (tempState.sideForm.imageUrl && tempState.sideForm.imageUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(tempState.sideForm.imageUrl);
+                }
+
+                // Create a local blob URL for preview
+                const localUrl = URL.createObjectURL(file);
+                tempState.sideForm.imageUrl = localUrl; // Store blob URL for preview
+
+                // Update the helper text
+                const helperText = document.getElementById('current-image-name');
+                if (helperText) {
+                    helperText.textContent = `Preview: ${file.name}`;
+                }
+                 // Store the actual File object separately for upload later
+                 tempState.sideForm._newFile = file; // Use a temporary property
             }
         }
-    }
-    
-    function resetCanvasState(fullReset = true) {
+
+
+        // ... Keep existing resetCanvasState ...
+ function resetCanvasState(fullReset = true) {
         if(fullReset) canvasState.toolMode = 'select';
         canvasState.interactionMode = 'none';
         canvasState.selectedType = null;
@@ -1740,7 +1243,8 @@ const wooCommerceAPI = {
         canvasState.loadedImage = null;
     }
 
-    // ---------- Handlers (Dashboard) ----------
+
+        // ... Keep existing Dashboard Handlers (handleAddNewProduct, handleEditProduct, etc.) ...
     function handleAddNewProduct() {
       const newProd = { 
         id: generateId('prod'), 
@@ -1763,7 +1267,6 @@ const wooCommerceAPI = {
       resetCanvasState();
       renderApp();
     }
-    
     function handleEditProduct(productId) {
       const p = appState.products.find(x => x.id === productId);
       if (p) {
@@ -1774,7 +1277,6 @@ const wooCommerceAPI = {
         renderApp();
       }
     }
-    
     function handleShowFabricModal(fabricId = null) {
       if (fabricId) {
         const fabric = appState.fabrics.find(f => f.id === fabricId);
@@ -1829,81 +1331,76 @@ const wooCommerceAPI = {
       renderApp();
     }
     
-// --- CORRECTED Category Modal Handler ---
     function handleShowCategoryModal(categoryId = null) {
       if (categoryId) {
-        // --- This is EDIT mode ---
-        const cat = appState.categories.find(c => c.id == categoryId); // Use == for loose comparison (e.g., '12' vs 12)
-        if (!cat) {
-            console.error(`Category with ID ${categoryId} not found in appState.`);
-            showToast(`Error: Category not found.`, 'error');
-            return; // Stop
-        }
-        tempState.categoryForm = JSON.parse(JSON.stringify(cat)); // Safe to parse
+        const cat = appState.categories.find(c => c.id === categoryId);
+        tempState.categoryForm = JSON.parse(JSON.stringify(cat));
         tempState.editingCategoryId = categoryId;
       } else {
-        // --- This is ADD NEW mode ---
-        tempState.categoryForm = { name: '' }; // Start with an empty form
+        tempState.categoryForm = { name: '' };
         tempState.editingCategoryId = null;
       }
-      showModal(renderCategoryModal()); // Now show the modal
+      showModal(renderCategoryModal());
     }
     
-
-// --- CORRECTED Category Save Handler (Uses API) ---
+    // --- REPLACED (with WooCommerce update) ---
     function handleSaveCategory() {
       const form = tempState.categoryForm;
-      if (!form || !form.name || form.name.trim() === '') {
-          alert('Category name is required.');
-          return;
-      }
+      if (!form.name) return alert('Category name is required.');
       
-      const saveBtn = document.querySelector('#ps-modal-overlay [data-action="save-category"]');
-      if(saveBtn) saveBtn.disabled = true;
-
-      // Save to WooCommerce via API
+      // Save to WooCommerce
       wooCommerceAPI.saveCategory(form).then(function(response) {
         if (response.success && response.data) {
-          // response.data contains the updated/new category object { id, name }
           if (tempState.editingCategoryId) {
-            // Find and update in state
-            const index = appState.categories.findIndex(c => c.id == tempState.editingCategoryId);
+            const index = appState.categories.findIndex(c => c.id === tempState.editingCategoryId);
             if (index > -1) {
               appState.categories[index] = response.data;
             }
           } else {
-            // Add new to state
             appState.categories.push(response.data);
           }
           closeModal();
-          renderApp(); // Redraw the dashboard
-          showToast(tempState.editingCategoryId ? 'Category updated!' : 'Category added!', 'success');
+          renderApp();
         } else {
-          alert('Error saving category: ' (response.data?.message || 'Unknown error'));
-          if(saveBtn) saveBtn.disabled = false;
+          alert('Error saving category: ' + (response.data || 'Unknown error'));
         }
       }).catch(function(error) {
-        alert('AJAX Error saving category: ' + (error.responseJSON?.data?.message || error.statusText || 'Unknown error'));
-        if(saveBtn) saveBtn.disabled = false;
+        alert('Error saving category: ' + error.message);
       });
     }
     
+    // --- REPLACED (with WooCommerce update) ---
     function handleDelete(type, id) {
-        const typeMap = {
-            'fabric': { stateKey: 'fabrics', name: 'Fabric' },
-            'printType': { stateKey: 'printTypes', name: 'Print Type' },
-            'category': { stateKey: 'categories', name: 'Category' },
-        };
-        const config = typeMap[type];
-        if (!config) return;
+      const typeMap = {
+        'fabric': { stateKey: 'fabrics', name: 'Fabric' },
+        'printType': { stateKey: 'printTypes', name: 'Print Type' },
+        'category': { stateKey: 'categories', name: 'Category' },
+      };
+      const config = typeMap[type];
+      if (!config) return;
 
-        if (confirm(`Are you sure you want to delete this ${config.name}?`)) {
-            appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
-            renderApp();
+      if (confirm(`Are you sure you want to delete this ${config.name}?`)) {
+        if (type === 'category') {
+          // Delete from WooCommerce
+          wooCommerceAPI.deleteCategory(id).then(function(response) {
+            if (response.success) {
+              appState.categories = appState.categories.filter(item => item.id !== id);
+              renderApp();
+            } else {
+              alert('Error deleting category: ' + (response.data || 'Unknown error'));
+            }
+          }).catch(function(error) {
+            alert('Error deleting category: ' + error.message);
+          });
+        } else {
+          // Local deletion for non-WooCommerce items
+          appState[config.stateKey] = appState[config.stateKey].filter(item => item.id !== id);
+          renderApp();
         }
+      }
     }
 
-    // ---------- Handlers (Editor) ----------
+    // ---------- Handlers (Editor) (from original) ----------
     function handleShowProductModal() {
       // Load editing product data into the form
       tempState.productForm = JSON.parse(JSON.stringify(appState.editingProduct));
@@ -1926,24 +1423,80 @@ const wooCommerceAPI = {
       closeModal();
       renderApp(); // Re-render editor to show new name, etc.
     }
-    
-    function handleSaveProductMain() {
-        // This is the "main" save button, not the modal
-        const product = appState.editingProduct;
-        if (!product.name) return alert('Product name is required.');
-        if (!product.sides || product.sides.length === 0) return alert('Product must have at least one side.');
-        
-        const index = appState.products.findIndex(p => p.id === product.id);
-        if (index > -1) {
-            // Save the deep copy back to the main state
-            appState.products[index] = JSON.parse(JSON.stringify(product));
+
+        // --- UPDATE handleSaveProductMain ---
+        function handleSaveProductMain() {
+            const product = appState.editingProduct;
+             if (!product) return; // Should not happen if button is visible
+            if (!product.name) return alert('Product name is required.');
+            if (!product.sides || product.sides.length === 0) return alert('Product must have at least one side.');
+
+            // **Crucial**: Ensure side imageURLs are persistent before saving product
+            // This is handled within handleSaveSide now which should be called *before* this.
+            // Let's re-verify:
+             let hasBlobUrl = false;
+             product.sides.forEach(side => {
+                 if (side.imageUrl && side.imageUrl.startsWith('blob:')) {
+                     hasBlobUrl = true;
+                 }
+             });
+             if (hasBlobUrl) {
+                 alert("Error: One or more side images haven't been uploaded yet. Please re-edit the side and save it to upload the image.");
+                 return; // Prevent saving with temporary blob URLs
+             }
+
+
+            // Show saving indicator
+            const saveBtn = document.querySelector('[data-action="save-product-main"]');
+            const originalText = saveBtn ? saveBtn.innerHTML : 'Save Product';
+             if (saveBtn) {
+                 saveBtn.innerHTML = '<i data-lucide="loader-2" class="ps-icon animate-spin"></i> Saving...'; // Use animate-spin if you have CSS for it
+                 saveBtn.disabled = true;
+                 // Re-render icon if needed
+                 if (window.lucide) window.lucide.createIcons();
+             }
+
+
+            // Save to WooCommerce using API
+            wooCommerceAPI.saveProduct(product).then(function(response) {
+                if (response.success && response.data) {
+                    // Update the product in the main state with the final data from server
+                    const savedProductData = response.data;
+                    const index = appState.products.findIndex(p => p.id === savedProductData.id || p.woocommerceId === savedProductData.woocommerceId);
+
+                    if (index > -1) {
+                         // Update existing product in the list
+                         // Merge carefully, maybe just replace entirely if structure is guaranteed
+                         appState.products[index] = savedProductData;
+                    } else {
+                        // It was a new product, add it to the list
+                        appState.products.push(savedProductData);
+                    }
+
+                    appState.editingProduct = null; // Exit editor mode
+                    resetCanvasState();
+                    renderApp(); // Re-render dashboard list
+                     // Use your showToast function
+                     showToast('Product saved successfully!', 'success');
+
+                } else {
+                     // Use your showToast function
+                     showToast('Error saving product: ' + (response.data?.message || 'Unknown error'), 'error');
+                     if (saveBtn) {
+                        saveBtn.innerHTML = originalText;
+                        saveBtn.disabled = false;
+                     }
+                }
+            }).catch(function(error) {
+                 // Use your showToast function
+                 showToast('Server error saving product: ' + (error.message || 'Check console'), 'error');
+                 if (saveBtn) {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                 }
+            });
         }
-        
-        appState.editingProduct = null;
-        resetCanvasState();
-        renderApp();
-    }
-    
+
     function handleAddSide() {
         tempState.sideForm = { name: 'New Side', imageUrl: '' };
         tempState.editingSideId = null;
@@ -1977,34 +1530,89 @@ const wooCommerceAPI = {
             renderApp();
         }
     }
-    
-    function handleSaveSide() {
-        const form = tempState.sideForm;
-        if (!form.name) return alert('Side name is required.');
-        
-        if (tempState.editingSideId) {
-            // Update
-            const index = appState.editingProduct.sides.findIndex(s => s.id === tempState.editingSideId);
-            if (index > -1) {
-                // Important: Preserve printAreas and restrictionAreas from the *original* side
-                const oldSide = appState.editingProduct.sides[index];
-                appState.editingProduct.sides[index] = { 
-                    ...oldSide, // This keeps printAreas, restrictionAreas
-                    ...form      // This updates name, imageUrl
-                };
+        // --- !! UPDATE handleSaveSide !! ---
+        async function handleSaveSide() { // Make it async
+            const form = tempState.sideForm;
+            const isEditing = !!tempState.editingSideId;
+            if (!form.name) return alert('Side name is required.');
+
+            // Get the button and show loading state
+            const saveSideBtn = document.querySelector('#ps-modal-overlay .ps-btn[data-action="save-side"]');
+            const originalSideBtnText = saveSideBtn ? saveSideBtn.innerHTML : (isEditing ? 'Save Changes' : 'Create Side');
+             if(saveSideBtn) {
+                saveSideBtn.disabled = true;
+                saveSideBtn.innerHTML = '<i data-lucide="loader-2" class="ps-icon animate-spin"></i> Saving...';
+                if(window.lucide) window.lucide.createIcons();
+             }
+
+
+            let finalImageUrl = form.imageUrl; // Keep existing URL by default
+            let uploadedAttachmentId = form.attachmentId || null; // Keep existing ID
+
+            // Check if a *new* file was selected (using the temporary property)
+            if (form._newFile) {
+                 // Upload the new file
+                 const uploadResult = await uploadSideImage(form._newFile);
+                 if (uploadResult) {
+                     finalImageUrl = uploadResult.url; // Use the persistent URL from WordPress
+                     uploadedAttachmentId = uploadResult.attachment_id; // Store attachment ID
+                     // If there was an old blob URL for preview, revoke it
+                     if (form.imageUrl && form.imageUrl.startsWith('blob:')) {
+                         URL.revokeObjectURL(form.imageUrl);
+                     }
+                 } else {
+                     // Upload failed, stop the save process
+                     if(saveSideBtn) { // Reset button
+                         saveSideBtn.disabled = false;
+                         saveSideBtn.innerHTML = originalSideBtnText;
+                     }
+                     alert('Side image upload failed. Changes not saved.');
+                     return;
+                 }
             }
-        } else {
-            // Create
-            appState.editingProduct.sides.push({ ...form, id: generateId('side'), printAreas: [], restrictionAreas: [] });
-            canvasState.selectedSideIndex = appState.editingProduct.sides.length - 1; // Select new side
+
+            // Clean up temporary file property
+            delete form._newFile;
+
+
+            if (isEditing) {
+                // Update existing side in appState.editingProduct
+                const index = appState.editingProduct.sides.findIndex(s => s.id === tempState.editingSideId);
+                if (index > -1) {
+                    const oldSide = appState.editingProduct.sides[index];
+                    // Revoke OLD blob URL if it existed and is different now
+                    if (oldSide.imageUrl && oldSide.imageUrl.startsWith('blob:') && oldSide.imageUrl !== finalImageUrl) {
+                         URL.revokeObjectURL(oldSide.imageUrl);
+                    }
+                    // Update the side object in the main product state
+                    appState.editingProduct.sides[index] = {
+                        ...oldSide, // Keep printAreas, restrictionAreas
+                        name: form.name,
+                        imageUrl: finalImageUrl, // Use the final URL
+                        attachmentId: uploadedAttachmentId // Store the ID
+                    };
+                }
+            } else {
+                // Create new side in appState.editingProduct
+                appState.editingProduct.sides.push({
+                    id: generateId('side'),
+                    name: form.name,
+                    imageUrl: finalImageUrl,
+                    attachmentId: uploadedAttachmentId,
+                    printAreas: [],
+                    restrictionAreas: []
+                });
+                canvasState.selectedSideIndex = appState.editingProduct.sides.length - 1; // Select the new side
+            }
+
+            closeModal(); // Closes modal, clears tempState
+            resetCanvasState(false); // Reset canvas view but keep tool mode
+            renderApp(); // Re-render the editor view to show updated side list/canvas
+             // Use your showToast
+             showToast(isEditing ? 'Side updated!' : 'Side added!', 'success');
         }
-        
-        closeModal();
-        resetCanvasState(false);
-        renderApp();
-    }
-    
-    // ---------- Handlers (Canvas Sidebar) ----------
+
+
     function handleDeleteArea() {
       const side = getCurrentSide();
       if (!side || canvasState.selectedType === null || canvasState.selectedIndex === null) return;
@@ -2013,11 +1621,11 @@ const wooCommerceAPI = {
       const area = areaArray[canvasState.selectedIndex];
       
       if (confirm(`Are you sure you want to delete "${escapeHtml(area.name)}"?`)) {
-          areaArray.splice(canvasState.selectedIndex, 1);
-          canvasState.selectedType = null;
-          canvasState.selectedIndex = null;
-          renderCanvasSidebarAndIcons();
-          drawCanvas();
+        areaArray.splice(canvasState.selectedIndex, 1);
+        canvasState.selectedType = null;
+        canvasState.selectedIndex = null;
+        renderCanvasSidebarAndIcons();
+        drawCanvas();
       }
     }
     
@@ -2043,7 +1651,7 @@ const wooCommerceAPI = {
       drawCanvas();
     }
 
-    // ---------- Modal Helpers ----------
+    // ---------- Modal Helpers (from original) ----------
     function showModal(modalHtml) {
       const overlay = document.getElementById('ps-modal-overlay');
       overlay.innerHTML = modalHtml;
@@ -2076,27 +1684,29 @@ const wooCommerceAPI = {
       tempState.editingSideId = null;
     }
 
-         // --- Toast ---
-         function showToast(message, type = 'info') {
-             // Basic alert fallback
+         // --- NEW: Add showToast function (copy from admindashboard.js or adapt) ---
+          function showToast(message, type = 'info') {
+             // Basic alert fallback if showToast isn't fully implemented here
              alert(`${type.toUpperCase()}: ${message}`);
+             // If you copy the showToast from admindashboard.js, ensure the #aakaari-toast element exists or is created.
          }
 
-
-         // --- Start the app ---
-         function initAdminPrintStudio() {
-             if (typeof AakaariPS === 'undefined' || !AakaariPS.ajax_url || !AakaariPS.nonce) { // Check nonce too
-                 APP_ROOT.innerHTML = '<div class="ps-card"><h3 style="color:red;">Error: Print Studio Core Data Missing</h3><p>Could not load AJAX configuration (AakaariPS object). Please ensure PHP localization is correct.</p></div>';
-                 console.error("AakaariPS object is missing or incomplete:", window.AakaariPS);
+        // --- UPDATE Init ---
+        function initAdminPrintStudio() {
+             if (typeof AakaariPS === 'undefined' || !AakaariPS.ajax_url) {
+                 APP_ROOT.innerHTML = '<div class="ps-card"><h3 style="color:red;">Error: Print Studio Core Data Missing</h3><p>Could not load AJAX configuration (AakaariPS object). Please ensure the PHP localization in <code>inc/print-studio-init.php</code> is correct and the script is enqueued properly.</p></div>';
                  return;
              }
              // Load initial data from WooCommerce
-             initWithWooCommerceData();
+             // (Assuming initWithWooCommerceData calls renderApp on success)
+              initWithWooCommerceData();
          }
 
-         initAdminPrintStudio();
+        // --- Start the app ---
+        initAdminPrintStudio(); // Call the specific init function
 
-         window.AakaariPrintStudio = { appState, tempState, canvasState, api: wooCommerceAPI };
+        // Expose API for debugging
+        window.AakaariPrintStudio = { appState, tempState, canvasState, api: wooCommerceAPI };
 
     }); // End DOMContentLoaded
 })();
