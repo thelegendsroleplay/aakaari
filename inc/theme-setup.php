@@ -148,10 +148,3 @@ function enqueue_aakaari_footer_assets() {
     );
 }
 add_action('wp_enqueue_scripts', 'enqueue_aakaari_footer_assets');
-add_action( 'wp', 'aakaari_remove_shop_breadcrumbs' ); 
-function aakaari_remove_shop_breadcrumbs() {
-    // Only remove breadcrumbs on the main shop archive page
-    if ( is_shop() ) { 
-        remove_action( 'woocommerce_before_main_content', 'woocommerce_breadcrumb', 20 );
-    }
-}

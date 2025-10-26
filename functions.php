@@ -45,7 +45,8 @@ $required_files = array(
     'product-customizer-functions.php',
     'cp-functions.php',
     'print-studio-fabric-print-handlers.php',
-
+    'functional-cart-functions.php',
+    'woocommerce-checkout.php',
 );
 
 // Load each file with error checking
@@ -70,3 +71,91 @@ foreach ($required_files as $file) {
         });
     }
 }
+
+// === Cart page assets (CSS/JS) ===
+add_action('wp_enqueue_scripts', function () {
+    if ( ! is_cart() ) return;
+
+    // Fonts used by the design
+    wp_enqueue_style(
+        'aakaari-inter',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+        [],
+        null
+    );
+    // Optional (trust-badge icons): use <span class="material-icons-outlined">verified_user</span>
+    wp_enqueue_style(
+        'aakaari-material-icons-outlined',
+        'https://fonts.googleapis.com/css2?family=Material+Icons+Outlined',
+        [],
+        null
+    );
+
+    // Your cart CSS (load after WooCommerce so it wins)
+    wp_enqueue_style(
+        'aakaari-cart',
+        get_stylesheet_directory_uri() . './assets/css/cart2.css', // change path if you keep it elsewhere
+        ['woocommerce-general','woocommerce-layout','woocommerce-smallscreen'],
+        '1.0'
+    );
+
+    // Your cart JS
+    wp_enqueue_script(
+        'aakaari-cart',
+        get_stylesheet_directory_uri() . './assets/js/cart2.js', // change path if needed
+        ['jquery','jquery-blockui','wc-cart-fragments'],
+        '1.0',
+        true
+    );
+}, 99);
+
+add_action('wp_enqueue_scripts', function () {
+    if ( ! is_checkout() || is_order_received_page() ) {
+        return;
+    }
+
+    // Fonts + icons
+    wp_enqueue_style(
+        'aakaari-inter',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+        [],
+        null
+    );
+    wp_enqueue_script(
+        'aakaari-lucide',
+        'https://unpkg.com/lucide@latest/dist/lucide.min.js',
+        [],
+        null,
+        true
+    );
+
+    // Path + version for cache-busting
+    $css_path = get_stylesheet_directory() . '/assets/css/checkout.css';
+    $css_uri  = get_stylesheet_directory_uri() . '/assets/css/checkout.css';
+    $ver      = file_exists($css_path) ? filemtime($css_path) : '1.0';
+
+    // Load AFTER Woo + theme styles
+    wp_enqueue_style(
+        'aakaari-checkout',
+        $css_uri,
+        ['woocommerce-general', 'select2'],   // make sure we come after these
+        $ver
+    );
+
+    // Your JS (after wc-checkout so update_checkout works)
+    $js_path = get_stylesheet_directory() . '/assets/js/checkout.js';
+    $js_uri  = get_stylesheet_directory_uri() . '/assets/js/checkout.js';
+    $js_ver  = file_exists($js_path) ? filemtime($js_path) : '1.0';
+
+    wp_enqueue_script(
+        'aakaari-checkout',
+        $js_uri,
+        ['jquery', 'wc-checkout'],
+        $js_ver,
+        true
+    );
+
+    wp_localize_script('aakaari-checkout', 'aakaariCheckout', [
+        'cartUrl' => wc_get_cart_url(),
+    ]);
+}, /* priority */ 9999);   // <- important: load last

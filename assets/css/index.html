@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout Flow</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/lucide@latest/dist/lucide.min.js"></script>
+
+    <style>
+        /* --- Base & Variables --- */
+        :root {
+            --primary-blue: #0d6efd;
+            --primary-blue-dark: #0b5ed7;
+            --primary-blue-light: #f0f6ff;
+            --primary-blue-border: #b6d4fe;
+            --green: #10b981;
+            --green-light: #f0fdf4;
+            --green-text: #065f46;
+            --text-dark: #111827;
+            --text-light: #6b7280;
+            --text-heading: #1f2937;
+            --border-color: #e5e7eb;
+            --input-bg: #ffffff;
+            --background: #f9fafb;
+            --white: #ffffff;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --card-radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-dark);
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Main Header (from screenshots) --- */
+        .main-header {
+            background-color: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .main-header .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--primary-blue);
+        }
+        .main-header nav {
+            display: none; /* Hidden for this demo */
+        }
+
+        /* --- Layout --- */
+        .page-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+        }
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        @media (min-width: 1024px) {
+            .checkout-grid {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+        .form-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .summary-column .sticky-card {
+            position: sticky;
+            top: 2rem;
+        }
+
+        /* --- Utility Classes --- */
+        .hidden { display: none; }
+        .lg-hidden { display: block; }
+        .hidden-lg { display: none; }
+        @media (min-width: 1024px) {
+            .lg-hidden { display: none; }
+            .hidden-lg { display: block; }
+        }
+
+        /* --- Reusable Components (Card, Button, Input) --- */
+        .card {
+            background-color: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .card-header .icon-bg {
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-blue-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-blue);
+        }
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-heading);
+        }
+        .card-header p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-blue-dark);
+        }
+        .btn-outline {
+            background-color: var(--white);
+            border-color: var(--border-color);
+            color: var(--text-heading);
+        }
+        .btn-outline:hover {
+            background-color: var(--background);
+        }
+        .btn-link {
+            background: none;
+            border: none;
+            color: var(--primary-blue);
+            padding: 0;
+            font-weight: 500;
+        }
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+        .btn-full { width: 100%; }
+        
+        .label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-heading);
+            margin-bottom: 0.5rem;
+        }
+        .input, .select-trigger {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            box-sizing: border-box; /* Important */
+        }
+        .input:focus, .select-trigger:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px var(--primary-blue-light);
+        }
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        @media (min-width: 640px) {
+            .input-grid-2 { grid-template-columns: 1fr 1fr; }
+            .input-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background-color: var(--primary-blue-light);
+            border-radius: 8px;
+        }
+        .checkbox-container label {
+            font-size: 0.875rem;
+            color: var(--text-heading);
+            cursor: pointer;
+        }
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-blue);
+        }
+        .separator {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 1rem 0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+        .badge-blue {
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+        .badge-green {
+            background-color: var(--green-light);
+            color: var(--green-text);
+        }
+        .badge-outline {
+            background-color: var(--white);
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+        }
+        
+        /* --- Progress Bar --- */
+        .progress-bar-container {
+            background-color: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 10%;
+        }
+        .progress-bar-steps {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            z-index: 1;
+        }
+        .progress-step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--border-color);
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .progress-step-text {
+            margin-top: 0.5rem;
+        }
+        .progress-step-text strong {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        /* Connector Line */
+        .progress-bar-steps::before {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--border-color);
+            z-index: 0;
+            transform: translateY(-50%);
+            margin: 0 15%; /* Match step padding */
+        }
+        /* Active/Completed States */
+        .progress-step.active .progress-step-icon,
+        .progress-step.completed .progress-step-icon {
+            background-color: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: var(--white);
+        }
+        .progress-step.completed .progress-step-icon {
+            background-color: var(--green);
+            border-color: var(--green);
+        }
+        .progress-step.active .progress-step-text strong,
+        .progress-step.completed .progress-step-text strong {
+            color: var(--text-dark);
+        }
+        .progress-step.active .progress-step-icon {
+            transform: scale(1.1);
+        }
+        
+        /* --- Back Button --- */
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--primary-blue);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        /* --- Order Summary Card --- */
+        .summary-card h2 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-heading);
+        }
+        .summary-item {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .summary-item img {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .summary-item-details {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .summary-item-details p {
+            margin: 0;
+            font-size: 0.875rem;
+        }
+        .summary-item-details .name {
+            color: var(--text-dark);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .summary-item-details .qty {
+            color: var(--text-light);
+            font-size: 0.8rem;
+        }
+        .summary-item-details .price {
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+        .summary-totals {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .summary-totals div {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        .summary-totals .total {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        .summary-footer-text {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-align: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* --- Step 2 & 3: Radio Groups --- */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .radio-option {
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .radio-option:hover {
+            background-color: var(--background);
+        }
+        /* This is the magic: style the parent when the radio is checked */
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: var(--primary-blue);
+            background-color: var(--primary-blue-light);
+        }
+        .radio-option label {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            cursor: pointer;
+        }
+        .radio-option input[type="radio"] {
+            accent-color: var(--primary-blue);
+            width: 18px;
+            height: 18px;
+            margin-right: 0.75rem;
+        }
+        .radio-option-details {
+            flex-grow: 1;
+        }
+        .radio-option-details .title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        .radio-option-details .description {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+        .radio-option-price {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        .radio-option-price.free {
+            color: var(--green);
+        }
+
+        /* --- Step 3: Payment --- */
+        .payment-option-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .payment-option-header .left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .payment-card-form {
+            border-top: 1px solid var(--border-color);
+            margin-top: 1rem;
+            padding-top: 1.5rem;
+            padding-left: 2.25rem; /* Align with radio button */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .secure-payment-badge {
+            margin-top: 1.5rem;
+            background-color: var(--green-light);
+            border: 1px solid var(--green);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .secure-payment-badge .icon {
+            color: var(--green-text);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .secure-payment-badge h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--green-text);
+            font-weight: 600;
+        }
+        .secure-payment-badge p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--green-text);
+        }
+
+        /* --- Page: Order Confirmation --- */
+        .confirmation-container {
+            max-width: 800px;
+            text-align: center;
+        }
+        .confirmation-header {
+            margin-bottom: 2rem;
+        }
+        .confirmation-icon {
+            width: 80px;
+            height: 80px;
+            background-color: var(--green);
+            color: var(--white);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+        .confirmation-header h1 {
+            font-size: 2.25rem;
+            color: var(--text-heading);
+            margin: 0 0 0.5rem 0;
+        }
+        .confirmation-header p {
+            font-size: 1rem;
+            color: var(--text-light);
+            max-width: 450px;
+            margin: 0 auto;
+        }
+        .order-number-card {
+            background-color: var(--primary-blue-light);
+            border: 1px solid var(--primary-blue-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 640px) {
+            .order-number-card {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+        .order-number-card .label {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        .order-number-card .number {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            letter-spacing: 0.5px;
+        }
+        .order-number-card .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .order-details-card .total-section {
+            text-align: left;
+        }
+        @media (min-width: 640px) {
+            .order-details-card .total-section {
+                text-align: right;
+            }
+        }
+        .order-details-card .total-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        .order-details-card .total-amount {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+        .next-steps-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        @media (min-width: 640px) {
+            .next-steps-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .grid-span-2 {
+                grid-column: span 2;
+            }
+        }
+        .next-step-card .icon-bg {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .next-step-card .icon-bg.blue {
+            background: var(--primary-blue);
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
+        }
+        .next-step-card .icon-bg.green {
+            background: var(--green);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+        .next-step-card .icon-bg.purple {
+            background: #8b5cf6;
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+        }
+        .next-step-card h3 {
+            margin: 0 0 0.25rem 0;
+            color: var(--text-dark);
+            font-size: 1rem;
+        }
+        .next-step-card p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+        .confirmation-actions {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        @media (min-width: 640px) {
+            .confirmation-actions {
+                flex-direction: row;
+            }
+            .confirmation-actions .btn {
+                flex: 1;
+            }
+        }
+        .support-card {
+            margin-top: 2rem;
+            background-color: var(--primary-blue-light);
+            border-color: var(--primary-blue-border);
+        }
+
+        /* --- Page: Order Tracking --- */
+        .tracking-header {
+            margin-bottom: 2rem;
+        }
+        .tracking-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin: 0 0 0.25rem 0;
+        }
+        .tracking-header p {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin: 0;
+        }
+        .status-overview-card {
+            background: linear-gradient(to right, var(--primary-blue), var(--primary-blue-dark));
+            color: var(--white);
+            border: 0;
+            box-shadow: 0 10px 25px rgba(13, 110, 253, 0.3);
+        }
+        .status-overview-card h2 {
+            font-size: 1.5rem;
+            margin: 0 0 0.25rem 0;
+        }
+        .status-overview-card .icon-bg {
+            background: rgba(255,255,255,0.2);
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+        }
+        .status-overview-card .badge {
+            background: var(--white);
+            color: var(--primary-blue);
+        }
+        .status-overview-card .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .status-overview-card .progress-bar-inner {
+            width: 80%; /* Hard-coded for demo */
+            height: 100%;
+            background: var(--white);
+            border-radius: 20px;
+        }
+
+        .tracking-timeline {
+            position: relative;
+        }
+        .timeline-item {
+            display: flex;
+            gap: 1rem;
+        }
+        .timeline-icon-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .timeline-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .timeline-connector {
+            width: 2px;
+            flex-grow: 1;
+            margin: 0.5rem 0;
+        }
+        .timeline-content {
+            flex: 1;
+            padding-bottom: 2rem;
+        }
+        .timeline-content h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .timeline-content .date {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            text-align: right;
+        }
+        .timeline-content p {
+            margin: 0.25rem 0;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        /* Timeline Item States */
+        .timeline-item.completed .timeline-icon {
+            background: var(--green);
+            color: var(--white);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+        .timeline-item.completed .timeline-connector {
+            background: var(--green);
+        }
+        .timeline-item.completed h3, .timeline-item.current h3 {
+            color: var(--text-dark);
+        }
+
+        .timeline-item.current .timeline-icon {
+            background: var(--primary-blue);
+            color: var(--white);
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
+        }
+        .timeline-item.current .timeline-connector {
+            background: var(--border-color);
+        }
+        .timeline-item.current .badge {
+            background: var(--primary-blue-light);
+            color: var(--primary-blue);
+        }
+
+        .timeline-item.pending .timeline-icon {
+            background: var(--background);
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+        .timeline-item.pending h3, .timeline-item.pending p, .timeline-item.pending .date {
+            color: var(--text-light);
+        }
+        
+        .tracking-sidebar .label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+        }
+        .tracking-sidebar .value {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+        .tracking-sidebar .value.mono {
+            font-family: monospace;
+            font-size: 1rem;
+        }
+        .tracking-sidebar .card h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">Aakaari</div>
+        <nav>
+            </nav>
+        <button class="btn btn-primary">Get Started</button>
+    </header>
+
+    <div id="checkout-container">
+
+        <div class="progress-bar-container">
+            <div class="progress-bar-steps">
+                <div class="progress-step active" id="progress-step-1">
+                    <div class="progress-step-icon">1</div>
+                    <div class="progress-step-text">
+                        <strong>Information</strong>
+                    </div>
+                </div>
+                <div class="progress-step" id="progress-step-2">
+                    <div class="progress-step-icon">2</div>
+                    <div class="progress-step-text">
+                        <strong>Shipping</strong>
+                    </div>
+                </div>
+                <div class="progress-step" id="progress-step-3">
+                    <div class="progress-step-icon">3</div>
+                    <div class="progress-step-text">
+                        <strong>Payment</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-container">
+            <button class="back-button hidden-lg" onclick="handleBackToCart()">
+                <i data-lucide="arrow-left" width="16" height="16"></i>
+                Back to Cart
+            </button>
+
+            <form id="checkout-form">
+                <div class="checkout-grid">
+                    
+                    <div class="form-column">
+                        <button class="back-button lg-hidden" onclick="handleBackToCart()">
+                            <i data-lucide="arrow-left" width="16" height="16"></i>
+                            Back
+                        </button>
+
+                        <div id="step-1-content">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="icon-bg"><i data-lucide="mail"></i></div>
+                                    <div>
+                                        <h2>Contact Information</h2>
+                                        <p>How can we reach you?</p>
+                                    </div>
+                                </div>
+                                <div class="input-grid input-grid-2">
+                                    <div>
+                                        <label for="email" class="label">Email Address *</label>
+                                        <input type="email" id="email" class="input" placeholder="your@email.com" required>
+                                    </div>
+                                    <div>
+                                        <label for="phone" class="label">Phone Number *</label>
+                                        <input type="tel" id="phone" class="input" placeholder="+1 (555) 000-0000" required>
+                                    </div>
+                                </div>
+                                <div class="checkbox-container" style="margin-top: 1rem;">
+                                    <input type="checkbox" id="updates" checked>
+                                    <label for="updates">Email me with news and exclusive offers</label>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="icon-bg"><i data-lucide="map-pin"></i></div>
+                                    <div>
+                                        <h2>Shipping Address</h2>
+                                        <p>Where should we deliver?</p>
+                                    </div>
+                                </div>
+                                <div class="input-grid" style="gap: 1rem;">
+                                    <div class="input-grid input-grid-2">
+                                        <div>
+                                            <label for="firstName" class="label">First Name *</label>
+                                            <input type="text" id="firstName" class="input" required>
+                                        </div>
+                                        <div>
+                                            <label for="lastName" class="label">Last Name *</label>
+                                            <input type="text" id="lastName" class="input" required>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="company" class="label">Company Name (Optional)</label>
+                                        <input type="text" id="company" class="input" placeholder="Your company">
+                                    </div>
+                                    <div>
+                                        <label for="address" class="label">Street Address *</label>
+                                        <input type="text" id="address" class="input" placeholder="123 Main St" required>
+                                    </div>
+                                    <div>
+                                        <label for="apartment" class="label">Apartment, suite, etc. (Optional)</label>
+                                        <input type="text" id="apartment" class="input" placeholder="Apt 4B">
+                                    </div>
+                                    <div class="input-grid input-grid-3">
+                                        <div>
+                                            <label for="city" class="label">City *</label>
+                                            <input type="text" id="city" class="input" required>
+                                        </div>
+                                        <div>
+                                            <label for="state" class="label">State *</label>
+                                            <select id="state" class="input" required>
+                                                <option value="">Select</option>
+                                                <option value="NY">New York</option>
+                                                <option value="CA">California</option>
+                                                <option value="TX">Texas</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="zipCode" class="label">ZIP Code *</label>
+                                            <input type="text" id="zipCode" class="input" placeholder="10001" required>
+                                        </div>
+                                    </div>
+                                    <div class="checkbox-container" style="background: none; padding: 0;">
+                                        <input type="checkbox" id="saveAddress">
+                                        <label for="saveAddress">Save this information for next time</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="step-2-content" class="hidden">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="icon-bg"><i data-lucide="truck"></i></div>
+                                    <div>
+                                        <h2>Shipping Method</h2>
+                                        <p>Choose your delivery option</p>
+                                    </div>
+                                </div>
+                                <div class="radio-group">
+                                    <div class="radio-option">
+                                        <label for="express">
+                                            <input type="radio" id="express" name="shipping" value="15.00" checked>
+                                            <div class="radio-option-details">
+                                                <div class="title">
+                                                    <span>Express Shipping</span>
+                                                    <span class="badge badge-blue">Recommended</span>
+                                                </div>
+                                                <p class="description">2-3 business days</p>
+                                            </div>
+                                            <span class="radio-option-price">$15.00</span>
+                                        </label>
+                                    </div>
+                                    <div class="radio-option">
+                                        <label for="standard">
+                                            <input type="radio" id="standard" name="shipping" value="8.00">
+                                            <div class="radio-option-details">
+                                                <div class="title">Standard Shipping</div>
+                                                <p class="description">5-7 business days</p>
+                                            </div>
+                                            <span class="radio-option-price">$8.00</span>
+                                        </label>
+                                    </div>
+                                    <div class="radio-option">
+                                        <label for="priority">
+                                            <input type="radio" id="priority" name="shipping" value="35.00">
+                                            <div class="radio-option-details">
+                                                <div class="title">
+                                                    <span>Priority Overnight</span>
+                                                    <span class="badge badge-outline">Fastest</span>
+                                                </div>
+                                                <p class="description">Next business day</p>
+                                            </div>
+                                            <span class="radio-option-price">$35.00</span>
+                                        </label>
+                                    </div>
+                                    <div class="radio-option">
+                                        <label for="free">
+                                            <input type="radio" id="free" name="shipping" value="0.00">
+                                            <div class="radio-option-details">
+                                                <div class="title">
+                                                    <span>Free Shipping</span>
+                                                    <span class="badge badge-green">Save $15</span>
+                                                </div>
+                                                <p class="description">7-10 business days</p>
+                                            </div>
+                                            <span class="radio-option-price free">FREE</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="step-3-content" class="hidden">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="icon-bg"><i data-lucide="lock"></i></div>
+                                    <div>
+                                        <h2>Payment Method</h2>
+                                        <p>All transactions are secure and encrypted</p>
+                                    </div>
+                                </div>
+                                <div class="radio-group">
+                                    <div class="radio-option" id="card-option-wrapper">
+                                        <label for="card">
+                                            <input type="radio" id="card" name="payment" value="card" checked onchange="togglePaymentDetails()">
+                                            <div class="radio-option-details payment-option-header">
+                                                <div class="left">
+                                                    <i data-lucide="credit-card"></i>
+                                                    <span>Credit / Debit Card</span>
+                                                </div>
+                                                <span class="payment-icons"></span>
+                                            </div>
+                                        </label>
+                                        <div class="payment-card-form" id="card-details-form">
+                                            <div>
+                                                <label for="cardNumber" class="label">Card Number *</label>
+                                                <input type="text" id="cardNumber" class="input" placeholder="1234 5678 9012 3456" required>
+                                            </div>
+                                            <div class="input-grid input-grid-2">
+                                                <div>
+                                                    <label for="expiry" class="label">Expiry Date *</label>
+                                                    <input type="text" id="expiry" class="input" placeholder="MM / YY" required>
+                                                </div>
+                                                <div>
+                                                    <label for="cvv" class="label">CVV *</label>
+                                                    <input type="text" id="cvv" class="input" placeholder="123" maxlength="3" required>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label for="cardName" class="label">Name on Card *</label>
+                                                <input type="text" id="cardName" class="input" placeholder="John Doe" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="radio-option">
+                                        <label for="paypal">
+                                            <input type="radio" id="paypal" name="payment" value="paypal" onchange="togglePaymentDetails()">
+                                            <div class="radio-option-details">
+                                                <div class="title">
+                                                    <i data-lucide="paypal"></i>
+                                                    <span>PayPal</span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="radio-option">
+                                        <label for="bank">
+                                            <input type="radio" id="bank" name="payment" value="bank" onchange="togglePaymentDetails()">
+                                            <div class="radio-option-details">
+                                                <div class="title">
+                                                    <span>Bank Transfer</span>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="secure-payment-badge">
+                                    <i data-lucide="shield" class="icon" width="20" height="20"></i>
+                                    <div>
+                                        <h3>Secure Payment</h3>
+                                        <p>Your payment information is encrypted and secure. We never store your card details.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="lg-hidden" style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                            <button type="button" class="btn btn-outline btn-full" id="mobile-back-btn" onclick="goBack()">Back</button>
+                            <button type="submit" class="btn btn-primary btn-full" id="mobile-next-btn">Continue</button>
+                        </div>
+                    </div>
+
+                    <div class="summary-column">
+                        <div class="card sticky-card">
+                            <h2>Order Summary</h2>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div class="summary-item">
+                                    <img src="https://i.imgur.com/g1f1y8d.png" alt="Headphones">
+                                    <div class="summary-item-details">
+                                        <p class="name">Premium Wireless Headphones</p>
+                                        <p class="qty">Qty: 2</p>
+                                        <p class="price">$179.98</p>
+                                    </div>
+                                </div>
+                                <div class="summary-item">
+                                    <img src="https://i.imgur.com/8QpJaQ7.png" alt="Watch">
+                                    <div class="summary-item-details">
+                                        <p class="name">Smart Watch Series 5</p>
+                                        <p class="qty">Qty: 1</p>
+                                        <p class="price">$299.99</p>
+                                    </div>
+                                </div>
+                                <div class="summary-item">
+                                    <img src="https://i.imgur.com/nLhSgP3.png" alt="Speaker">
+                                    <div class="summary-item-details">
+                                        <p class="name">Portable Bluetooth Speaker</p>
+                                        <p class="qty">Qty: 3</p>
+                                        <p class="price">$149.97</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr class="separator">
+                            <div class="summary-totals">
+                                <div>
+                                    <span>Subtotal</span>
+                                    <span>$629.94</span>
+                                </div>
+                                <div>
+                                    <span>Shipping</span>
+                                    <span>$15.00</span>
+                                </div>
+                                <div>
+                                    <span>Tax</span>
+                                    <span>$50.40</span>
+                                </div>
+                                <hr class="separator" style="margin: 0.5rem 0;">
+                                <div class="total">
+                                    <span>Total</span>
+                                    <span>$695.34</span>
+                                </div>
+                            </div>
+                            <div class="hidden-lg" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
+                                <button type="submit" class="btn btn-primary btn-full" id="desktop-next-btn">Continue</button>
+                                <button type="button" class="btn btn-outline btn-full" id="desktop-back-btn" onclick="goBack()">Back</button>
+                            </div>
+                            <p class="summary-footer-text">
+                                By placing this order, you agree to our Terms and Privacy Policy
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="confirmation-container" class="page-container confirmation-container hidden">
+        
+        <div class="confirmation-header">
+            <div class="confirmation-icon">
+                <i data-lucide="check" width="48" height="48"></i>
+            </div>
+            <h1>Order Confirmed!</h1>
+            <p>Thank you for your order. We've sent a confirmation email with all the details.</p>
+        </div>
+        
+        <div class="card order-number-card">
+            <div>
+                <p class="label">Order Number</p>
+                <p class="number" id="conf-order-number">ORD-1Z71PZLM</p>
+            </div>
+            <div class="actions">
+                <button class="btn btn-outline"><i data-lucide="download" width="16" height="16" style="margin-right: 0.5rem;"></i> Download</button>
+                <button class="btn btn-outline"><i data-lucide="share-2" width="16" height="16" style="margin-right: 0.5rem;"></i> Share</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; text-align: left;">
+                <div>
+                    <h2 style="font-size: 1.25rem; margin: 0 0 1rem 0;">Order Details</h2>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-light);">
+                        <p><strong>Placed on:</strong> <span id="conf-order-date"></span></p>
+                        <p><strong>Payment method:</strong> Credit Card (**** 4242)</p>
+                    </div>
+                </div>
+                <div class="total-section">
+                    <p class="total-label">Total Amount</p>
+                    <p class="total-amount" id="conf-order-total">$695.34</p>
+                    <span class="badge badge-green">Paid</span>
+                </div>
+            </div>
+
+            <hr class="separator">
+
+            <h3 style="text-align: left; font-size: 1rem; font-weight: 600; margin: 0 0 1rem 0;">Items Ordered</h3>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="summary-item">
+                    <img src="https://i.imgur.com/g1f1y8d.png" alt="Headphones">
+                    <div class="summary-item-details">
+                        <p class="name">Premium Wireless Headphones</p>
+                        <p class="qty">Qty: 2</p>
+                    </div>
+                    <span class="radio-option-price">$179.98</span>
+                </div>
+                <div class="summary-item">
+                    <img src="https://i.imgur.com/8QpJaQ7.png" alt="Watch">
+                    <div class="summary-item-details">
+                        <p class="name">Smart Watch Series 5</p>
+                        <p class="qty">Qty: 1</p>
+                    </div>
+                    <span class="radio-option-price">$299.99</span>
+                </div>
+                <div class="summary-item">
+                    <img src="https://i.imgur.com/nLhSgP3.png" alt="Speaker">
+                    <div class="summary-item-details">
+                        <p class="name">Portable Bluetooth Speaker</p>
+                        <p class="qty">Qty: 3</p>
+                    </div>
+                    <span class="radio-option-price">$149.97</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="next-steps-grid">
+            <div class="card next-step-card">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div class="icon-bg blue"><i data-lucide="mail" style="color: white;"></i></div>
+                    <div>
+                        <h3>Email Sent</h3>
+                        <p>Order confirmation and tracking details sent to your email.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card next-step-card">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div class="icon-bg green"><i data-lucide="package" style="color: white;"></i></div>
+                    <div>
+                        <h3>Estimated Delivery</h3>
+                        <p>Your order will arrive within 2-3 business days.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card next-step-card grid-span-2">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div class="icon-bg purple"><i data-lucide="map-pin" style="color: white;"></i></div>
+                    <div>
+                        <h3>Shipping Address</h3>
+                        <p>
+                            John Doe<br>
+                            123 Main Street, Apt 4B<br>
+                            New York, NY 10001
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirmation-actions">
+            <button class="btn btn-primary" onclick="showTrackingPage()">
+                Track Your Order
+                <i data-lucide="arrow-right" width="16" height="16" style="margin-left: 0.5rem;"></i>
+            </button>
+            <button class="btn btn-outline" onclick="window.location.reload()">
+                Continue Shopping
+            </button>
+        </div>
+
+        <div class="card support-card">
+            <h3 style="margin-top: 0;">Need Help?</h3>
+            <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0;">Our support team is available 24/7 to assist you</p>
+            <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 1rem;">
+                <a href="#" class="btn btn-link">Contact Support</a>
+                <a href="#" class="btn btn-link">View Order FAQs</a>
+                <a href="#" class="btn btn-link">Return Policy</a>
+            </div>
+        </div>
+
+    </div>
+
+
+    <div id="tracking-container" class="page-container hidden">
+        <div class="tracking-header">
+            <h1>Track Your Order</h1>
+            <p>Order #<span id="track-order-number">ORD-1Z71PZLM</span></p>
+        </div>
+
+        <div class="card status-overview-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                    <div class="icon-bg"><i data-lucide="truck" width="32" height="32"></i></div>
+                    <div>
+                        <h2>Out for Delivery</h2>
+                        <p style="color: #dbeafe; margin: 0 0 0.5rem 0;">Your package is on its way and will arrive today.</p>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #dbeafe;">
+                            <i data-lucide="clock" width="16" height="16"></i>
+                            <span>Estimated arrival: 4:00 PM - 6:00 PM</span>
+                        </div>
+                    </div>
+                </div>
+                <span class="badge">In Transit</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.875rem; color: #dbeafe; margin-bottom: 0.5rem;">
+                <span>Order Progress</span>
+                <span>80%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-inner"></div>
+            </div>
+        </div>
+
+        <div class="checkout-grid" style="margin-top: 1.5rem;">
+            <div class="form-column">
+                <div class="card">
+                    <h2 style="margin-top: 0; font-size: 1.25rem;">Tracking History</h2>
+                    <div class="tracking-timeline">
+                        
+                        <div class="timeline-item completed">
+                            <div class="timeline-icon-col">
+                                <div class="timeline-icon"><i data-lucide="check-circle"></i></div>
+                                <div class="timeline-connector"></div>
+                            </div>
+                            <div class="timeline-content">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <h3>Order Confirmed</h3>
+                                    <span class="date">Oct 26, 2025<br>10:30 AM</span>
+                                </div>
+                                <p>Your order has been received and confirmed.</p>
+                                <p style="font-size: 0.8rem;">Payment processed successfully</p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item completed">
+                            <div class="timeline-icon-col">
+                                <div class="timeline-icon"><i data-lucide="package"></i></div>
+                                <div class="timeline-connector"></div>
+                            </div>
+                            <div class="timeline-content">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <h3>Processing</h3>
+                                    <span class="date">Oct 26, 2025<br>2:15 PM</span>
+                                </div>
+                                <p>Your order is being prepared for shipment.</p>
+                                <p style="font-size: 0.8rem;">Items picked and packed</p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item completed">
+                            <div class="timeline-icon-col">
+                                <div class="timeline-icon"><i data-lucide="truck"></i></div>
+                                <div class="timeline-connector"></div>
+                            </div>
+                            <div class="timeline-content">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <h3>Shipped</h3>
+                                    <span class="date">Oct 27, 2025<br>9:00 AM</span>
+                                </div>
+                                <p>Your order has been shipped.</p>
+                                <p style="font-size: 0.8rem;">Carrier: FedEx Express</p>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-item current">
+                            <div class="timeline-icon-col">
+                                <div class="timeline-icon"><i data-lucide="map-pin"></i></div>
+                                <div class="timeline-connector"></div>
+                            </div>
+                            <div class="timeline-content">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <h3>Out for Delivery <span class="badge">Current Status</span></h3>
+                                    <span class="date">Oct 28, 2025<br>Expected</span>
+                                </div>
+                                <p>Your package is out for delivery.</p>
+                                <p style="font-size: 0.8rem;">Estimated arrival: 4:00 PM - 6:00 PM</p>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item pending">
+                            <div class="timeline-icon-col">
+                                <div class="timeline-icon"><i data-lucide="check-circle"></i></div>
+                            </div>
+                            <div class="timeline-content">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <h3>Delivered</h3>
+                                    <span class="date">Pending</span>
+                                </div>
+                                <p>Your order has been delivered.</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">Order Items</h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="summary-item">
+                            <img src="https://i.imgur.com/g1f1y8d.png" alt="Headphones">
+                            <div class="summary-item-details">
+                                <p class="name">Premium Wireless Headphones</p>
+                                <p class="qty">Qty: 2 × $89.99</p>
+                            </div>
+                            <span class="radio-option-price">$179.98</span>
+                        </div>
+                        <hr class="separator" style="margin: 0;">
+                        <div class="summary-item">
+                            <img src="https://i.imgur.com/8QpJaQ7.png" alt="Watch">
+                            <div class="summary-item-details">
+                                <p class="name">Smart Watch Series 5</p>
+                                <p class="qty">Qty: 1 × $299.99</p>
+                            </div>
+                            <span class="radio-option-price">$299.99</span>
+                        </div>
+                        <hr class="separator" style="margin: 0;">
+                        <div class="summary-item">
+                            <img src="https://i.imgur.com/nLhSgP3.png" alt="Speaker">
+                            <div class="summary-item-details">
+                                <p class="name">Portable Bluetooth Speaker</p>
+                                <p class="qty">Qty: 3 × $49.99</p>
+                            </div>
+                            <span class="radio-option-price">$149.97</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary-column tracking-sidebar">
+                <div class="sticky-card" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div class="card">
+                        <h3>Shipping Details</h3>
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div>
+                                <p class="label">Carrier</p>
+                                <p class="value">FedEx Express</p>
+                            </div>
+                            <hr class="separator" style="margin: 0;">
+                            <div>
+                                <p class="label">Tracking Number</p>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <p class="value mono" id="tracking-number-text">784532918765</p>
+                                    <button class="btn btn-outline" style="padding: 0.5rem;" onclick="copyTrackingNumber()">
+                                        <i data-lucide="copy" width="16" height="16"></i>
+                                    </button>
+                                </div>
+                                <a href="#" class="btn btn-link" style="font-size: 0.8rem; padding: 0.25rem 0;">
+                                    Track on FedEx <i data-lucide="external-link" width="12" height="12" style="display: inline-block; margin-left: 4px;"></i>
+                                </a>
+                            </div>
+                            <hr class="separator" style="margin: 0;">
+                            <div>
+                                <p class="label">Shipping Method</p>
+                                <p class="value">Express Delivery</p>
+                                <p class="label" style="margin-top: 0.25rem;">2-3 business days</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Delivery Address</h3>
+                        <div style="font-size: 0.9rem; color: var(--text-light); line-height: 1.6;">
+                            <p style="color: var(--text-dark); font-weight: 500; margin: 0;">John Doe</p>
+                            <p style="margin: 0;">123 Main Street</p>
+                            <p style="margin: 0;">Apartment 4B</p>
+                            <p style="margin: 0;">New York, NY 10001</p>
+                            <p style="margin: 0;">United States</p>
+                        </div>
+                    </div>
+                    <div class="card" style="background-color: var(--primary-blue-light); border-color: var(--primary-blue-border);">
+                        <h3>Need Help?</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-outline" style="justify-content: flex-start; gap: 0.5rem;"><i data-lucide="phone" width="16" height="16"></i> Call Support</button>
+                            <button class="btn btn-outline" style="justify-content: flex-start; gap: 0.5rem;"><i data-lucide="mail" width="16" height="16"></i> Email Us</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- State ---
+        let currentStep = 1;
+        let orderData = {};
+
+        // --- Page Elements ---
+        const checkoutContainer = document.getElementById('checkout-container');
+        const confirmationContainer = document.getElementById('confirmation-container');
+        const trackingContainer = document.getElementById('tracking-container');
+
+        // --- Checkout Form Elements ---
+        const checkoutForm = document.getElementById('checkout-form');
+        const step1Content = document.getElementById('step-1-content');
+        const step2Content = document.getElementById('step-2-content');
+        const step3Content = document.getElementById('step-3-content');
+        
+        const mobileBackBtn = document.getElementById('mobile-back-btn');
+        const mobileNextBtn = document.getElementById('mobile-next-btn');
+        const desktopBackBtn = document.getElementById('desktop-back-btn');
+        const desktopNextBtn = document.getElementById('desktop-next-btn');
+        
+        const cardDetailsForm = document.getElementById('card-details-form');
+        const cardOptionWrapper = document.getElementById('card-option-wrapper');
+
+        // --- Progress Bar Elements ---
+        const progressStep1 = document.getElementById('progress-step-1');
+        const progressStep2 = document.getElementById('progress-step-2');
+        const progressStep3 = document.getElementById('progress-step-3');
+
+        // --- Event Listeners ---
+        checkoutForm.addEventListener('submit', handleCheckoutSubmit);
+
+        // --- Checkout Logic ---
+        function handleCheckoutSubmit(e) {
+            e.preventDefault();
+            
+            // Validate step 1 fields before proceeding
+            if (currentStep === 1) {
+                if (!checkoutForm.checkValidity()) {
+                    checkoutForm.reportValidity();
+                    return;
+                }
+            }
+
+            if (currentStep < 3) {
+                currentStep++;
+                showStep(currentStep);
+            } else {
+                // Final step, submit
+                onComplete();
+            }
+        }
+
+        function goBack() {
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        }
+
+        function handleBackToCart() {
+            alert('Going back to cart...');
+            // In a real app, this would be: window.location.href = '/cart';
+        }
+
+        function showStep(stepNum) {
+            currentStep = stepNum;
+            
+            // Hide all steps
+            step1Content.classList.add('hidden');
+            step2Content.classList.add('hidden');
+            step3Content.classList.add('hidden');
+            
+            // Show current step
+            if (stepNum === 1) step1Content.classList.remove('hidden');
+            if (stepNum === 2) step2Content.classList.remove('hidden');
+            if (stepNum === 3) step3Content.classList.remove('hidden');
+
+            updateProgressBar();
+            updateNavButtons();
+            
+            // Scroll to top of form
+            checkoutForm.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateProgressBar() {
+            progressStep1.classList.remove('active', 'completed');
+            progressStep2.classList.remove('active', 'completed');
+            progressStep3.classList.remove('active', 'completed');
+
+            if (currentStep === 1) {
+                progressStep1.classList.add('active');
+            } else if (currentStep === 2) {
+                progressStep1.classList.add('completed');
+                progressStep2.classList.add('active');
+            } else if (currentStep === 3) {
+                progressStep1.classList.add('completed');
+                progressStep2.classList.add('completed');
+                progressStep3.classList.add('active');
+            }
+        }
+
+        function updateNavButtons() {
+            // Mobile
+            mobileNextBtn.innerHTML = currentStep === 3 ? '<i data-lucide="lock" width="16" height="16"></i> Place Order' : 'Continue';
+            mobileBackBtn.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+            // Desktop
+            desktopNextBtn.innerHTML = currentStep === 3 ? '<i data-lucide="lock" width="16" height="16"></i> Place Order' : 'Continue';
+            desktopBackBtn.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+            
+            // Re-initialize icons if new ones were added
+            lucide.createIcons();
+        }
+
+        function togglePaymentDetails() {
+            const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+            if (paymentMethod === 'card') {
+                cardDetailsForm.style.display = 'flex';
+                cardOptionWrapper.style.borderColor = 'var(--primary-blue)';
+                cardOptionWrapper.style.backgroundColor = 'var(--primary-blue-light)';
+            } else {
+                cardDetailsForm.style.display = 'none';
+                cardOptionWrapper.style.borderColor = 'var(--border-color)';
+                cardOptionWrapper.style.backgroundColor = 'var(--white)';
+            }
+        }
+
+        // --- Page Navigation Logic ---
+
+        function onComplete() {
+            // 1. Generate Order Data
+            orderData = {
+                orderNumber: 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+                date: new Date(),
+                total: 695.34 // From summary
+            };
+
+            // 2. Populate Confirmation Page
+            document.getElementById('conf-order-number').innerText = orderData.orderNumber;
+            document.getElementById('track-order-number').innerText = orderData.orderNumber;
+            document.getElementById('conf-order-total').innerText = '$' + orderData.total.toFixed(2);
+            document.getElementById('conf-order-date').innerText = orderData.date.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            // 3. Show Confirmation Page
+            checkoutContainer.classList.add('hidden');
+            confirmationContainer.classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function showTrackingPage() {
+            confirmationContainer.classList.add('hidden');
+            trackingContainer.classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function copyTrackingNumber() {
+            const trackingNumber = document.getElementById('tracking-number-text').innerText;
+            navigator.clipboard.writeText(trackingNumber).then(() => {
+                alert('Tracking number copied!');
+            }).catch(err => {
+                alert('Failed to copy.');
+            });
+        }
+
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            showStep(1);
+            togglePaymentDetails();
+            lucide.createIcons();
+        });
+
+    </script>
+</body>
+</html>

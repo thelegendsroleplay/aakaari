@@ -155,6 +155,43 @@ function aakaari_quick_view_handler() {
     wp_send_json_success($html);
 }
 
+/** Load Cart UI Assets */
+add_action('wp_enqueue_scripts', function () {
+    if ( ! is_cart() ) return;
+
+    // Fonts for UI
+    wp_enqueue_style(
+        'aakaari-inter',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+        [],
+        null
+    );
+
+    wp_enqueue_style(
+        'aakaari-material-icons-outlined',
+        'https://fonts.googleapis.com/css2?family=Material+Icons+Outlined',
+        [],
+        null
+    );
+
+    // Cart CSS after WC so it overrides layout
+    wp_enqueue_style(
+        'aakaari-cart',
+        get_stylesheet_directory_uri() . '/assets/css/cart2.css',
+        [ 'woocommerce-general', 'woocommerce-layout', 'woocommerce-smallscreen' ],
+        '1.0'
+    );
+
+    // Cart JS, depends on jQuery + Woo fragments
+    wp_enqueue_script(
+        'aakaari-cart-js',
+        get_stylesheet_directory_uri() . '/assets/js/cart2.js',
+        [ 'jquery', 'jquery-blockui', 'wc-cart-fragments' ],
+        '1.0',
+        true
+    );
+}, 99);
+
 /**
  * Add Dashboard link to WooCommerce account menu
  */
