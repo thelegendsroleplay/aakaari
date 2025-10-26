@@ -2,6 +2,8 @@
 /**
  * single-product.php - Aakaari custom single product template (fixed)
  * Place in yourtheme/woocommerce/single-product.php
+ *
+ * MODIFIED: Moved Fabric and Color selectors into the right-hand tabs.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -41,7 +43,6 @@ get_header();
 
 <div class="aakaari-container">
 
-  <!-- Hero (optional) -->
   <div class="aakaari-hero">
     <h1>Custom Print Studio</h1>
     <p>Create unique, personalized products with our easy-to-use design tools</p>
@@ -60,7 +61,6 @@ get_header();
 
     <div class="customizer-wrap">
       <div class="customizer-left">
-        <!-- Product preview card -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <div>
@@ -87,34 +87,37 @@ get_header();
           </div>
         </div>
 
-        <!-- Side selector -->
         <div id="side-selector-card" class="card">
           <h4 style="margin:0 0 8px 0;">Select Side to Customize</h4>
           <div id="side-selector-container" style="margin-top:8px;"></div>
         </div>
 
-        <!-- Color selector (hidden if single color) -->
-        <div id="color-selector-card" class="card hidden">
-          <h4 style="margin:0 0 8px 0;">Select Color</h4>
-          <div id="color-selector-container"></div>
         </div>
-
-        <!-- Fabric selector (hidden if no fabrics) -->
-        <div id="fabric-selector-card" class="card hidden">
-          <h4 style="margin:0 0 8px 0;">Select Fabric</h4>
-          <div id="fabric-selector-container"></div>
-        </div>
-      </div>
 
       <div class="customizer-right">
-        <!-- Tabs -->
         <div class="card">
           <div class="tab-triggers" style="margin-bottom:10px;">
-            <button data-tab="design" class="tab-trigger active">Design</button>
+            <button data-tab="fabric" class="tab-trigger active">Fabric</button>
+            <button data-tab="color" class="tab-trigger">Color</button>
+            <button data-tab="design" class="tab-trigger">Design</button>
             <button data-tab="print" class="tab-trigger">Print Type</button>
           </div>
 
-          <div id="design-tab-content" class="tab-content">
+          <div id="fabric-tab-content" class="tab-content">
+             <div id="fabric-selector-card" class="card hidden">
+              <h4 style="margin:0 0 8px 0;">Select Fabric</h4>
+              <div id="fabric-selector-container"></div>
+            </div>
+          </div>
+
+          <div id="color-tab-content" class="tab-content hidden">
+            <div id="color-selector-card" class="card hidden">
+              <h4 style="margin:0 0 8px 0;">Select Color</h4>
+              <div id="color-selector-container"></div>
+            </div>
+          </div>
+
+          <div id="design-tab-content" class="tab-content hidden">
             <h4 style="margin-top:0;">Add Your Design</h4>
             <p style="color:#6B7280; margin-top:6px;">Upload images or add text to customize your product</p>
             <div style="margin-top:12px;">
@@ -149,7 +152,6 @@ get_header();
           </div>
         </div>
 
-        <!-- Price summary -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <div style="color:#6B7280;">Product Base Price:</div>
