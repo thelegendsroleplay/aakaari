@@ -3,10 +3,12 @@
  * Multi-step Checkout (Aakaari)
  * Path: yourtheme/woocommerce/checkout/form-checkout.php
  *
- * CUSTOM HTML STRUCTURE VERSION
+ * CUSTOM HTML STRUCTURE VERSION (with Country/State Fix)
  * - Manually builds a custom HTML layout for each field using a helper function.
  * - Uses custom CSS classes (aak-form-row, aak-label, etc.).
  * - Styles are applied via CSS to these custom classes.
+ * - **Exception:** Country & State fields use `woocommerce_form_field()` for JS compatibility,
+ * styled via specific CSS rules targeting WC wrappers inside our structure.
  * - This avoids conflicts with theme/WooCommerce default field structure.
  */
 
@@ -147,39 +149,40 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                     // Checkbox needs label wrapping the input
                     // Remove input-text class, add input-checkbox
                     $checkbox_attrs = str_replace('input-text', 'input-checkbox', $attrs);
-                    echo '<label class="checkbox-wrapper aak-label checkbox ' . esc_attr( implode( ' ', $field['label_class'] ) ) . '">';
+                    // Add .checkbox class to label_class array if not present
+                    if (!in_array('checkbox', $field['label_class'])) {
+                        $field['label_class'][] = 'checkbox';
+                    }
+                    echo '<label class="checkbox-wrapper aak-label ' . esc_attr( implode( ' ', $field['label_class'] ) ) . '">'; // Add checkbox class here
                     echo '<input type="checkbox" ' . $checkbox_attrs . ' value="1" ' . checked($value, 1, false) . ' />';
                     echo '<span>' . wp_kses_post($field_label) . ($field_required ? '&nbsp;<span class="required">*</span>' : '') . '</span>'; // Checkbox label text
                     echo '</label>';
                     break;
 
-                case 'select':
-case 'country': // Treat country/state as select for rendering
-                case 'state':
-                case 'select': // Combine with existing select case
+                 // **** START COUNTRY/STATE FIX ****
+                 case 'country': // Let WC handle complex Country field
+                 case 'state':   // Let WC handle complex State field
+                     // Output WC's default structure directly for these complex fields
+                     // Our CSS will target the '.form-row' inside '.aak-input-container'
+                     $field['label'] = ''; // Prevent WC from rendering its label inside our container
+                     $field['return'] = true; // Get the HTML instead of echoing
+                     echo woocommerce_form_field( $key, $field, $value );
+                     break; // IMPORTANT: End case here
+                 // **** END COUNTRY/STATE FIX ****
+
+                 case 'select': // Handle REGULAR select fields manually
                     $options_html = '';
                     if (!empty($field['options'])) {
-                        // Add placeholder option if set and value is empty
-                         if ( ! empty( $field['placeholder'] ) && ( is_null( $value ) || '' === $value ) ) {
-                             $options_html .= '<option value="" selected disabled>' . esc_html( $field['placeholder'] ) . '</option>';
-                         } elseif ( ! empty( $field['placeholder'] ) ) {
-                             // Add placeholder but don't select it if there's already a value
+                         // Add placeholder option if set
+                         if ( ! empty( $field['placeholder'] ) ) {
                              $options_html .= '<option value="">' . esc_html( $field['placeholder'] ) . '</option>';
                          }
                         foreach ($field['options'] as $option_key => $option_text) {
-                            // For states, the key might contain country code, e.g., "US:CA"
-                            $selected_attr = selected($value, $option_key, false);
-                            $options_html .= '<option value="' . esc_attr($option_key) . '" '. $selected_attr . '>' . esc_html($option_text) .'</option>';
+                            $options_html .= '<option value="' . esc_attr($option_key) . '" '. selected($value, $option_key, false) . '>' . esc_html($option_text) .'</option>';
                         }
                     }
-                    // Add data attributes needed for WC country/state JS
-                    $attrs .= isset($field['country']) ? ' data-country="' . esc_attr($field['country']) . '"' : '';
-                    $attrs .= isset($field['country_field']) ? ' data-country_field="' . esc_attr($field['country_field']) . '"' : '';
-                    $attrs .= ' data-input-classes="' . esc_attr( implode(' ', $input_classes) ) . '"'; // Pass classes for JS
-
                     echo '<select ' . $attrs . '>' . $options_html . '</select>';
-                     // Note: WooCommerce's country/state JS ('country-select.js', 'address-i18n.js')
-                     // should still pick up these fields based on their IDs/names and data attributes.
+                     // Note: Requires Select2 JS initialization if used for non-country/state fields
                     break;
 
                 case 'radio': // Example if needed
@@ -219,7 +222,6 @@ case 'country': // Treat country/state as select for rendering
 ?>
 
 <div id="checkout-container" class="aak-checkout">
-    <!-- Progress Bar (Keep as is) -->
     <div class="progress-bar-container">
          <div class="progress-bar-steps">
              <div class="progress-step active" id="progress-step-1">
@@ -247,7 +249,6 @@ case 'country': // Treat country/state as select for rendering
      </div>
 
     <div class="page-container">
-        <!-- Back to Cart Link (Keep as is) -->
         <a href="<?php echo esc_url(wc_get_cart_url()); ?>" class="back-to-cart">
              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -263,11 +264,8 @@ case 'country': // Treat country/state as select for rendering
             <input type="hidden" name="woocommerce_checkout_update_totals" value="false"> <?php // Prevent unnecessary Ajax on field changes initially ?>
 
             <div class="checkout-grid">
-                <!-- LEFT COLUMN -->
                 <div class="form-column">
-                    <!-- Step 1: Information -->
                     <div id="step-1-content">
-                        <!-- Card 1: Contact Information -->
                         <div class="card" id="aak-contact-card">
                             <div class="card-header">
                                 <div class="card-icon">
@@ -297,14 +295,18 @@ case 'country': // Treat country/state as select for rendering
                              // Render optional 'Email me' checkbox (Manually creating for simplicity)
                              ?>
                              <div class="aak-form-row aak-form-row-wide">
-                                <label class="checkbox-wrapper aak-label checkbox" for="marketing_opt_in">
-                                     <input type="checkbox" class="input-checkbox" name="marketing_opt_in" id="marketing_opt_in" value="1">
-                                     <span><?php esc_html_e( 'Email me with news and exclusive offers', 'aakaari' ); // Use your theme text domain if needed ?></span>
-                                 </label>
+                                <?php
+                                $marketing_field = array(
+                                    'type' => 'checkbox',
+                                    'label' => __( 'Email me with news and exclusive offers', 'aakaari' ), // Use your theme text domain
+                                    'required' => false,
+                                    'id' => 'marketing_opt_in',
+                                );
+                                aakaari_render_checkout_field('marketing_opt_in', $marketing_field, checked( WC()->checkout()->get_value('marketing_opt_in'), 1, false ) );
+                                ?>
                              </div>
                         </div>
 
-                        <!-- Card 2: Address Details -->
                         <div class="card" id="aak-address-card">
                              <div class="card-header">
                                  <div class="card-icon">
@@ -334,17 +336,17 @@ case 'country': // Treat country/state as select for rendering
                                         <?php
                                         $ship_checkbox_field = array(
                                             'type' => 'checkbox',
-                                            'class' => array('form-row-wide'),
+                                            'class' => array('form-row-wide', 'update_totals_on_change'), // Added WC class for JS
                                             'label_class' => array('checkbox-wrapper'), // Apply wrapper style
                                             'label' => __('Ship to a different address?', 'woocommerce'),
                                             'required' => false,
+                                            'id' => 'ship-to-different-address-checkbox', // Ensure ID matches WC JS
                                         );
-                                        // Note: We're rendering this checkbox manually within our structure
-                                        // The JS to show/hide the address fields still needs to target #ship-to-different-address-checkbox
+                                        // Render checkbox within our structure
+                                        echo '<div class="aak-form-row aak-form-row-wide" id="ship-to-different-address">';
+                                        aakaari_render_checkout_field('ship_to_different_address', $ship_checkbox_field, $checkout->get_value( 'ship_to_different_address' ));
+                                        echo '</div>';
                                         ?>
-                                        <div class="aak-form-row aak-form-row-wide" id="ship-to-different-address">
-                                             <?php aakaari_render_checkout_field('ship_to_different_address', $ship_checkbox_field, $checkout->get_value( 'ship_to_different_address' )); ?>
-                                        </div>
 
                                         <div class="shipping_address" style="<?php echo ($checkout->get_value('ship_to_different_address') ? '' : 'display: none;');?>">
                                             <?php
@@ -368,16 +370,20 @@ case 'country': // Treat country/state as select for rendering
                             ?>
                              <?php // Render Save Info Checkbox (Manually for simplicity) ?>
                              <div class="aak-form-row aak-form-row-wide save-info"> <?php // Add class for styling ?>
-                                <label class="checkbox-wrapper aak-label checkbox" for="save_info">
-                                     <input type="checkbox" class="input-checkbox" name="save_info" id="save_info" value="1">
-                                     <span><?php esc_html_e( 'Save this information for next time', 'aakaari' ); ?></span>
-                                 </label>
+                                 <?php
+                                    $save_info_field = array(
+                                        'type' => 'checkbox',
+                                        'label' => __( 'Save this information for next time', 'aakaari' ),
+                                        'required' => false,
+                                        'id' => 'save-info' // Assuming 'save-info' is the correct ID if used by JS
+                                    );
+                                     aakaari_render_checkout_field('save_info', $save_info_field, checked( WC()->checkout()->get_value('save_info'), 1, false ) );
+                                 ?>
                              </div>
                         </div>
                     </div>
 
-                    <!-- Step 2: Shipping Method (Keep as is) -->
-                     <div id="step-2-content" class="hidden">
+                    <div id="step-2-content" class="hidden">
                          <div class="card">
                              <div class="card-header">
                                  <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg></div>
@@ -399,8 +405,7 @@ case 'country': // Treat country/state as select for rendering
                          </div>
                      </div>
 
-                    <!-- Step 3: Payment (Keep as is - JS formats this) -->
-                     <div id="step-3-content" class="hidden">
+                    <div id="step-3-content" class="hidden">
                          <div class="card">
                              <div class="card-header">
                                  <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg></div>
@@ -428,16 +433,14 @@ case 'country': // Treat country/state as select for rendering
                          </div>
                      </div>
 
-                    <!-- Mobile Navigation (Keep as is) -->
-                     <div class="button-group lg-hidden">
+                    <div class="button-group lg-hidden">
                          <button type="button" class="btn btn-outline" id="mobile-back-btn"><?php esc_html_e('Back', 'woocommerce'); ?></button>
                          <?php // This submit button is crucial for final step ?>
                          <button type="submit" class="btn btn-primary button alt<?php echo esc_attr( wc_wp_theme_get_element_class_name( 'button' ) ? ' ' . wc_wp_theme_get_element_class_name( 'button' ) : '' ); ?>" id="mobile-next-btn" name="woocommerce_checkout_place_order" value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>" data-value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>"><?php esc_html_e('Continue', 'woocommerce'); ?></button>
                      </div>
                 </div>
 
-                <!-- RIGHT COLUMN: Summary (Keep as is, but add Place Order button logic) -->
-                 <div class="summary-column">
+                <div class="summary-column">
                      <div class="card summary-card">
                          <h2><?php esc_html_e('Order Summary', 'woocommerce'); ?></h2>
                          <div class="summary-items">

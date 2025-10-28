@@ -389,3 +389,74 @@
 /* Remove V5/V6/V7 overrides */
 
 /* --- END OF FILE --- */
+
+/* =========================================================
+   FIX FOR COUNTRY/STATE FIELDS (Custom Structure Method)
+   ========================================================= */
+
+/* Target WC's default .form-row when inside our container for country/state */
+.aak-checkout .aak-input-container > p.form-row {
+    margin: 0 !important; /* Remove default margins */
+    padding: 0 !important; /* Remove default padding */
+}
+
+/* Style the select/Select2 elements within WC's default country/state wrappers */
+.aak-checkout .aak-input-container p.form-row select,
+.aak-checkout .aak-input-container p.form-row .select2-container--default .select2-selection--single {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 46px !important;
+    background: var(--bg) !important;
+    border: 1.5px solid transparent !important;
+    border-radius: 12px !important;
+    padding: 0 !important; /* Reset padding, Select2 adds its own internal */
+    line-height: 1.5 !important;
+    font-size: 1rem !important;
+    color: var(--ink) !important;
+    box-shadow: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+    margin: 0 !important;
+    display: block !important;
+    box-sizing: border-box;
+}
+
+/* Focus styles for WC country/state wrappers */
+.aak-checkout .aak-input-container p.form-row select:focus,
+.aak-checkout .aak-input-container p.form-row .select2-container--default.select2-container--focus .select2-selection--single {
+    background: #fff !important;
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2) !important;
+    outline: 0 !important;
+}
+
+/* Adjust Select2 rendering inside WC wrapper */
+.aak-checkout .aak-input-container p.form-row .select2-container--default .select2-selection--single {
+    padding: 0 !important; /* Select2 needs internal padding */
+}
+.aak-checkout .aak-input-container p.form-row .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--ink) !important;
+    line-height: calc(46px - 1.5px * 2) !important; /* Adjust based on border */
+    padding: 0 16px !important; /* Add internal padding */
+    padding-right: 40px !important; /* Space for arrow */
+}
+.aak-checkout .aak-input-container p.form-row .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 46px !important;
+    right: 12px !important;
+    position: absolute;
+    top: 0;
+    width: 20px;
+}
+
+/* Hide the default WC label if our custom one is present */
+.aak-checkout .aak-form-row > label + .aak-input-container p.form-row label {
+    display: none !important;
+}
+
+/* Ensure Woo's span.woocommerce-input-wrapper inside p.form-row doesn't mess things up */
+.aak-checkout .aak-input-container p.form-row span.woocommerce-input-wrapper {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
