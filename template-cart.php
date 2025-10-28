@@ -1,48 +1,49 @@
 <?php
+
 /**
+
  * Template Name: Cart (Aakaari)
- * Description: Shell for WooCommerce Cart. Renders Cart Block if present, else falls back to [woocommerce_cart].
+
  */
 
 defined('ABSPATH') || exit;
 
 get_header();
 
-// Theme wrappers (optional).
 do_action('aakaari_wrapper_start');
 
-// WooCommerce notices.
-if ( function_exists('wc_print_notices') ) {
-    wc_print_notices();
-}
 ?>
-<main id="primary" class="site-main">
+
+<main id="primary" class="site-main aakaari-cart-page">
+
     <?php
-    if ( have_posts() ) :
-        while ( have_posts() ) : the_post();
 
-            // Page content (this will render the Cart Block or any content you added).
-            $content = get_the_content();
+    // Print notices
 
-            $has_cart_block     = function_exists('has_block') && has_block('woocommerce/cart', get_the_ID());
-            $has_cart_shortcode = function_exists('has_shortcode') && has_shortcode($content, 'woocommerce_cart');
+    if ( function_exists('wc_print_notices') ) {
 
-            echo apply_filters('the_content', $content);
+        wc_print_notices();
 
-            // Fallback to classic cart if neither block nor shortcode exists in the page content.
-            if ( ! $has_cart_block && ! $has_cart_shortcode ) {
-                echo do_shortcode('[woocommerce_cart]');
-            }
+    }
 
-        endwhile;
-    else :
-        // Absolute fallback if page has no content.
-        echo do_shortcode('[woocommerce_cart]');
-    endif;
+    // Force loading custom WooCommerce cart template from your theme
+
+    if ( class_exists('WooCommerce') ) {
+
+        wc_get_template('cart/cart.php');
+
+    } else {
+
+        echo '<p>WooCommerce plugin not active.</p>';
+
+    }
+
     ?>
+
 </main>
+
 <?php
-// Theme wrappers (optional).
+
 do_action('aakaari_wrapper_end');
 
 get_footer();

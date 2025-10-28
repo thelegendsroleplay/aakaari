@@ -20,17 +20,17 @@ function custom_cart_assets() {
     // Enqueue custom cart styles
     wp_enqueue_style(
         'custom-cart-styles', 
-        get_stylesheet_directory_uri() . '/assets/css/functional-cart.css', 
+        get_stylesheet_directory_uri() . '/assets/css/cart2.css', 
         array(), 
-        filemtime(get_stylesheet_directory() . '/assets/css/functional-cart.css') // For cache busting
+        filemtime(get_stylesheet_directory() . '/assets/css/cart2.css') // For cache busting
     );
     
     // Enqueue custom cart script
     wp_enqueue_script(
         'custom-cart-script', 
-        get_stylesheet_directory_uri() . '/assets/js/functional-cart.js', 
+        get_stylesheet_directory_uri() . '/assets/js/cart2.js', 
         array('jquery', 'wc-cart'), 
-        filemtime(get_stylesheet_directory() . '/assets/js/functional-cart.js'), 
+        filemtime(get_stylesheet_directory() . '/assets/js/cart2.js'), 
         true
     );
     

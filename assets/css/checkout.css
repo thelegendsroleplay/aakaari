@@ -1,305 +1,327 @@
-/* ===========================
-   Aakaari Checkout Styles
-   =========================== */
+/* ==========================================================
 
-/* Scope everything to the checkout page only */
-.aak-checkout {
-  /* --- Base & Variables --- */
-  --primary-blue: #0d6efd;
-  --primary-blue-dark: #0b5ed7;
-  --primary-blue-light: #f0f6ff;
-  --primary-blue-border: #b6d4fe;
-  --green: #10b981;
-  --green-light: #f0fdf4;
-  --green-text: #065f46;
-  --text-dark: #111827;
-  --text-light: #6b7280;
-  --text-heading: #1f2937;
-  --border-color: #e5e7eb;
-  --input-bg: #ffffff;
-  --background: #f9fafb;
-  --white: #ffffff;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  --card-radius: 12px;
+   Aakaari Checkout — Premium Gradient Multi-Step UI
+
+   Clean, Minimal, Professional
+
+========================================================== */
+
+:root{
+
+  --aak-grad:linear-gradient(135deg,#3b82f6 0%,#7d59ff 50%,#a855f7 100%);
+
+  --aak-grad-light:linear-gradient(135deg,#eef4ff,#f6edff);
+
+  --aak-blue:#4f46e5;
+
+  --aak-blue-dark:#4338ca;
+
+  --aak-green:#10b981;
+
+  --aak-bg:#f8f9fb;
+
+  --aak-white:#ffffff;
+
+  --aak-border:#e2e8f0;
+
+  --aak-text:#1e293b;
+
+  --aak-text-light:#64748b;
+
+  --aak-radius:12px;
+
+  --aak-shadow:0 8px 20px rgba(0,0,0,.06);
+
+  --aak-shadow-hover:0 12px 36px rgba(86,61,255,.18);
+
 }
 
-.aak-checkout {
-  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background-color: var(--background);
-  color: var(--text-dark);
-  -webkit-font-smoothing: antialiased;
+/* page shell */
+
+.aak-checkout{
+
+  background:var(--aak-bg);
+
+  color:var(--aak-text);
+
+  font-family:Inter,system-ui,sans-serif;
+
+  padding-bottom:40px;
+
 }
 
-/* --- Main Header (optional block you showed) --- */
-.aak-checkout .main-header {
-  background-color: var(--white);
-  border-bottom: 1px solid var(--border-color);
-  padding: 1rem 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.aak-checkout .main-header .logo { font-weight: 700; font-size: 1.25rem; color: var(--primary-blue); }
-.aak-checkout .main-header nav { display: none; }
+.hidden{display:none!important}
 
-/* --- Layout --- */
-.aak-checkout .page-container { max-width: 1280px; margin: 0 auto; padding: 1.5rem 2rem; }
-.aak-checkout .checkout-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
-@media (min-width: 1024px) {
-  .aak-checkout .checkout-grid { grid-template-columns: 2fr 1fr; }
-}
-.aak-checkout .form-column { display: flex; flex-direction: column; gap: 1.5rem; }
-.aak-checkout .summary-column .sticky-card { position: sticky; top: 2rem; }
+/* layout */
 
-/* --- Utilities --- */
-.aak-checkout .hidden { display: none !important; }
-.aak-checkout .lg-hidden { display: block; }
-.aak-checkout .hidden-lg { display: none; }
-@media (min-width: 1024px) {
-  .aak-checkout .lg-hidden { display: none !important; }
-  .aak-checkout .hidden-lg { display: block; }
+.aak-checkout .page-container{max-width:1280px;margin:0 auto;padding:24px 20px}
+
+.aak-checkout .checkout-grid{display:grid;gap:28px;grid-template-columns:1fr}
+
+@media(min-width:1024px){
+
+  .aak-checkout .checkout-grid{grid-template-columns:1.6fr 1fr}
+
+  .aak-checkout .summary-column{position:sticky;top:30px}
+
 }
 
-/* --- Card / Buttons / Inputs --- */
-.aak-checkout .card {
-  background-color: var(--white);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  padding: 1.5rem;
-}
-.aak-checkout .card-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem; }
-.aak-checkout .card-header .icon-bg {
-  width: 40px; height: 40px; background-color: var(--primary-blue-light);
-  border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary-blue);
-}
-.aak-checkout .card-header h2 { margin: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-heading); }
-.aak-checkout .card-header p { margin: 0; font-size: .875rem; color: var(--text-light); }
+/* cards */
 
-.aak-checkout .btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: .75rem 1.25rem; font-size: .9rem; font-weight: 600; border-radius: 8px;
-  border: 1px solid transparent; cursor: pointer; transition: all .2s ease; text-decoration: none;
-}
-.aak-checkout .btn-primary { background-color: var(--primary-blue); color: var(--white); box-shadow: 0 4px 10px rgba(13,110,253,.2); }
-.aak-checkout .btn-primary:hover { background-color: var(--primary-blue-dark); }
-.aak-checkout .btn-outline { background: var(--white); border-color: var(--border-color); color: var(--text-heading); }
-.aak-checkout .btn-outline:hover { background: var(--background); }
-.aak-checkout .btn-link { background: none; border: none; color: var(--primary-blue); padding: 0; font-weight: 500; }
-.aak-checkout .btn-link:hover { text-decoration: underline; }
-.aak-checkout .btn-full { width: 100%; }
+.aak-checkout .card{
 
-.aak-checkout .label { display: block; font-size: .875rem; font-weight: 500; color: var(--text-heading); margin-bottom: .5rem; }
-.aak-checkout .input,
-.aak-checkout .select-trigger,
+  background:var(--aak-white);
+
+  border:1px solid var(--aak-border);
+
+  padding:26px;border-radius:var(--aak-radius);
+
+  box-shadow:var(--aak-shadow);
+
+  animation:fadeUp .28s ease forwards
+
+}
+
+.aak-checkout .card:hover{box-shadow:var(--aak-shadow-hover)}
+
+/* headers */
+
+.aak-checkout .card-header{margin-bottom:20px}
+
+.aak-checkout .card-header h2{font-size:1.15rem;font-weight:600;margin:0}
+
+.aak-checkout .card-header p{font-size:.85rem;color:var(--aak-text-light);margin:2px 0 0}
+
+/* -----------------------------
+
+   WOO DEFAULT RESET (CRITICAL)
+
+   ----------------------------- */
+
+/* kill old float grid */
+
+.aak-checkout .woocommerce .col2-set:after,
+
+.aak-checkout .woocommerce .form-row:after{content:"";display:table;clear:both}
+
+.aak-checkout .woocommerce .col2-set .col-1,
+
+.aak-checkout .woocommerce .col2-set .col-2,
+
+.aak-checkout .woocommerce .form-row,
+
+.aak-checkout .woocommerce .form-row-first,
+
+.aak-checkout .woocommerce .form-row-last,
+
+.aak-checkout .woocommerce .form-row-wide{
+
+  float:none!important;width:100%!important;max-width:100%!important;clear:both
+
+}
+
+/* uniform form rows */
+
+.aak-checkout .woocommerce form .form-row{
+
+  display:grid;grid-template-columns:1fr;gap:6px;margin:0 0 14px
+
+}
+
+.aak-checkout .woocommerce form .form-row label{
+
+  font-size:.9rem;font-weight:500;color:var(--aak-text)
+
+}
+
+/* inputs */
+
 .aak-checkout .woocommerce form .form-row input.input-text,
+
 .aak-checkout .woocommerce form .form-row textarea,
-.aak-checkout .woocommerce form .form-row select {
-  width: 100%; padding: .75rem 1rem; font-size: .9rem; border: 1px solid var(--border-color);
-  border-radius: 8px; background-color: var(--input-bg); box-sizing: border-box;
+
+.aak-checkout .woocommerce form .form-row select{
+
+  width:100%;border:1px solid var(--aak-border)!important;
+
+  border-radius:10px!important;padding:.9rem 1rem!important;
+
+  background:#fff!important;box-shadow:none!important;line-height:1.2
+
 }
-.aak-checkout .input:focus,
+
 .aak-checkout .woocommerce form .form-row input.input-text:focus,
+
 .aak-checkout .woocommerce form .form-row textarea:focus,
-.aak-checkout .woocommerce form .form-row select:focus {
-  outline: none; border-color: var(--primary-blue); box-shadow: 0 0 0 2px var(--primary-blue-light);
+
+.aak-checkout .woocommerce form .form-row select:focus{
+
+  border-color:#7d59ff!important;box-shadow:0 0 0 3px rgba(125,89,255,.25)!important;outline:0
+
 }
 
-.aak-checkout .input-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-@media (min-width: 640px) {
-  .aak-checkout .input-grid-2 { grid-template-columns: 1fr 1fr; }
-  .aak-checkout .input-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.aak-checkout .woocommerce .woocommerce-invalid input.input-text{border-color:#ef4444!important}
+
+/* Select2 (country/state) */
+
+.aak-checkout .select2-container{width:100%!important}
+
+.aak-checkout .select2-container--default .select2-selection--single{
+
+  height:auto;border:1px solid var(--aak-border)!important;border-radius:10px!important;
+
+  padding:.55rem .75rem!important
+
 }
-.aak-checkout .checkbox-container { display: flex; align-items: center; gap: .5rem; padding: .75rem; background: var(--primary-blue-light); border-radius: 8px; }
-.aak-checkout .checkbox-container label { font-size: .875rem; color: var(--text-heading); cursor: pointer; }
-.aak-checkout input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary-blue); }
-.aak-checkout .separator { border: 0; border-top: 1px solid var(--border-color); margin: 1rem 0; }
-.aak-checkout .badge { display: inline-block; padding: .25rem .6rem; font-size: .75rem; font-weight: 500; border-radius: 20px; }
-.aak-checkout .badge-blue { background: var(--primary-blue); color: var(--white); }
-.aak-checkout .badge-green { background: var(--green-light); color: var(--green-text); }
-.aak-checkout .badge-outline { background: var(--white); color: var(--text-light); border: 1px solid var(--border-color); }
 
-/* --- Progress Bar --- */
-.aak-checkout .progress-bar-container { background: var(--white); border-bottom: 1px solid var(--border-color); padding: 1rem 10%; }
-.aak-checkout .progress-bar-steps { display: flex; align-items: center; justify-content: space-between; position: relative; }
-.aak-checkout .progress-step { display: flex; flex-direction: column; align-items: center; text-align: center; z-index: 1; }
-.aak-checkout .progress-step-icon {
-  width: 32px; height: 32px; border-radius: 50%; background: var(--border-color); color: var(--text-light);
-  display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: .9rem; border: 2px solid var(--border-color); transition: all .3s ease;
-}
-.aak-checkout .progress-step-text { margin-top: .5rem; }
-.aak-checkout .progress-step-text strong { font-size: .9rem; color: var(--text-light); }
-.aak-checkout .progress-bar-steps::before {
-  content: ""; position: absolute; top: 16px; left: 0; right: 0; height: 2px; background: var(--border-color);
-  z-index: 0; transform: translateY(-50%); margin: 0 15%;
-}
-.aak-checkout .progress-step.active .progress-step-icon,
-.aak-checkout .progress-step.completed .progress-step-icon { background: var(--primary-blue); border-color: var(--primary-blue); color: var(--white); }
-.aak-checkout .progress-step.completed .progress-step-icon { background: var(--green); border-color: var(--green); }
-.aak-checkout .progress-step.active .progress-step-text strong,
-.aak-checkout .progress-step.completed .progress-step-text strong { color: var(--text-dark); }
-.aak-checkout .progress-step.active .progress-step-icon { transform: scale(1.1); }
+.aak-checkout .select2-selection__rendered{line-height:1.4!important}
 
-/* --- Back Button --- */
-.aak-checkout .back-button { display: flex; align-items: center; gap: .5rem; color: var(--primary-blue); background: none; border: none; cursor: pointer; font-weight: 500; margin-bottom: 1.5rem; padding: 0; }
+.aak-checkout .select2-selection__arrow{height:100%!important}
 
-/* --- Order Summary --- */
-.aak-checkout .summary-card h2 { margin: 0 0 1rem 0; font-size: 1.25rem; font-weight: 600; color: var(--text-heading); }
-.aak-checkout .summary-item { display: flex; gap: .75rem; align-items: center; }
-.aak-checkout .summary-item img, .aak-checkout .item-image img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); }
-.aak-checkout .item-image { width: 64px; height: 64px; }
-.aak-checkout .summary-item-details { flex-grow: 1; min-width: 0; }
-.aak-checkout .summary-item-details p { margin: 0; font-size: .875rem; }
-.aak-checkout .summary-item-details .name { color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aak-checkout .summary-item-details .qty { color: var(--text-light); font-size: .8rem; }
-.aak-checkout .summary-item-details .price { margin-top: .25rem; font-weight: 500; }
-.aak-checkout .summary-totals { display: flex; flex-direction: column; gap: .75rem; }
-.aak-checkout .summary-totals div { display: flex; justify-content: space-between; font-size: .9rem; color: var(--text-light); }
-.aak-checkout .summary-totals .total { font-size: 1.1rem; font-weight: 600; color: var(--text-dark); }
-.aak-checkout .summary-footer-text { font-size: .75rem; color: var(--text-light); text-align: center; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+/* coupon / notice spacing */
 
-/* --- Radio groups (shipping & payment list) --- */
-.aak-checkout .radio-group { display: flex; flex-direction: column; gap: .75rem; }
-.aak-checkout .radio-option { border: 2px solid var(--border-color); border-radius: 8px; padding: 1rem; cursor: pointer; transition: all .2s ease; }
-.aak-checkout .radio-option:hover { background: var(--background); }
-/* :has support */
-.aak-checkout .radio-option:has(input[type="radio"]:checked) { border-color: var(--primary-blue); background: var(--primary-blue-light); }
-/* Fallback when :has not supported */
-.aak-checkout .radio-option.selected { border-color: var(--primary-blue); background: var(--primary-blue-light); }
-.aak-checkout .radio-option label { display: flex; align-items: center; width: 100%; cursor: pointer; }
-.aak-checkout .radio-option input[type="radio"] { accent-color: var(--primary-blue); width: 18px; height: 18px; margin-right: .75rem; }
-.aak-checkout .radio-option-details { flex-grow: 1; }
-.aak-checkout .radio-option-details .title { display: flex; align-items: center; gap: .5rem; color: var(--text-dark); font-weight: 500; }
-.aak-checkout .radio-option-details .description { font-size: .875rem; color: var(--text-light); margin-top: .25rem; }
-.aak-checkout .radio-option-price { font-weight: 600; color: var(--text-dark); }
-.aak-checkout .radio-option-price.free { color: var(--green); }
-
-/* --- Payment --- */
-.aak-checkout .payment-option-header { display: flex; align-items: center; justify-content: space-between; }
-.aak-checkout .payment-option-header .left { display: flex; align-items: center; gap: .75rem; }
-.aak-checkout .payment-card-form { border-top: 1px solid var(--border-color); margin-top: 1rem; padding-top: 1.5rem; padding-left: 2.25rem; display: flex; flex-direction: column; gap: 1rem; }
-.aak-checkout .secure-payment-badge { margin-top: 1.5rem; background: var(--green-light); border: 1px solid var(--green); border-radius: 8px; padding: 1rem; display: flex; align-items: flex-start; gap: .75rem; }
-.aak-checkout .secure-payment-badge .icon { color: var(--green-text); flex-shrink: 0; margin-top: 2px; }
-.aak-checkout .secure-payment-badge h3 { margin: 0; font-size: .9rem; color: var(--green-text); font-weight: 600; }
-.aak-checkout .secure-payment-badge p { margin: 0; font-size: .8rem; color: var(--green-text); }
-
-/* --- Woo notices (kept global-friendly but scoped) --- */
-.aak-checkout .woocommerce-notices-wrapper { max-width: 1280px; margin: 1rem auto; padding: 0 2rem; }
 .aak-checkout .woocommerce-info,
+
 .aak-checkout .woocommerce-message,
-.aak-checkout .woocommerce-error {
-  padding: 1rem; border-radius: var(--card-radius); margin-bottom: 1rem; list-style: none;
-}
-.aak-checkout .woocommerce-info { background: var(--primary-blue-light); border: 1px solid var(--primary-blue-border); color: var(--primary-blue-dark); }
-.aak-checkout .woocommerce-message { background: var(--green-light); border: 1px solid var(--green); color: var(--green-text); }
-.aak-checkout .woocommerce-error { background: #fee2e2; border: 1px solid #fecaca; color: #b91c1c; }
 
-/* --- Select2 tweaks (country/state) --- */
-.aak-checkout .select2-container--default .select2-selection--single {
-  height: auto !important; padding: .5rem !important; border-radius: 8px !important; border-color: var(--border-color) !important;
-}
-.aak-checkout .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 1.5 !important; padding-left: 0 !important; }
-.aak-checkout .select2-container--default .select2-selection--single .select2-selection__arrow { height: 100% !important; }
+.aak-checkout .woocommerce-error{
 
-/* Image fixes */
-.aak-checkout .summary-item img { max-width: 100%; height: auto; }
-.aak-checkout .item-image img { max-width: 100%; height: auto; display: block; }
+  border-radius:var(--aak-radius)!important;padding:14px 16px!important;margin:0 0 16px!important
 
-
-/* Make sure Woo inputs pick up your visual language */
-.aak-checkout .woocommerce form .form-row input.input-text,
-.aak-checkout .woocommerce form .form-row textarea,
-.aak-checkout .woocommerce form .form-row select,
-.aak-checkout .select2-container--default .select2-selection--single {
-  border: 1px solid var(--border-color) !important;
-  background: var(--input-bg) !important;
-  border-radius: 8px !important;
-  padding: .75rem 1rem !important;
-  font-size: .9rem !important;
-  color: var(--text-dark) !important;
-  box-shadow: none !important;
 }
 
-.aak-checkout .woocommerce form .form-row input.input-text:focus,
-.aak-checkout .woocommerce form .form-row textarea:focus,
-.aak-checkout .woocommerce form .form-row select:focus,
-.aak-checkout .select2-container--default .select2-selection--single:focus {
-  outline: none !important;
-  border-color: var(--primary-blue) !important;
-  box-shadow: 0 0 0 2px var(--primary-blue-light) !important;
-}
+/* order review table tidy */
 
-/* Order review card on the right should look like your cards */
-.aak-checkout .summary-card,
-.aak-checkout #order_review {
-  background: var(--white);
-  border: 1px solid var(--border-color);
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-}
+.aak-checkout #order_review table.shop_table{border:0!important}
 
-.aak-checkout #order_review .shop_table,
-.aak-checkout #order_review table {
-  border: 0 !important;
-}
 .aak-checkout #order_review .shop_table th,
-.aak-checkout #order_review .shop_table td {
-  border: 0 !important;
-  padding: .55rem 0 !important;
-  font-size: .9rem;
+
+.aak-checkout #order_review .shop_table td{
+
+  border:0!important;padding:.55rem 0!important;font-size:.95rem
+
 }
+
 .aak-checkout #order_review .order-total th,
-.aak-checkout #order_review .order-total td {
-  font-weight: 700;
-  font-size: 1.05rem;
-  padding-top: .7rem;
+
+.aak-checkout #order_review .order-total td{font-weight:700;font-size:1.05rem}
+
+/* -----------------------------
+
+   YOUR UI LAYER
+
+   ----------------------------- */
+
+/* field grids (optional helper) */
+
+.input-grid{display:grid;gap:16px}
+
+@media(min-width:650px){
+
+  .input-grid-2{grid-template-columns:repeat(2,1fr)}
+
+  .input-grid-3{grid-template-columns:repeat(3,1fr)}
+
 }
 
-/* Place order button -> use your primary button styling */
-.aak-checkout #place_order,
-.aak-checkout .woocommerce #payment #place_order {
-  width: 100%;
-  background: var(--primary-blue) !important;
-  color: #fff !important;
-  border: none !important;
-  padding: .75rem 1.25rem !important;
-  border-radius: 8px !important;
-  font-weight: 600 !important;
-  box-shadow: 0 4px 10px rgba(13,110,253,.2);
-}
-.aak-checkout #place_order:hover {
-  background: var(--primary-blue-dark) !important;
+/* buttons */
+
+.btn{padding:.85rem 1.3rem;border-radius:10px;font-weight:600;cursor:pointer;width:100%}
+
+.btn-primary{
+
+  background:var(--aak-grad);color:#fff;transition:all .25s;
+
+  box-shadow:0 4px 20px rgba(125,89,255,.25)
+
 }
 
-/* Shipping method list – make Woo’s <li> look like your .radio-option */
-.aak-checkout .woocommerce-shipping-methods li {
-  list-style: none;
-  margin: 0 0 .75rem 0;
-}
-.aak-checkout .woocommerce-shipping-methods li label {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  width: 100%;
-  cursor: pointer;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1rem;
-  transition: background-color .2s ease, border-color .2s ease;
-}
-.aak-checkout .woocommerce-shipping-methods input[type="radio"] {
-  accent-color: var(--primary-blue);
-  width: 18px;
-  height: 18px;
-}
-.aak-checkout .woocommerce-shipping-methods input[type="radio"]:checked + label {
-  background: var(--primary-blue-light);
-  border-color: var(--primary-blue);
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(125,89,255,.30)}
+
+.btn-outline{background:#fff;color:var(--aak-text);border:2px solid var(--aak-border)}
+
+.btn-outline:hover{border-color:var(--aak-blue);color:var(--aak-blue)}
+
+/* mobile/desktop toggles for your step nav */
+
+.lg-hidden{display:block}.hidden-lg{display:none!important}
+
+@media(min-width:1024px){.lg-hidden{display:none!important}.hidden-lg{display:block!important}}
+
+/* shipping & payment radios */
+
+.radio-group{display:flex;flex-direction:column;gap:14px}
+
+.radio-option{
+
+  border:2px solid var(--aak-border);padding:16px 18px;border-radius:12px;
+
+  transition:all .25s;background:#fff
+
 }
 
-/* Coupon/notice blocks inside #order_review */
-.aak-checkout .woocommerce-info,
-.aak-checkout .woocommerce-message,
-.aak-checkout .woocommerce-error {
-  border-radius: var(--card-radius);
+.radio-option:hover{border-color:var(--aak-blue);background:var(--aak-grad-light)}
+
+.radio-option.selected,.radio-option:has(input:checked){
+
+  border-color:#7d59ff;background:var(--aak-grad-light)
+
 }
+
+.radio-option-price{font-weight:600;margin-top:4px}
+
+.radio-option-price.free{color:var(--aak-green)}
+
+/* summary */
+
+.summary-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--aak-border)}
+
+.summary-item:last-child{border-bottom:none}
+
+.summary-item img{width:60px;height:60px;border-radius:10px;object-fit:cover}
+
+.summary-item-details p{margin:0;font-size:.9rem}
+
+.summary-item-details .price{font-weight:600;margin-top:4px}
+
+.summary-totals .total{
+
+  font-size:1.15rem;font-weight:700;background:var(--aak-grad);
+
+  -webkit-text-fill-color:transparent;-webkit-background-clip:text
+
+}
+
+/* progress */
+
+.progress-bar-container{background:#fff;padding:16px 30px;border-bottom:1px solid var(--aak-border);margin-bottom:22px}
+
+.progress-step-icon{
+
+  width:34px;height:34px;border-radius:50%;
+
+  display:flex;align-items:center;justify-content:center;
+
+  border:2px solid var(--aak-border);background:var(--aak-bg)
+
+}
+
+.progress-step.active .progress-step-icon,
+
+.progress-step.completed .progress-step-icon{
+
+  background:var(--aak-grad);border-color:transparent;color:#fff;transform:scale(1.07)
+
+}
+
+/* accessibility focus ring for interactive items */
+
+.aak-checkout a:focus,.aak-checkout button:focus,.aak-checkout input:focus,.aak-checkout select:focus{
+
+  outline:2px solid rgba(125,89,255,.5);outline-offset:2px
+
+}
+
+/* animation */
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
