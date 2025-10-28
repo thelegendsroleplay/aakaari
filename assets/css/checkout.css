@@ -1,327 +1,391 @@
-/* ==========================================================
+/* ================================
+   Aakaari Checkout – Modern Design
+   CUSTOM HTML STRUCTURE VERSION
+=================================== */
 
-   Aakaari Checkout — Premium Gradient Multi-Step UI
-
-   Clean, Minimal, Professional
-
-========================================================== */
-
-:root{
-
-  --aak-grad:linear-gradient(135deg,#3b82f6 0%,#7d59ff 50%,#a855f7 100%);
-
-  --aak-grad-light:linear-gradient(135deg,#eef4ff,#f6edff);
-
-  --aak-blue:#4f46e5;
-
-  --aak-blue-dark:#4338ca;
-
-  --aak-green:#10b981;
-
-  --aak-bg:#f8f9fb;
-
-  --aak-white:#ffffff;
-
-  --aak-border:#e2e8f0;
-
-  --aak-text:#1e293b;
-
-  --aak-text-light:#64748b;
-
-  --aak-radius:12px;
-
-  --aak-shadow:0 8px 20px rgba(0,0,0,.06);
-
-  --aak-shadow-hover:0 12px 36px rgba(86,61,255,.18);
-
+/* Design tokens (Keep as is) */
+:root {
+  --bg: #f6f8fc;
+  --card: #fff;
+  --ink: #0f172a;
+  --muted: #6b7280;
+  --brand: #2563EB;
+  --brand-2: #4361ee;
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --err: #ef4444;
+  --line: #e5e7eb;
+  --radius: 14px;
+  --shadow: 0 12px 30px rgba(2,8,20,0.06);
+  --shadow-lg: 0 18px 45px rgba(79,70,229,0.18);
+  --transition: all 0.2s ease-in-out;
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
-/* page shell */
+/* Page, Utilities, Container, Grid, Cards, Headers, Cart Link, Progress Bar (Keep as is) */
+.aak-checkout { background: var(--bg); color: var(--ink); font-family: var(--font-family); -webkit-font-smoothing: antialiased; padding-bottom: 64px; }
+.hidden { display: none !important; }
+.aak-checkout .page-container { max-width: 1180px; margin: 0 auto; padding: 28px 22px 0; }
+.aak-checkout .checkout-grid { display: grid; gap: 28px; grid-template-columns: 1fr; }
+@media (min-width: 1024px) { .aak-checkout .checkout-grid { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); align-items: start; } .aak-checkout .summary-column { position: sticky; top: 24px; } }
+.aak-checkout .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 22px; margin-bottom: 20px; transition: var(--transition); }
+.aak-checkout .card:last-child { margin-bottom: 0; }
+@media (min-width: 640px) { .aak-checkout .card { padding: 26px 28px; } }
+.aak-checkout .card:hover { box-shadow: var(--shadow-lg); }
+.aak-checkout .card-header { margin-bottom: 22px; display: flex; align-items: center; }
+.aak-checkout .card-header .card-icon { width: 30px; height: 30px; margin-right: 12px; background-color: #f0f4ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--brand); }
+.aak-checkout .card-header .card-text { flex: 1; }
+.aak-checkout .card-header h2 { margin: 0 0 2px; font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+.aak-checkout .card-header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.back-to-cart { display: inline-flex; align-items: center; color: var(--brand); font-size: 0.95rem; font-weight: 500; margin-bottom: 20px; text-decoration: none; }
+.back-to-cart:hover { text-decoration: underline; }
+.back-to-cart svg { margin-right: 8px; }
+.progress-bar-container { background: transparent; padding: 16px 0 20px; margin-bottom: 10px; }
+.progress-bar-steps { position: relative; max-width: 720px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+.progress-bar-steps::before { content: ""; position: absolute; left: 8px; right: 8px; top: 18px; height: 2px; background: #e9ecf3; border-radius: 999px; z-index: 0; }
+.progress-step { display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 1; position: relative; }
+.progress-step::after { content: ""; position: absolute; top: 18px; left: -50%; right: 50%; height: 2px; background: var(--brand); z-index: -1; opacity: 0; }
+.progress-step.completed::after { opacity: 1; }
+.progress-step.active + .progress-step::after { opacity: 0; }
+.progress-step:first-child::after { display: none; }
+.progress-step-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: #fff; background: #c7cbea; box-shadow: 0 4px 10px rgba(2,8,20,0.08); transition: var(--transition); }
+.progress-step.completed .progress-step-icon { background: var(--brand); }
+.progress-step.active .progress-step-icon { background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+.progress-step-text { font-size: 0.85rem; color: var(--muted); display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
+.progress-step.completed .progress-step-text, .progress-step.active .progress-step-text { color: var(--ink); font-weight: 600; }
+.progress-step-subtitle { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
 
-.aak-checkout{
 
-  background:var(--aak-bg);
+/* === NEW FORM FIELD STYLES (for custom structure) === */
 
-  color:var(--aak-text);
-
-  font-family:Inter,system-ui,sans-serif;
-
-  padding-bottom:40px;
-
+/* The main row container */
+.aak-checkout .aak-form-row {
+  display: block; /* Default to block layout */
+  margin: 0 0 16px;
+  padding: 0;
+  clear: both; /* Ensure rows don't overlap floats */
+}
+/* Clearfix for floated children within the row */
+.aak-checkout .aak-form-row::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
-.hidden{display:none!important}
-
-/* layout */
-
-.aak-checkout .page-container{max-width:1280px;margin:0 auto;padding:24px 20px}
-
-.aak-checkout .checkout-grid{display:grid;gap:28px;grid-template-columns:1fr}
-
-@media(min-width:1024px){
-
-  .aak-checkout .checkout-grid{grid-template-columns:1.6fr 1fr}
-
-  .aak-checkout .summary-column{position:sticky;top:30px}
-
+/* Label styling */
+.aak-checkout .aak-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+  cursor: pointer; /* For checkboxes */
+}
+.aak-checkout .aak-label .required {
+  color: var(--err) !important;
+  text-decoration: none !important;
+  /* Required star is visible by default now */
 }
 
-/* cards */
-
-.aak-checkout .card{
-
-  background:var(--aak-white);
-
-  border:1px solid var(--aak-border);
-
-  padding:26px;border-radius:var(--aak-radius);
-
-  box-shadow:var(--aak-shadow);
-
-  animation:fadeUp .28s ease forwards
-
+/* Container for the actual input/select/textarea */
+.aak-checkout .aak-input-container {
+  display: block;
+  position: relative; /* Needed for Select2 arrow positioning */
 }
 
-.aak-checkout .card:hover{box-shadow:var(--aak-shadow-hover)}
-
-/* headers */
-
-.aak-checkout .card-header{margin-bottom:20px}
-
-.aak-checkout .card-header h2{font-size:1.15rem;font-weight:600;margin:0}
-
-.aak-checkout .card-header p{font-size:.85rem;color:var(--aak-text-light);margin:2px 0 0}
-
-/* -----------------------------
-
-   WOO DEFAULT RESET (CRITICAL)
-
-   ----------------------------- */
-
-/* kill old float grid */
-
-.aak-checkout .woocommerce .col2-set:after,
-
-.aak-checkout .woocommerce .form-row:after{content:"";display:table;clear:both}
-
-.aak-checkout .woocommerce .col2-set .col-1,
-
-.aak-checkout .woocommerce .col2-set .col-2,
-
-.aak-checkout .woocommerce .form-row,
-
-.aak-checkout .woocommerce .form-row-first,
-
-.aak-checkout .woocommerce .form-row-last,
-
-.aak-checkout .woocommerce .form-row-wide{
-
-  float:none!important;width:100%!important;max-width:100%!important;clear:both
-
+/* Apply core input styles directly to Woo elements */
+/* These styles should now work without conflict */
+.aak-checkout .card .aak-input-container input[type="text"],
+.aak-checkout .card .aak-input-container input[type="email"],
+.aak-checkout .card .aak-input-container input[type="tel"],
+.aak-checkout .card .aak-input-container input[type="password"],
+.aak-checkout .card .aak-input-container textarea,
+.aak-checkout .card .aak-input-container select,
+/* Also target Select2 generated elements */
+.aak-checkout .card .aak-input-container .select2-container--default .select2-selection--single {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 46px !important;
+  background: var(--bg) !important;
+  border: 1.5px solid transparent !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+  line-height: 1.5 !important;
+  font-size: 1rem !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+  margin: 0 !important; /* Reset margin */
+  display: block !important; /* Ensure block display */
+  box-sizing: border-box; /* Include padding and border in width */
+}
+/* Ensure default select arrow is hidden */
+.aak-checkout .card .aak-input-container select {
+    background-image: none !important; /* Remove default arrow if needed */
+    padding-right: 16px !important; /* Ensure padding consistency */
 }
 
-/* uniform form rows */
 
-.aak-checkout .woocommerce form .form-row{
-
-  display:grid;grid-template-columns:1fr;gap:6px;margin:0 0 14px
-
+/* Placeholder color */
+.aak-checkout .card .aak-input-container input::placeholder,
+.aak-checkout .card .aak-input-container textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
 }
 
-.aak-checkout .woocommerce form .form-row label{
-
-  font-size:.9rem;font-weight:500;color:var(--aak-text)
-
+/* Focus states */
+.aak-checkout .card .aak-input-container input[type="text"]:focus,
+.aak-checkout .card .aak-input-container input[type="email"]:focus,
+.aak-checkout .card .aak-input-container input[type="tel"]:focus,
+.aak-checkout .card .aak-input-container input[type="password"]:focus,
+.aak-checkout .card .aak-input-container textarea:focus,
+.aak-checkout .card .aak-input-container select:focus,
+.aak-checkout .card .aak-input-container .select2-container--default.select2-container--focus .select2-selection--single {
+  background: #fff !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2) !important;
+  outline: 0 !important;
 }
 
-/* inputs */
-
-.aak-checkout .woocommerce form .form-row input.input-text,
-
-.aak-checkout .woocommerce form .form-row textarea,
-
-.aak-checkout .woocommerce form .form-row select{
-
-  width:100%;border:1px solid var(--aak-border)!important;
-
-  border-radius:10px!important;padding:.9rem 1rem!important;
-
-  background:#fff!important;box-shadow:none!important;line-height:1.2
-
+/* Select2 specific adjustments (keep these, target within container) */
+.aak-checkout .aak-input-container .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: var(--ink) !important;
+  line-height: calc(46px - 1.5px * 2 - 12px * 2 + 1.5 * 12px) !important; /* Adjust line-height based on padding/border */
+   padding: 12px 16px !important;
+   padding-right: 40px !important; /* Make space for arrow */
+}
+.aak-checkout .aak-input-container .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 46px !important; /* Match height */
+  right: 12px !important; /* Match padding */
+  position: absolute; /* Ensure arrow positioning */
+  top: 0;
+  width: 20px; /* Explicit width for arrow */
+}
+.aak-checkout .select2-dropdown { /* Dropdown styles remain global */
+  border-color: var(--line);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  overflow: hidden;
+  z-index: 9999; /* Ensure dropdown appears above other elements */
 }
 
-.aak-checkout .woocommerce form .form-row input.input-text:focus,
-
-.aak-checkout .woocommerce form .form-row textarea:focus,
-
-.aak-checkout .woocommerce form .form-row select:focus{
-
-  border-color:#7d59ff!important;box-shadow:0 0 0 3px rgba(125,89,255,.25)!important;outline:0
-
+/* --- Special Styling for Country/State Fields Rendered by WC --- */
+/* These might still use WC wrappers if `aakaari_render_checkout_field` falls back */
+/* Style the Select2 container if it's within WC's default span wrapper */
+.aak-checkout .aak-form-row span.woocommerce-input-wrapper > .select2-container--default .select2-selection--single {
+    background: var(--bg) !important;
+    border: 1.5px solid transparent !important;
+    border-radius: 12px !important;
+    min-height: 46px !important;
+    height: auto !important;
+}
+.aak-checkout .aak-form-row span.woocommerce-input-wrapper > .select2-container--default.select2-container--focus .select2-selection--single {
+    background: #fff !important;
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2) !important;
+}
+/* Ensure WC's wrappers don't add extra margin */
+.aak-checkout .aak-form-row span.woocommerce-input-wrapper {
+    margin: 0 !important;
+    padding: 0 !important; /* Reset padding on wrapper */
+    display: block; /* Ensure it takes full width */
+}
+/* Hide the default WC label if our custom one is present and WC wrapper exists*/
+.aak-checkout .aak-form-row > label + span.woocommerce-input-wrapper + label {
+     display: none !important;
 }
 
-.aak-checkout .woocommerce .woocommerce-invalid input.input-text{border-color:#ef4444!important}
 
-/* Select2 (country/state) */
-
-.aak-checkout .select2-container{width:100%!important}
-
-.aak-checkout .select2-container--default .select2-selection--single{
-
-  height:auto;border:1px solid var(--aak-border)!important;border-radius:10px!important;
-
-  padding:.55rem .75rem!important
-
+/* Checkbox customization */
+.aak-checkout .aak-label.checkbox { /* The <label> acting as the wrapper */
+  font-weight: normal;
+  display: flex !important;
+  align-items: center !important;
+  margin-top: 8px !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+  background-color: transparent; /* Default transparent bg */
+}
+.aak-checkout #aak-contact-card .aak-label.checkbox { /* Specific to contact card */
+   background-color: #f0f4ff !important; /* Blue background ONLY for contact checkboxes */
+}
+.aak-checkout .aak-form-row.save-info .aak-label.checkbox,
+#ship-to-different-address .aak-label.checkbox { /* "Save info" & "Ship to different" checkboxes */
+    background-color: transparent !important;
+    padding: 0 !important;
+    margin-top: 16px !important; /* Add space above */
 }
 
-.aak-checkout .select2-selection__rendered{line-height:1.4!important}
+.aak-checkout .aak-label.checkbox input[type="checkbox"] { /* Style the actual checkbox */
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  border: 1.5px solid var(--line) !important;
+  border-radius: 4px !important;
+  margin-right: 10px !important;
+  position: relative !important;
+  cursor: pointer !important;
+  background-color: #fff !important;
+  flex-shrink: 0;
+}
+.aak-checkout .aak-label.checkbox input[type="checkbox"]:checked {
+  background-color: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+.aak-checkout .aak-label.checkbox input[type="checkbox"]:checked::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 5px !important;
+  top: 2px !important;
+  width: 6px !important;
+  height: 10px !important;
+  border: solid #fff !important;
+  border-width: 0 2px 2px 0 !important;
+  transform: rotate(45deg) !important;
+}
+.aak-checkout .aak-label.checkbox span { /* The text part of the label */
+     /* Styles inherited from aak-label */
+}
 
-.aak-checkout .select2-selection__arrow{height:100%!important}
+/* Side-by-side layout using custom classes */
+@media (min-width: 768px) {
+  .aak-checkout .aak-form-row-first {
+    width: 48%;
+    float: left;
+    clear: left; /* Use left instead of both */
+    margin-right: 4%; /* Add gutter */
+  }
+  .aak-checkout .aak-form-row-last {
+    width: 48%;
+    float: left; /* Use left for consistency */
+    clear: none;
+    margin-right: 0;
+  }
+  /* 3-COLUMN LAYOUT */
+  .aak-checkout .aak-city-field { width: 48%; float: left; clear: left; margin-right: 4%; }
+  .aak-checkout .aak-state-field { width: 28%; float: left; margin-left: 0; margin-right: 2%; clear: none;}
+  .aak-checkout .aak-postcode-field { width: 18%; float: left; margin-left: 0; clear: none;} /* Adjusted width + float left*/
 
-/* coupon / notice spacing */
+   /* Ensure full width fields clear floats */
+  .aak-checkout .aak-form-row-wide {
+    clear: both;
+    float: none;
+    width: 100%;
+    margin-right: 0;
+  }
+}
 
+/* Error state (Applies to our custom row) */
+/* WooCommerce adds .woocommerce-invalid to the parent div, which is now .aak-form-row */
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-label:not(.checkbox) { /* Don't make checkbox label red */
+    color: var(--err) !important;
+}
+/* Style the input container on error */
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-input-container input[type="text"],
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-input-container input[type="email"],
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-input-container input[type="tel"],
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-input-container select,
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-input-container textarea,
+.aak-checkout .aak-form-row.woocommerce-invalid .aak-input-container .select2-selection--single {
+  border-color: var(--err) !important; /* Show red border on error */
+  background: #FEF2F2 !important; /* Optional: Light red background on error */
+}
+
+/* Billing details header */
+.aak-checkout .billing-details-header {
+  margin-bottom: 16px !important;
+  font-weight: 600 !important;
+  font-size: 1.1rem !important;
+  color: var(--ink) !important;
+  clear: both; /* Ensure header is below floated fields */
+}
+
+/* Hide original WooCommerce wrappers/labels if they somehow still appear */
+.aak-checkout form.woocommerce-checkout p.form-row:not(.aak-form-row) {
+    display: none !important;
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+/* Ensure OUR rows are definitely displayed */
+.aak-checkout form.woocommerce-checkout .aak-form-row {
+    display: block !important;
+    visibility: visible;
+    height: auto;
+    overflow: visible;
+}
+/* Ensure Woo error messages still show */
+.aak-checkout .woocommerce-error,
 .aak-checkout .woocommerce-info,
-
-.aak-checkout .woocommerce-message,
-
-.aak-checkout .woocommerce-error{
-
-  border-radius:var(--aak-radius)!important;padding:14px 16px!important;margin:0 0 16px!important
-
+.aak-checkout .woocommerce-message {
+    display: block !important; /* Or flex, depending on original style */
+    clear: both; /* Make sure notices appear below fields */
 }
 
-/* order review table tidy */
-
-.aak-checkout #order_review table.shop_table{border:0!important}
-
-.aak-checkout #order_review .shop_table th,
-
-.aak-checkout #order_review .shop_table td{
-
-  border:0!important;padding:.55rem 0!important;font-size:.95rem
-
-}
-
-.aak-checkout #order_review .order-total th,
-
-.aak-checkout #order_review .order-total td{font-weight:700;font-size:1.05rem}
-
-/* -----------------------------
-
-   YOUR UI LAYER
-
-   ----------------------------- */
-
-/* field grids (optional helper) */
-
-.input-grid{display:grid;gap:16px}
-
-@media(min-width:650px){
-
-  .input-grid-2{grid-template-columns:repeat(2,1fr)}
-
-  .input-grid-3{grid-template-columns:repeat(3,1fr)}
-
-}
-
-/* buttons */
-
-.btn{padding:.85rem 1.3rem;border-radius:10px;font-weight:600;cursor:pointer;width:100%}
-
-.btn-primary{
-
-  background:var(--aak-grad);color:#fff;transition:all .25s;
-
-  box-shadow:0 4px 20px rgba(125,89,255,.25)
-
-}
-
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(125,89,255,.30)}
-
-.btn-outline{background:#fff;color:var(--aak-text);border:2px solid var(--aak-border)}
-
-.btn-outline:hover{border-color:var(--aak-blue);color:var(--aak-blue)}
-
-/* mobile/desktop toggles for your step nav */
-
-.lg-hidden{display:block}.hidden-lg{display:none!important}
-
-@media(min-width:1024px){.lg-hidden{display:none!important}.hidden-lg{display:block!important}}
-
-/* shipping & payment radios */
-
-.radio-group{display:flex;flex-direction:column;gap:14px}
-
-.radio-option{
-
-  border:2px solid var(--aak-border);padding:16px 18px;border-radius:12px;
-
-  transition:all .25s;background:#fff
-
-}
-
-.radio-option:hover{border-color:var(--aak-blue);background:var(--aak-grad-light)}
-
-.radio-option.selected,.radio-option:has(input:checked){
-
-  border-color:#7d59ff;background:var(--aak-grad-light)
-
-}
-
-.radio-option-price{font-weight:600;margin-top:4px}
-
-.radio-option-price.free{color:var(--aak-green)}
-
-/* summary */
-
-.summary-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--aak-border)}
-
-.summary-item:last-child{border-bottom:none}
-
-.summary-item img{width:60px;height:60px;border-radius:10px;object-fit:cover}
-
-.summary-item-details p{margin:0;font-size:.9rem}
-
-.summary-item-details .price{font-weight:600;margin-top:4px}
-
-.summary-totals .total{
-
-  font-size:1.15rem;font-weight:700;background:var(--aak-grad);
-
-  -webkit-text-fill-color:transparent;-webkit-background-clip:text
-
-}
-
-/* progress */
-
-.progress-bar-container{background:#fff;padding:16px 30px;border-bottom:1px solid var(--aak-border);margin-bottom:22px}
-
-.progress-step-icon{
-
-  width:34px;height:34px;border-radius:50%;
-
-  display:flex;align-items:center;justify-content:center;
-
-  border:2px solid var(--aak-border);background:var(--aak-bg)
-
-}
-
-.progress-step.active .progress-step-icon,
-
-.progress-step.completed .progress-step-icon{
-
-  background:var(--aak-grad);border-color:transparent;color:#fff;transform:scale(1.07)
-
-}
-
-/* accessibility focus ring for interactive items */
-
-.aak-checkout a:focus,.aak-checkout button:focus,.aak-checkout input:focus,.aak-checkout select:focus{
-
-  outline:2px solid rgba(125,89,255,.5);outline-offset:2px
-
-}
-
-/* animation */
-
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* === FORM FIELDS (END) === */
+
+
+/* Radio Options, Payment Methods, Order Summary, Buttons, Terms, Responsive, Notices, Animations, Focus (Keep as is) */
+.radio-group { display: flex; flex-direction: column; gap: 12px; }
+.radio-option { border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.radio-option:hover { border-color: var(--brand); box-shadow: 0 6px 16px rgba(79,70,229,0.12); }
+.radio-option.selected, .radio-option:has(input:checked) { border-color: var(--brand); background: #f5f6ff; }
+.radio-option input[type="radio"] { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #c7cbea; position: relative; cursor: pointer; }
+.radio-option input[type="radio"]:checked { border-color: var(--brand); }
+.radio-option input[type="radio"]:checked::before { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: var(--brand); border-radius: 50%; }
+.radio-option-content { flex: 1; }
+.radio-option-title { font-weight: 600; font-size: 0.95rem; margin: 0 0 2px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.radio-option-title .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; background-color: #e5e7ff; color: var(--brand); font-weight: 600; }
+.radio-option-title .badge.fastest { background-color: #fef3c7; color: var(--warn); }
+.radio-option-description { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.radio-option-price { margin-left: auto; font-weight: 700; font-size: 0.95rem; }
+.radio-option-price.free { color: var(--ok); }
+.radio-option-savings { font-size: 0.75rem; color: var(--ok); background: rgba(16,185,129,0.1); padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+.payment-methods .radio-option { padding: 16px; }
+.radio-option-card-icons { display: flex; gap: 4px; margin-left: auto; }
+.radio-option-card-icons img { height: 24px; width: auto; }
+.card-fields { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.card-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.secure-badge { display: flex; align-items: center; gap: 10px; background-color: #ecfdf5; border: 1px solid #d1fae5; border-radius: 12px; padding: 12px 16px; margin-top: 20px; clear: both; } /* Added clear */
+.secure-badge svg { color: var(--ok); }
+.secure-badge p { margin: 0; font-size: 0.9rem; color: #065f46; }
+.summary-card h2 { margin: 0 0 20px; font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+.summary-items { margin-bottom: 20px; }
+.summary-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.summary-item:first-child { padding-top: 0; }
+.summary-item:last-child { border-bottom: 0; }
+.summary-item img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+.summary-item-details { flex: 1; }
+.summary-item-details p { margin: 0; font-size: 0.9rem; color: var(--ink); }
+.summary-item-details .name { font-weight: 600; margin-bottom: 2px; }
+.summary-item-details .qty { font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+.summary-item-details .price { font-weight: 700; }
+.summary-totals { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; }
+.summary-row:last-child { margin-bottom: 0; }
+.summary-row.total { font-weight: 700; font-size: 1.1rem; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.summary-label { color: var(--muted); }
+.summary-value { font-weight: 600; color: var(--ink); }
+.summary-row.total .summary-label, .summary-row.total .summary-value { color: var(--ink); }
+.btn { width: 100%; padding: 0.95rem 1.2rem; border-radius: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 0; font-size: 1rem; transition: all 0.2s; }
+.btn-primary { color: #fff; background: var(--brand); box-shadow: 0 4px 10px rgba(70, 120, 229, 0.3); }
+.btn-primary:hover { background: linear-gradient(135deg,var(--brand),var(--brand-2)); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(79,70,229,0.35); }
+.btn-outline { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+.btn-outline:hover { border-color: var(--brand); color: var(--brand); }
+.button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; clear: both;} /* Added clear */
+.terms-policy { font-size: 0.85rem; color: var(--muted); text-align: center; margin-top: 16px; clear: both; } /* Added clear */
+.lg-hidden { display: block; }
+.hidden-lg { display: none !important; }
+@media (min-width: 1024px) { .lg-hidden { display: none !important; } .hidden-lg { display: block !important; } }
+.woocommerce-info, .woocommerce-message, .woocommerce-error { border-radius: 12px !important; padding: 14px 16px !important; margin: 0 0 20px !important; border-left-width: 4px !important; clear: both; } /* Added clear */
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.aak-shake { animation: shake 0.4s ease-in-out; }
+.aak-checkout a:focus, .aak-checkout button:focus, .aak-checkout input:focus, .aak-checkout select:focus { outline: 2px solid rgba(79,70,229,0.45); outline-offset: 2px; }
+/* Remove V5/V6/V7 overrides */
+
+/* --- END OF FILE --- */

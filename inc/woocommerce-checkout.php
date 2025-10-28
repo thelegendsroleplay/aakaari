@@ -1,139 +1,123 @@
 <?php
-
 /**
-
- * ✅ Aakaari → Full Multi-Step Checkout Engine
-
+ * Aakaari Custom Checkout – Bootstrapper
  */
 
-defined('ABSPATH') || exit;
+if (!defined('ABSPATH')) { exit; }
 
 /**
-
- * ✅ Detect Checkout Template Page
-
+ * Treat our custom page template as a WooCommerce checkout.
+ * This makes gateways, wc-checkout.js, validation, etc. behave normally.
  */
-
-function aakaari_is_template_checkout_page() {
-
-    return is_page_template('template-checkout.php');
-
-}
+add_filter('woocommerce_is_checkout', function ($is_checkout) {
+    if (is_page_template('template-checkout.php')) {
+        return true;
+    }
+    return $is_checkout;
+});
 
 /**
-
- * ✅ Load Aakaari Checkout UI if:
-
- * - Real Woo checkout OR our template is active
-
+ * Enqueue Checkout CSS/JS on real checkout OR our custom template,
+ * but not on the order-received (thank you) page.
  */
-
 add_action('wp_enqueue_scripts', function () {
 
-    $is_checkout = (function_exists('is_checkout') && is_checkout() && !is_order_received_page());
+    $is_aakaari_checkout = is_checkout() || is_page_template('template-checkout.php');
 
-    $is_template = aakaari_is_template_checkout_page();
+    if (!$is_aakaari_checkout || is_order_received_page()) {
+        return;
+    }
 
-    if (!$is_checkout && !$is_template) return;
-
-    wp_enqueue_style('aakaari-font', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    wp_enqueue_script('aakaari-lucide', 'https://unpkg.com/lucide@latest/dist/umd/lucide.min.js', [], null, true);
-
-    wp_enqueue_style('aakaari-checkout', get_stylesheet_directory_uri() . '/assets/css/checkout.css', [], time());
-
-    wp_enqueue_script('wc-checkout');
-
+    // Fonts + icons
+    wp_enqueue_style(
+        'aakaari-inter',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+        [],
+        null
+    );
     wp_enqueue_script(
-
-        'aakaari-checkout',
-
-        get_stylesheet_directory_uri() . '/assets/js/checkout.js',
-
-        ['jquery', 'wc-checkout'],
-
-        time(),
-
+        'aakaari-lucide',
+        'https://unpkg.com/lucide@latest/dist/lucide.min.js',
+        [],
+        null,
         true
-
     );
 
-    wp_localize_script('aakaari-checkout', 'aakaariCheckout', [
-
-        'cartUrl' => wc_get_cart_url(),
-
-    ]);
-
-});
-
-/**
-
- * ✅ Force WC to use our form-checkout template
-
- */
-
-add_filter('woocommerce_locate_template', function ($template, $template_name, $template_path) {
-
-    $override = get_stylesheet_directory() . '/woocommerce/' . $template_name;
-
-    if ($template_name === 'checkout/form-checkout.php' && file_exists($override)) {
-
-        return $override;
-
+    // Force Woo checkout script to be present even when not on the official WC page.
+    if (wp_script_is('wc-checkout', 'registered')) {
+        wp_enqueue_script('wc-checkout');
     }
 
-    return $template;
+    // Checkout CSS (yours)
+    wp_enqueue_style(
+        'aakaari-checkout',
+        get_stylesheet_directory_uri() . '/assets/css/checkout.css',
+        [], // after Woo styles naturally
+        filemtime(get_stylesheet_directory() . '/assets/css/checkout.css')
+    );
 
-}, 100, 3);
+    // Checkout JS (yours)
+    wp_enqueue_script(
+        'aakaari-checkout',
+        get_stylesheet_directory_uri() . '/assets/js/checkout.js',
+        ['jquery', 'wc-checkout'],
+        filemtime(get_stylesheet_directory() . '/assets/js/checkout.js'),
+        true
+    );
 
-/**
-
- * ✅ Pretend template-checkout.php IS the Woo checkout page
-
- * Woo thinks: ✅ is_checkout() = TRUE
-
- */
-
-add_filter('woocommerce_is_checkout', function ($is_checkout) {
-
-    if (aakaari_is_template_checkout_page()) return true;
-
-    return $is_checkout;
-
-});
-
-/**
-
- * ✅ Shipping radio styling wrappers
-
- */
-
-add_action('woocommerce_before_shipping_rate', function () {
-
-    echo '<div class="radio-option"><label>';
-
-}, 10);
-
-add_action('woocommerce_after_shipping_rate', function () {
-
-    echo '</label></div>';
-
-}, 10);
+    // Data for JS
+    if (function_exists('wc_get_cart_url')) {
+        wp_localize_script('aakaari-checkout', 'aakaariCheckout', [
+            'cartUrl' => wc_get_cart_url(),
+        ]);
+    }
+}, 99);
 
 /**
-
- * ✅ Body class for Aakaari styling
-
+ * Add a body class so CSS can scope to the custom UI.
  */
-
 add_filter('body_class', function ($classes) {
-
-    if (aakaari_is_template_checkout_page() || (is_checkout() && !is_order_received_page())) {
-
+    if ((is_checkout() || is_page_template('template-checkout.php')) && !is_order_received_page()) {
         $classes[] = 'aak-checkout-page';
-
     }
-
     return $classes;
-
 });
+
+/**
+ * Use our custom multi-step template when Woo resolves checkout/form-checkout.php
+ * (keeps working whether you open /checkout/ or the template-checkout.php shell).
+ */
+add_filter('woocommerce_locate_template', function ($template, $template_name, $template_path) {
+    if ($template_name !== 'checkout/form-checkout.php') {
+        return $template;
+    }
+    $theme_file = get_stylesheet_directory() . '/woocommerce/checkout/form-checkout.php';
+    if (file_exists($theme_file)) {
+        return $theme_file;
+    }
+    return $template;
+}, 10, 3);
+
+/**
+ * Optional: remove Woo’s default “Have a coupon?” banner at top.
+ * You already render coupon UI in the summary card.
+ */
+remove_action('woocommerce_before_checkout_form', 'woocommerce_checkout_coupon_form', 10);
+
+/**
+ * (Optional) Make sure the folders exist when the theme activates.
+ */
+add_action('after_switch_theme', function () {
+    foreach ([
+        get_stylesheet_directory() . '/assets',
+        get_stylesheet_directory() . '/assets/css',
+        get_stylesheet_directory() . '/assets/js',
+        get_stylesheet_directory() . '/woocommerce/checkout',
+    ] as $dir) {
+        if (!file_exists($dir)) {
+            wp_mkdir_p($dir);
+        }
+    }
+});
+
+

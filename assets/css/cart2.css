@@ -1,10 +1,10 @@
 /**
- * Fully Functional WooCommerce Cart Styling
- * Fixed to properly display products, images and descriptions
+ * Aakaari – Cart (scoped)
+ * Everything is scoped under .aakaari-cart-page to avoid conflicts.
  */
 
-/* General Layout */
-.checkout-container {
+/* --- Layout --- */
+.aakaari-cart-page .checkout-container {
   display: grid;
   grid-template-columns: 1fr 350px;
   gap: 20px;
@@ -12,910 +12,243 @@
   margin: 0 auto;
   padding: 0 15px;
 }
-
 @media (max-width: 768px) {
-  .checkout-container {
-    grid-template-columns: 1fr;
-  }
+  .aakaari-cart-page .checkout-container { grid-template-columns: 1fr; }
 }
 
-/* Typography */
-.woocommerce-cart {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+/* --- Typography --- */
+.aakaari-cart-page .woocommerce-cart {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   color: #333;
 }
-
-.cart-title {
-  text-align: center;
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 5px;
+.aakaari-cart-page .cart-title {
+  text-align: center; font-size: 28px; font-weight: 600; margin-bottom: 5px;
+}
+.aakaari-cart-page .cart-items-count {
+  text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;
 }
 
-.cart-items-count {
-  text-align: center;
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 20px;
+/* --- Card --- */
+.aakaari-cart-page .card {
+  background: #fff; border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.05);
+  padding: 20px; margin-bottom: 20px;
 }
 
-/* Card Styling */
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-  margin-bottom: 20px;
+/* --- Savings Bar --- */
+.aakaari-cart-page .savings-bar { background:#f8faff; }
+.aakaari-cart-page .savings-header {
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;
+}
+.aakaari-cart-page .savings-icon {
+  background:#3366ff; color:#fff; width:40px; height:40px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.aakaari-cart-page .savings-badge {
+  background:#3366ff; color:#fff; border-radius:4px; padding:2px 8px; font-size:12px; font-weight:500;
+}
+.aakaari-cart-page .savings-text { font-size:14px; margin-bottom:10px; }
+.aakaari-cart-page .savings-progress { margin:15px 0; }
+.aakaari-cart-page .progress-container {
+  width:100%; height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden;
+}
+.aakaari-cart-page .progress-bar {
+  height:100%; background:#3366ff; border-radius:4px; transition:width .5s ease;
 }
 
-/* Savings Progress Bar */
-.savings-bar {
-  background-color: #f8faff;
+/* --- Discount tiers --- */
+.aakaari-cart-page .discount-tiers { margin-top:15px; }
+.aakaari-cart-page .discount-tier { display:flex; align-items:center; margin-bottom:8px; font-size:14px; }
+.aakaari-cart-page .tier-radio {
+  width:16px; height:16px; border:2px solid #ccc; border-radius:50%; margin-right:10px; position:relative;
+}
+.aakaari-cart-page .tier-radio.active { border-color:#3366ff; }
+.aakaari-cart-page .tier-radio.active::after {
+  content:""; position:absolute; width:8px; height:8px; background:#3366ff; border-radius:50%;
+  top:50%; left:50%; transform:translate(-50%,-50%);
 }
 
-.savings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+/* --- Cart items --- */
+.aakaari-cart-page .cart-item {
+  display:flex; flex-wrap:wrap; padding:20px 0; border-bottom:1px solid #f0f0f0; position:relative;
 }
+.aakaari-cart-page .cart-item:last-child { border-bottom:none; }
 
-.savings-icon {
-  background-color: #3366ff;
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
+.aakaari-cart-page .cart-item-image {
+  width:80px; flex:0 0 80px; height:80px; margin-right:15px; border-radius:4px; overflow:hidden; background:#f8f8f8;
 }
-
-.savings-badge {
-  background-color: #3366ff;
-  color: white;
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 500;
+.aakaari-cart-page .cart-item-image img {
+  width:100% !important; height:auto !important; display:block; object-fit:cover;
 }
+.aakaari-cart-page .cart-item-image a { display:block; width:100%; height:100%; }
 
-.savings-text {
-  font-size: 14px;
-  margin-bottom: 10px;
+.aakaari-cart-page .cart-item-details {
+  flex:1; min-width:0; padding-right:20px;
 }
+.aakaari-cart-page h3.item-name { font-size:16px; font-weight:500; margin:0 0 5px; }
+.aakaari-cart-page h3.item-name a { color:#333; text-decoration:none; }
+.aakaari-cart-page h3.item-name a:hover { color:#3366ff; }
+.aakaari-cart-page .item-sku { color:#666; font-size:12px; margin-bottom:5px; }
+.aakaari-cart-page .item-description { font-size:13px; color:#666; margin-bottom:8px; line-height:1.4; }
+.aakaari-cart-page .item-description p { margin:0 0 5px; }
+.aakaari-cart-page .item-each { font-size:12px; color:#666; }
 
-.savings-progress {
-  margin: 15px 0;
+/* --- Quantity --- */
+.aakaari-cart-page .item-quantity,
+.aakaari-cart-page .quantity-selector { display:flex; align-items:center; margin:0 15px; }
+.aakaari-cart-page .quantity-btn {
+  width:28px; height:28px; background:#f5f5f5; border:1px solid #e0e0e0; border-radius:4px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; user-select:none; padding:0;
 }
-
-.progress-container {
-  width: 100%;
-  height: 8px;
-  background-color: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
+.aakaari-cart-page .quantity-btn:hover { background:#e0e0e0; }
+.aakaari-cart-page .quantity-input,
+.aakaari-cart-page .qty {
+  width:40px !important; height:28px !important; border:1px solid #e0e0e0 !important; border-radius:4px !important;
+  margin:0 5px !important; text-align:center !important; font-size:14px !important; padding:0 5px !important;
+  -moz-appearance:textfield !important;
 }
+.aakaari-cart-page .quantity-input::-webkit-outer-spin-button,
+.aakaari-cart-page .quantity-input::-webkit-inner-spin-button,
+.aakaari-cart-page .qty::-webkit-outer-spin-button,
+.aakaari-cart-page .qty::-webkit-inner-spin-button { -webkit-appearance: none; margin:0; }
 
-.progress-bar {
-  height: 100%;
-  background-color: #3366ff;
-  border-radius: 4px;
-  transition: width 0.5s ease;
+/* --- Price --- */
+.aakaari-cart-page .item-price { text-align:right; min-width:100px; }
+.aakaari-cart-page .item-total,
+.aakaari-cart-page .current-price { font-weight:600; font-size:16px; }
+.aakaari-cart-page .original-price { color:#666; font-size:12px; text-decoration:line-through; margin-top:5px; }
+
+/* --- Remove item --- */
+.aakaari-cart-page .remove-item {
+  position:absolute; top:15px; right:0; color:#999; font-size:22px; text-decoration:none; line-height:1;
+  display:block; width:20px; height:20px; text-align:center;
 }
+.aakaari-cart-page .remove-item:hover { color:#ff3b30; }
 
-/* Discount Tiers */
-.discount-tiers {
-  margin-top: 15px;
+/* --- Order summary --- */
+.aakaari-cart-page .order-summary { align-self:flex-start; position:sticky; top:20px; }
+.aakaari-cart-page .summary-title { font-size:18px; font-weight:600; margin-bottom:20px; }
+
+/* --- Coupon --- */
+.aakaari-cart-page .promo-code { margin-bottom:20px; }
+.aakaari-cart-page .promo-label { font-size:14px; margin-bottom:8px; }
+.aakaari-cart-page .promo-input-container,
+.aakaari-cart-page .coupon-row { display:flex; gap:10px; margin-bottom:10px; }
+.aakaari-cart-page .promo-input,
+.aakaari-cart-page #coupon_code {
+  flex-grow:1; padding:10px; border:1px solid #e0e0e0; border-radius:4px; font-size:14px; min-width:150px;
 }
-
-.discount-tier {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 14px;
+.aakaari-cart-page .apply-btn {
+  background:#fff; color:#333; border:1px solid #e0e0e0; border-radius:4px; padding:0 15px; font-size:14px;
+  cursor:pointer; white-space:nowrap; height:40px;
 }
+.aakaari-cart-page .apply-btn:hover { background:#f5f5f5; }
+.aakaari-cart-page .promo-suggestions { font-size:12px; color:#666; margin-top:5px; }
 
-.tier-radio {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #ccc;
-  border-radius: 50%;
-  margin-right: 10px;
-  position: relative;
+/* --- Summary breakdown --- */
+.aakaari-cart-page .summary-breakdown { margin-bottom:20px; }
+.aakaari-cart-page .summary-row {
+  display:flex; justify-content:space-between; margin-bottom:12px;
 }
+.aakaari-cart-page .summary-row.free { color:#22c55e; }
+.aakaari-cart-page .summary-total { font-weight:600; font-size:16px; margin-top:5px; padding-top:10px; border-top:1px solid #eee; }
 
-.tier-radio.active {
-  border-color: #3366ff;
+/* --- Checkout button --- */
+.aakaari-cart-page .checkout-btn {
+  background:#3366ff; color:#fff; border:none; border-radius:6px; padding:12px; width:100%;
+  font-size:16px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;
+  text-decoration:none; margin-bottom:20px;
 }
+.aakaari-cart-page .checkout-btn:hover { background:#2952cc; color:#fff; text-decoration:none; }
 
-.tier-radio.active::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background-color: #3366ff;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* --- Trust badges --- */
+.aakaari-cart-page .checkout-features,
+.aakaari-cart-page .trust-badges { margin-top:15px; }
+.aakaari-cart-page .feature-item,
+.aakaari-cart-page .tb { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:14px; }
+.aakaari-cart-page .feature-icon,
+.aakaari-cart-page .dot { color:#22c55e; position:relative; width:12px; height:12px; border-radius:50%; background:#22c55e; display:inline-block; }
+.aakaari-cart-page .dot-inner { display:none; }
+
+/* --- Cross-sells --- */
+.aakaari-cart-page .you-might-like,
+.aakaari-cart-page .recommendations { margin-top:30px; }
+.aakaari-cart-page .recommendations-title {
+  display:flex; align-items:center; gap:10px; font-size:18px; font-weight:500; margin-bottom:20px; color:#333;
 }
+.aakaari-cart-page .recommendations-title .icon { color:#3366ff; }
 
-/* Cart Items */
-.cart-item {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 20px 0;
-  border-bottom: 1px solid #f0f0f0;
-  position: relative;
+.aakaari-cart-page .cross-sells { margin:0 !important; padding:0 !important; border:none !important; float:none !important; width:100% !important; }
+.aakaari-cart-page .cross-sells h2 { display:none !important; }
+.aakaari-cart-page .cross-sells ul.products {
+  display:grid !important; grid-template-columns:repeat(3,1fr) !important; gap:15px !important;
+  margin:0 !important; padding:0 !important; width:100% !important;
 }
-
-.cart-item:last-child {
-  border-bottom: none;
+@media (max-width: 768px) { .aakaari-cart-page .cross-sells ul.products { grid-template-columns:repeat(2,1fr) !important; } }
+@media (max-width: 480px) { .aakaari-cart-page .cross-sells ul.products { grid-template-columns:1fr !important; } }
+.aakaari-cart-page .cross-sells ul.products li.product {
+  width:100% !important; float:none !important; margin:0 !important; padding:0 !important;
+  background:#fff !important; border-radius:8px !important; overflow:hidden !important; box-shadow:0 2px 5px rgba(0,0,0,.1) !important;
 }
-
-/* CRITICAL FIX: Product Images */
-.cart-item-image {
-  width: 80px;
-  flex: 0 0 80px;
-  height: 80px;
-  margin-right: 15px;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: #f8f8f8;
+.aakaari-cart-page .cross-sells ul.products li.product a img { margin-bottom:10px !important; width:100% !important; height:auto !important; }
+.aakaari-cart-page .cross-sells ul.products li.product .woocommerce-loop-product__title { padding:0 10px !important; font-size:14px !important; color:#333 !important; }
+.aakaari-cart-page .cross-sells ul.products li.product .price { padding:0 10px !important; margin-bottom:10px !important; color:#3366ff !important; }
+.aakaari-cart-page .cross-sells ul.products li.product .button {
+  margin:0 10px 10px !important; font-size:12px !important; padding:8px 12px !important; background:#f5f5f5 !important; color:#333 !important; border:1px solid #e0e0e0 !important;
 }
+.aakaari-cart-page .cross-sells ul.products li.product .button:hover { background:#e0e0e0 !important; }
 
-.cart-item-image img {
-  width: 100% !important;
-  height: auto !important;
-  display: block;
-  object-fit: cover;
+/* --- Empty cart --- */
+.aakaari-cart-page .empty-cart { text-align:center; padding:60px 30px; background:#fff; border-radius:14px; box-shadow:0 4px 14px rgba(0,0,0,.06); margin:30px auto; }
+.aakaari-cart-page .empty-cart-illustration { margin-bottom:20px; }
+.aakaari-cart-page .empty-cart-bag { width:140px; height:140px; }
+.aakaari-cart-page .empty-cart-title { font-size:24px; font-weight:700; margin:10px 0 6px; }
+.aakaari-cart-page .empty-cart-sub { color:#555; font-size:15px; margin-bottom:20px; }
+.aakaari-cart-page .empty-cart-btn { background:#3366ff; color:#fff; padding:12px 20px; border-radius:8px; text-decoration:none; display:inline-block; font-weight:600; margin-bottom:12px; }
+.aakaari-cart-page .empty-cart-btn:hover { background:#2952cc; }
+.aakaari-cart-page .empty-cart-link { display:block; margin-top:5px; font-size:14px; color:#3366ff; text-decoration:none; }
+.aakaari-cart-page .empty-cart-link:hover { text-decoration:underline; }
+.aakaari-cart-page .empty-cart-trending { margin-top:40px; }
+.aakaari-cart-page .empty-cart-trending h3 { font-size:18px; font-weight:700; margin-bottom:20px; text-align:center; }
+
+/* --- Woo notices (themed) --- */
+.aakaari-cart-page .woocommerce-message,
+.aakaari-cart-page .woocommerce-info,
+.aakaari-cart-page .woocommerce-error {
+  padding:12px 15px !important; margin:10px 0 22px !important; border-radius:8px !important; font-size:14px !important; border:0 !important;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
 }
+.aakaari-cart-page .woocommerce-message { background:#ecfdf5 !important; color:#065f46 !important; }
+.aakaari-cart-page .woocommerce-info    { background:#eef4ff !important; color:#1e40af !important; }
+.aakaari-cart-page .woocommerce-error   { background:#fff5f5 !important; color:#b91c1c !important; }
+.aakaari-cart-page .woocommerce-message::before,
+.aakaari-cart-page .woocommerce-info::before,
+.aakaari-cart-page .woocommerce-error::before { display:none !important; }
 
-.cart-item-image a {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+/* --- Misc --- */
+.aakaari-cart-page .update-cart-button { display:none !important; }
+.aakaari-cart-page .cart_totals { width:100% !important; float:none !important; }
+.aakaari-cart-page .cart_totals h2 { font-size:18px !important; font-weight:600 !important; margin-bottom:20px !important; }
+.aakaari-cart-page .cart_totals table { display:none !important; }        /* using custom breakdown */
+.aakaari-cart-page .wc-proceed-to-checkout { display:none !important; }   /* using custom button */
 
-/* Product Details */
-.cart-item-details {
-  flex: 1;
-  min-width: 0; /* Allows flex item to shrink below content size */
-  padding-right: 20px;
-}
+/* BlockUI overlay */
+.aakaari-cart-page .blockUI.blockOverlay { background: rgba(255,255,255,0.7) !important; }
+.aakaari-cart-page .blockUI.blockMsg { display:none !important; }
 
-h3.item-name {
-  font-size: 16px;
-  font-weight: 500;
-  margin: 0 0 5px 0;
-}
-
-h3.item-name a {
-  color: #333;
-  text-decoration: none;
-}
-
-h3.item-name a:hover {
-  color: #3366ff;
-}
-
-.item-sku {
-  color: #666;
-  font-size: 12px;
-  margin-bottom: 5px;
-}
-
-.item-description {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-
-.item-description p {
-  margin: 0 0 5px;
-}
-
-.item-each {
-  font-size: 12px;
-  color: #666;
-}
-
-/* Quantity Selector */
-.item-quantity,
-.quantity-selector {
-  display: flex;
-  align-items: center;
-  margin: 0 15px;
-}
-
-.quantity-btn {
-  width: 28px;
-  height: 28px;
-  background-color: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  user-select: none;
-  padding: 0;
-}
-
-.quantity-btn:hover {
-  background-color: #e0e0e0;
-}
-
-.quantity-input {
-  width: 40px;
-  height: 28px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  margin: 0 5px;
-  text-align: center;
-  font-size: 14px;
-  padding: 0 5px;
-}
-
-/* Item Price */
-.item-price {
-  text-align: right;
-  min-width: 100px;
-}
-
-.item-total,
-.current-price {
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.original-price {
-  color: #666;
-  font-size: 12px;
-  text-decoration: line-through;
-  margin-top: 5px;
-}
-
-/* Remove Item Button */
-.remove-item {
-  position: absolute;
-  top: 15px;
-  right: 0;
-  color: #999;
-  font-size: 22px;
-  text-decoration: none;
-  line-height: 1;
-  display: block;
-  width: 20px;
-  height: 20px;
-  text-align: center;
-}
-
-.remove-item:hover {
-  color: #ff3b30;
-}
-
-/* Order Summary */
-.order-summary {
-  align-self: flex-start;
-  position: sticky;
-  top: 20px;
-}
-
-.summary-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 20px;
-}
-
-/* Promo Code */
-.promo-code {
-  margin-bottom: 20px;
-}
-
-.promo-label {
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.promo-input-container,
-.coupon-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.promo-input,
-#coupon_code {
-  flex-grow: 1;
-  padding: 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.apply-btn {
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 0 15px;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.apply-btn:hover {
-  background-color: #f5f5f5;
-}
-
-.promo-suggestions {
-  font-size: 12px;
-  color: #666;
-  margin-top: 5px;
-}
-
-/* Summary Breakdown */
-.summary-breakdown {
-  margin-bottom: 20px;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.summary-row.free {
-  color: #22c55e;
-}
-
-.summary-total {
-  font-weight: 600;
-  font-size: 16px;
-  margin-top: 5px;
-  padding-top: 10px;
-  border-top: 1px solid #eee;
-}
-
-/* Checkout Button */
-.checkout-btn {
-  background-color: #3366ff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 12px;
-  width: 100%;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  text-decoration: none;
-  margin-bottom: 20px;
-}
-
-.checkout-btn:hover {
-  background-color: #2952cc;
-  color: white;
-  text-decoration: none;
-}
-
-/* Trust Badges */
-.checkout-features,
-.trust-badges {
-  margin-top: 15px;
-}
-
-.feature-item,
-.tb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.feature-icon,
-.dot {
-  color: #22c55e;
-  position: relative;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: #22c55e;
-  display: inline-block;
-}
-
-.dot-inner {
-  display: none; /* Hide the inner dot since we're using a solid color */
-}
-
-/* Cross-sells / Recommendations */
-.you-might-like,
-.recommendations {
-  margin-top: 30px;
-}
-
-.recommendations-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.recommendations-title .icon {
-  color: #3366ff;
-}
-
-/* WooCommerce Cross-sell overrides */
-.cross-sells {
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  float: none !important;
-  width: 100% !important;
-}
-
-.cross-sells h2 {
-  display: none !important; /* Hide the default title since we use our own */
-}
-
-.cross-sells ul.products {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 15px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-}
-
+/* --- Responsive tweaks --- */
 @media (max-width: 768px) {
-  .cross-sells ul.products {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
+  .aakaari-cart-page .cart-item { flex-wrap:wrap; padding:15px 0; }
+  .aakaari-cart-page .cart-item-details { width:calc(100% - 95px); padding-right:30px; }
+  .aakaari-cart-page .item-quantity,
+  .aakaari-cart-page .item-price { margin-top:10px; }
+  .aakaari-cart-page .item-quantity { order:3; margin-left:95px; }
+  .aakaari-cart-page .item-price { order:4; margin-left:auto; text-align:right; }
 }
-
 @media (max-width: 480px) {
-  .cross-sells ul.products {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-.cross-sells ul.products li.product {
-  width: 100% !important;
-  float: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: white !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
-}
-
-.cross-sells ul.products li.product a img {
-  margin-bottom: 10px !important;
-  width: 100% !important;
-  height: auto !important;
-}
-
-.cross-sells ul.products li.product .woocommerce-loop-product__title {
-  padding: 0 10px !important;
-  font-size: 14px !important;
-  color: #333 !important;
-}
-
-.cross-sells ul.products li.product .price {
-  padding: 0 10px !important;
-  margin-bottom: 10px !important;
-  color: #3366ff !important;
-}
-
-.cross-sells ul.products li.product .button {
-  margin: 0 10px 10px !important;
-  font-size: 12px !important;
-  padding: 8px 12px !important;
-  background-color: #f5f5f5 !important;
-  color: #333 !important;
-  border: 1px solid #e0e0e0 !important;
-}
-
-.cross-sells ul.products li.product .button:hover {
-  background-color: #e0e0e0 !important;
-}
-
-/* Empty Cart */
-.empty-cart {
-  text-align: center;
-  padding: 50px 0;
-}
-
-.empty-cart-icon {
-  font-size: 48px;
-  margin-bottom: 20px;
-}
-
-.continue-shopping-btn {
-  display: inline-block;
-  background-color: #3366ff;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 6px;
-  text-decoration: none;
-  margin-top: 20px;
-}
-
-.continue-shopping-btn:hover {
-  background-color: #2952cc;
-  color: white;
-  text-decoration: none;
-}
-
-/* Blockui styling */
-.blockUI.blockOverlay {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-}
-
-.blockUI.blockMsg {
-  display: none !important;
-}
-
-/* WooCommerce Coupon Messages */
-.woocommerce-message,
-.woocommerce-info,
-.woocommerce-error {
-  padding: 12px 15px !important;
-  margin-bottom: 20px !important;
-  border-radius: 4px !important;
-  font-size: 14px !important;
-}
-
-.woocommerce-message {
-  background-color: #f0fff4 !important;
-  border-left: 4px solid #22c55e !important;
-  color: #22c55e !important;
-}
-
-.woocommerce-info {
-  background-color: #ebf8ff !important;
-  border-left: 4px solid #3366ff !important;
-  color: #3366ff !important;
-}
-
-.woocommerce-error {
-  background-color: #fff5f5 !important;
-  border-left: 4px solid #ff3b30 !important;
-  color: #ff3b30 !important;
-}
-
-/* Cart update button (hidden) */
-.update-cart-button {
-  display: none !important;
-}
-
-/* Cart Totals from WooCommerce */
-.cart_totals {
-  width: 100% !important;
-  float: none !important;
-}
-
-.cart_totals h2 {
-  font-size: 18px !important;
-  font-weight: 600 !important;
-  margin-bottom: 20px !important;
-}
-
-.cart_totals table {
-  display: none !important; /* Hide the default WooCommerce table since we use our own */
-}
-
-.wc-proceed-to-checkout {
-  display: none !important; /* Hide the default checkout button */
-}
-
-/* Responsive fixes */
-@media (max-width: 768px) {
-  .cart-item {
-    flex-wrap: wrap;
-    padding: 15px 0;
-  }
-  
-  .cart-item-details {
-    width: calc(100% - 95px);
-    padding-right: 30px; /* Make room for remove button */
-  }
-  
-  .item-quantity,
-  .item-price {
-    margin-top: 10px;
-  }
-  
-  .item-quantity {
-    order: 3;
-    margin-left: 95px; /* Align with the start of the details */
-  }
-  
-  .item-price {
-    order: 4;
-    margin-left: auto;
-    text-align: right;
-  }
-}
-
-@media (max-width: 480px) {
-  .cart-item-details,
-  .item-quantity,
-  .item-price {
-    width: 100%;
-  }
-  
-  .item-quantity {
-    margin: 10px 0;
-    justify-content: flex-start;
-    margin-left: 95px;
-  }
-  
-  .item-price {
-    text-align: left;
-    margin-left: 95px;
-  }
-}
-
-
-/**
- * Minimal WooCommerce Cart CSS Fixes
- * This focuses only on styling the quantity controls and promo code
- */
-
-/* Quantity Controls */
-.quantity-btn {
-    width: 28px;
-    height: 28px;
-    background-color: #f5f5f5;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    user-select: none;
-    padding: 0;
-    vertical-align: middle;
-}
-
-.quantity-btn:hover {
-    background-color: #e0e0e0;
-}
-
-.quantity-input,
-.qty {
-    width: 40px !important;
-    height: 28px !important;
-    border: 1px solid #e0e0e0 !important;
-    border-radius: 4px !important;
-    margin: 0 5px !important;
-    text-align: center !important;
-    font-size: 14px !important;
-    padding: 0 5px !important;
-    -moz-appearance: textfield !important; /* Hide Firefox arrows */
-}
-
-/* Hide default number input arrows */
-.quantity-input::-webkit-outer-spin-button,
-.quantity-input::-webkit-inner-spin-button,
-.qty::-webkit-outer-spin-button,
-.qty::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-/* Force quantity layout to flex for proper alignment */
-.quantity,
-.quantity-selector,
-.item-quantity {
-    display: flex !important;
-    align-items: center !important;
-}
-
-/* Promo Code / Coupon */
-.promo-code,
-.coupon {
-    margin-bottom: 20px;
-}
-
-.promo-label {
-    font-size: 14px;
-    margin-bottom: 8px;
-}
-
-.promo-input-container,
-.coupon-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.promo-input,
-#coupon_code {
-    flex-grow: 1;
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-size: 14px;
-    min-width: 150px;
-}
-
-.apply-btn {
-    background-color: #fff;
-    color: #333;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    padding: 0 15px;
-    font-size: 14px;
-    cursor: pointer;
-    white-space: nowrap;
-    height: 40px;
-}
-
-.apply-btn:hover {
-    background-color: #f5f5f5;
-}
-
-/* Fix missing WooCommerce core styles */
-.hidden,
-.update-cart-button {
-    display: none !important;
-}
-
-/* Fix WooCommerce notice styles */
-.woocommerce-message,
-.woocommerce-info,
-.woocommerce-error {
-    padding: 1em 2em 1em 3.5em;
-    margin: 0 0 2em;
-    position: relative;
-    background-color: #f7f6f7;
-    color: #515151;
-    border-top: 3px solid #a46497;
-    list-style: none outside;
-    width: auto;
-    word-wrap: break-word;
-}
-
-.woocommerce-message {
-    border-top-color: #8fae1b;
-}
-
-.woocommerce-info {
-    border-top-color: #1e85be;
-}
-
-.woocommerce-error {
-    border-top-color: #b81c23;
-}
-
-/* Empty Cart Improved */
-
-.empty-cart {
-
-  text-align: center;
-
-  padding: 60px 30px;
-
-  background: #ffffff;
-
-  border-radius: 14px;
-
-  box-shadow: 0 4px 14px rgba(0,0,0,.06);
-
-  margin: 30px auto;
-
-}
-
-.empty-cart-illustration {
-
-  margin-bottom: 20px;
-
-}
-
-.empty-cart-bag {
-
-  width: 140px;
-
-  height: 140px;
-
-}
-
-.empty-cart-title {
-
-  font-size: 24px;
-
-  font-weight: 700;
-
-  margin: 10px 0 6px;
-
-}
-
-.empty-cart-sub {
-
-  color: #555;
-
-  font-size: 15px;
-
-  margin-bottom: 20px;
-
-}
-
-.empty-cart-btn {
-
-  background: #3366ff;
-
-  color: #fff;
-
-  padding: 12px 20px;
-
-  border-radius: 8px;
-
-  text-decoration: none;
-
-  display: inline-block;
-
-  font-weight: 600;
-
-  margin-bottom: 12px;
-
-}
-
-.empty-cart-btn:hover {
-
-  background: #2952cc;
-
-}
-
-.empty-cart-link {
-
-  display: block;
-
-  margin-top: 5px;
-
-  font-size: 14px;
-
-  color: #3366ff;
-
-  text-decoration: none;
-
-}
-
-.empty-cart-link:hover {
-
-  text-decoration: underline;
-
-}
-
-.empty-cart-trending {
-
-  margin-top: 40px;
-
-}
-
-.empty-cart-trending h3 {
-
-  font-size: 18px;
-
-  font-weight: 700;
-
-  margin-bottom: 20px;
-
-  text-align: center;
-
+  .aakaari-cart-page .cart-item-details,
+  .aakaari-cart-page .item-quantity,
+  .aakaari-cart-page .item-price { width:100%; }
+  .aakaari-cart-page .item-quantity { margin:10px 0; justify-content:flex-start; margin-left:95px; }
+  .aakaari-cart-page .item-price { text-align:left; margin-left:95px; }
 }

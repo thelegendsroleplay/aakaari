@@ -46,6 +46,8 @@ if ($active_tier_index < count($discount_tiers) - 1) {
 // Store the cart subtotal in data attribute for JavaScript
 ?>
 
+<div class="aakaari-cart-page"><!-- Aakaari wrapper -->
+    
 <form class="woocommerce-cart-form" action="<?php echo esc_url( wc_get_cart_url() ); ?>" method="post">
     <?php wp_nonce_field( 'woocommerce-cart', 'woocommerce-cart-nonce' ); ?>
 

@@ -11,39 +11,58 @@ if (!defined('ABSPATH')) {
 /**
  * Register custom cart assets
  */
+/**
+ * Register custom cart assets (loads after Woo so we override)
+ */
 function custom_cart_assets() {
-    // Only load on cart page
-    if (!is_cart()) {
+    if ( ! function_exists('is_cart') || ! is_cart() ) {
         return;
     }
-    
-    // Enqueue custom cart styles
-    wp_enqueue_style(
-        'custom-cart-styles', 
-        get_stylesheet_directory_uri() . '/assets/css/cart2.css', 
-        array(), 
-        filemtime(get_stylesheet_directory() . '/assets/css/cart2.css') // For cache busting
-    );
-    
-    // Enqueue custom cart script
-    wp_enqueue_script(
-        'custom-cart-script', 
-        get_stylesheet_directory_uri() . '/assets/js/cart2.js', 
-        array('jquery', 'wc-cart'), 
-        filemtime(get_stylesheet_directory() . '/assets/js/cart2.js'), 
-        true
-    );
-    
-    // Add dynamic data for JavaScript
-    wp_localize_script('custom-cart-script', 'custom_cart_params', array(
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'wc_ajax_url' => WC_AJAX::get_endpoint('%%endpoint%%'),
-        'update_cart_nonce' => wp_create_nonce('update-cart'),
-        'apply_coupon_nonce' => wp_create_nonce('apply-coupon'),
-        'currency_symbol' => get_woocommerce_currency_symbol()
-    ));
+
+    $css_path = get_stylesheet_directory() . '/assets/css/cart2.css';
+    $js_path  = get_stylesheet_directory() . '/assets/js/cart2.js';
+
+    // Woo's base style handles vary by install, but these are common; we add them as deps when present
+    $css_deps = array();
+    if ( wp_style_is( 'woocommerce-general', 'registered' ) )    $css_deps[] = 'woocommerce-general';
+    if ( wp_style_is( 'woocommerce-layout', 'registered' ) )     $css_deps[] = 'woocommerce-layout';
+    if ( wp_style_is( 'woocommerce-smallscreen', 'registered' ) )$css_deps[] = 'woocommerce-smallscreen';
+
+    // Enqueue our CSS AFTER Woo styles
+    if ( file_exists( $css_path ) ) {
+        wp_enqueue_style(
+            'aakaari-cart',
+            get_stylesheet_directory_uri() . '/assets/css/cart2.css',
+            $css_deps,
+            filemtime( $css_path )
+        );
+    }
+
+    // JS depends on Woo cart fragments so events work
+    $js_deps = array( 'jquery' );
+    if ( wp_script_is( 'wc-cart-fragments', 'registered' ) ) $js_deps[] = 'wc-cart-fragments';
+    if ( wp_script_is( 'wc-cart', 'registered' ) )           $js_deps[] = 'wc-cart';
+
+    if ( file_exists( $js_path ) ) {
+        wp_enqueue_script(
+            'aakaari-cart',
+            get_stylesheet_directory_uri() . '/assets/js/cart2.js',
+            $js_deps,
+            filemtime( $js_path ),
+            true
+        );
+
+        wp_localize_script( 'aakaari-cart', 'custom_cart_params', array(
+            'ajax_url'          => admin_url( 'admin-ajax.php' ),
+            'wc_ajax_url'       => WC_AJAX::get_endpoint( '%%endpoint%%' ),
+            'update_cart_nonce' => wp_create_nonce( 'update-cart' ),
+            'apply_coupon_nonce'=> wp_create_nonce( 'apply-coupon' ),
+            'currency_symbol'   => get_woocommerce_currency_symbol(),
+        ) );
+    }
 }
-add_action('wp_enqueue_scripts', 'custom_cart_assets');
+add_action( 'wp_enqueue_scripts', 'custom_cart_assets', 99 ); // <-- late priority
+
 
 /**
  * Override WooCommerce cart template with our custom template
@@ -266,3 +285,4 @@ function custom_cart_fragments($fragments) {
     return $fragments;
 }
 add_filter('woocommerce_add_to_cart_fragments', 'custom_cart_fragments');
+
