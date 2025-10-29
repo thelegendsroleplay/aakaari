@@ -418,6 +418,74 @@ select.input {
     font-weight: 700;
 }
 
+/* ========== PAYMENT ========== */
+
+.woocommerce-checkout-payment {
+    margin-top: 8px;
+}
+
+/* WooCommerce Place Order Button Styling */
+#payment #place_order,
+.woocommerce-checkout-payment #place_order {
+    width: 100%;
+    height: 48px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    background: #2563EB;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    margin-top: 16px;
+}
+
+#payment #place_order:hover,
+.woocommerce-checkout-payment #place_order:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37,99,235,0.4);
+}
+
+#payment #place_order:active,
+.woocommerce-checkout-payment #place_order:active {
+    transform: translateY(0);
+}
+
+/* Payment method options */
+.woocommerce-checkout-payment .wc_payment_methods {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.woocommerce-checkout-payment .wc_payment_method {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+}
+
+.woocommerce-checkout-payment .wc_payment_method:hover {
+    border-color: #2563EB;
+    background: rgba(37,99,235,0.02);
+}
+
+.woocommerce-checkout-payment .wc_payment_method input[type="radio"] {
+    margin-right: 12px;
+}
+
+/* Back button for step 3 */
+.btn-back-step3 {
+    margin-top: 16px;
+}
+
 /* ========== TRUST BADGE ========== */
 
 .trust-badge {

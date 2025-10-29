@@ -113,14 +113,7 @@ jQuery(function($) {
             }
         }
 
-        // Step 3: Validate payment selection
-        if (step === 3) {
-            const hasPaymentSelected = $('input[name="payment_method"]:checked').length > 0;
-            if (!hasPaymentSelected) {
-                alert('Please select a payment method');
-                isValid = false;
-            }
-        }
+        // Note: Step 3 validation is handled by WooCommerce
 
         return isValid;
     }
@@ -211,24 +204,17 @@ jQuery(function($) {
     // ========== FORM SUBMISSION ==========
 
     $('#checkout-form').on('submit', function(e) {
+        // Only prevent submission if not on step 3
         if (currentStep < 3) {
             e.preventDefault();
             return false;
         }
 
-        if (!validateStep(3)) {
-            e.preventDefault();
-            return false;
-        }
-
-        // Sync one more time before submit
+        // Sync billing to shipping before WooCommerce processes
         syncBillingToShipping();
 
-        // Show loading
-        $('.btn-submit').html('<div class="spinner" style="width:20px;height:20px;margin:0 auto;"></div>').prop('disabled', true);
-
-        // Let WooCommerce handle the submission
-        return true;
+        // Let WooCommerce handle validation and submission
+        // WooCommerce will show its own loading states and error messages
     });
 
     // ========== INITIALIZE ==========
