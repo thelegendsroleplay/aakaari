@@ -285,7 +285,7 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                 <input type="hidden" name="woocommerce-process-checkout-nonce" value="<?php echo esc_attr(wp_create_nonce('woocommerce-process_checkout')); ?>">
             <?php endif; ?>
 
-            <div class="checkout-grid">
+            <div class="checkout-grid checkout-grid--full-width">
                 <div class="form-column">
                     <div id="step-1-content">
                         <div class="card" id="aak-contact-card">
@@ -441,6 +441,21 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                      </div>
 
                     <div id="step-3-content" class="hidden">
+                         <!-- Order Summary Card - Now in Step 3 -->
+                         <div class="card">
+                             <div class="card-header">
+                                 <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div>
+                                 <div class="card-text">
+                                     <h2><?php esc_html_e('Order Summary', 'woocommerce'); ?></h2>
+                                     <p><?php esc_html_e('Review your order before payment', 'woocommerce'); ?></p>
+                                 </div>
+                             </div>
+                             <div class="order-review-wrapper">
+                                 <?php woocommerce_order_review(); ?>
+                             </div>
+                         </div>
+
+                         <!-- Payment Method Card -->
                          <div class="card">
                              <div class="card-header">
                                  <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg></div>
@@ -477,35 +492,19 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                      </div>
                 </div>
 
-<div class="summary-column">
+<!-- Sidebar removed - Order summary now shows in Step 3 -->
+<div class="summary-column" style="display: none;">
 
     <div class="card summary-card">
 
         <h2><?php esc_html_e('Order Summary', 'woocommerce'); ?></h2>
 
-        <?php
-
-        /**
-
-         * This one function is all you need.
-
-         * It will load your new 'review-order.php' template.
-
-         */
-
-        woocommerce_order_review();
-
-        ?>
-
-        <?php // All the old, hard-coded summary-rows, coupons, and totals have been DELETED. ?>
-
-        <?php // Keep original WC review order actions for compatibility (e.g., Terms checkbox) ?>
+        <?php // Sidebar order summary hidden - now displayed in Step 3 ?>
+        <?php // This keeps WooCommerce hooks intact but content is hidden ?>
 
         <div class="wc-checkout-review-order-actions">
 
             <?php do_action( 'woocommerce_review_order_before_submit' ); ?>
-
-            <?php // The Place Order button is handled by JS/Step logic now, but keep WC hook ?>
 
             <noscript>
 
