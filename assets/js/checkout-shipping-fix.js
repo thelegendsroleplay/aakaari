@@ -1,30 +1,24 @@
 /**
-
- * Aakaari Checkout - Shipping Methods Fix (Simple, Reactive Version)
-
+ * Aakaari Checkout - Shipping Methods Fix v2.0
  *
-
- * Logic (as requested):
-
- * 1. Read shipping methods from the hidden '#aakaari-wc-shipping-source' div.
-
- * 2. Build the custom UI in '#aakaari-shipping-methods'.
-
- * 3. When a user clicks a custom option, check the original hidden radio button and trigger 'change'.
-
- * 4. WooCommerce's 'change' handler triggers 'update_checkout' AJAX.
-
- * 5. After AJAX completes ('updated_checkout'), re-run this script to rebuild the UI.
-
+ * Updated Logic (User Interaction Only):
  *
-
- * This version removes all 'forceShippingUpdate' and 'setupBillingFieldMonitoring'
-
- * to prevent recalculation loops.
-
+ * 1. Format shipping UI ONCE when user arrives at step 2
+ * 2. Display default selected shipping method (no auto-updates)
+ * 3. ONLY trigger WooCommerce update when user clicks a DIFFERENT method
+ * 4. Track user interactions to prevent automatic reformatting loops
+ *
+ * This prevents infinite loops and unnecessary AJAX calls.
+ * Updates happen ONLY on actual user interaction.
  */
 
 jQuery(function($) {
+    console.log('🚀 Aakaari Checkout Shipping Fix v2.0 - Loaded (User Interaction Only)');
+
+    // State management to prevent loops
+    let hasFormattedShipping = false;
+    let lastSelectedMethodId = null;
+    let isUserInteraction = false;
 
     /**
 
@@ -270,6 +264,7 @@ jQuery(function($) {
 
             if ($this.hasClass('selected')) {
 
+                console.log('Aakaari Checkout: Method already selected, no action needed');
                 return; // Already selected, do nothing
 
             }
@@ -278,31 +273,33 @@ jQuery(function($) {
 
             if (methodId) {
 
-                console.log('Aakaari Checkout: User selected shipping ID: ' + methodId);
+                // Check if this is actually a new selection
+                if (methodId === lastSelectedMethodId) {
+                    console.log('Aakaari Checkout: Same method already selected, skipping update');
+                    return;
+                }
 
-                
+                console.log('Aakaari Checkout: User clicked different shipping method: ' + methodId);
+                lastSelectedMethodId = methodId;
+                isUserInteraction = true; // Mark as user interaction
+
+
 
                 // Find the original radio button in the hidden source
 
                 const $originalInput = $sourceContainer.find('#' + methodId);
 
-                
+
 
                 if ($originalInput.length) {
 
-                    // Check it and trigger 'change'
-
-                    // This is what tells WooCommerce to update the summary
-
-                    $originalInput.prop('checked', true).trigger('change');
-
-                    
-
-                    // Update our custom UI
-
+                    // Update our custom UI first
                     $container.find('.radio-option').removeClass('selected');
-
                     $this.addClass('selected');
+
+                    // Then trigger WooCommerce update - this will update order summary
+                    console.log('Aakaari Checkout: Triggering WooCommerce update for new selection');
+                    $originalInput.prop('checked', true).trigger('change');
 
                 }
 
@@ -318,39 +315,47 @@ jQuery(function($) {
 
             $container.html('<p>No shipping methods available for your address. Please check your address in Step 1.</p>');
 
+        } else {
+            // Store the currently selected method ID
+            const $selectedInput = $sourceContainer.find('input[name^="shipping_method["]:checked');
+            if ($selectedInput.length) {
+                lastSelectedMethodId = $selectedInput.attr('id');
+                console.log('Aakaari Checkout: Current selected method: ' + lastSelectedMethodId);
+            }
         }
+
+        // Mark that we've formatted the shipping methods
+        hasFormattedShipping = true;
 
     }
 
     // --- Main Event Listeners ---
 
-    // 1. Run on document ready
+    // Listen for step changes from the checkout controller
+    $(document).on('aak_step_changed', function(event, step) {
+        console.log('Aakaari Checkout: Step changed to ' + step);
 
-    // We add a small delay to ensure all DOM elements, including the source div, are ready.
-
-    setTimeout(formatShippingMethodsDirectly, 100);
-
-    // 2. Run after WooCommerce updates the checkout
-
-    // This is the *most important* listener.
-
-    // When WC finishes its AJAX, it rebuilds the hidden source div.
-
-    // We must then re-run our function to rebuild our custom UI.
-
-    $(document.body).on('updated_checkout', function() {
-
-        console.log('Aakaari Checkout: "updated_checkout" detected, reformatting shipping methods.');
-
-        // Add a small delay for safety
-
-        setTimeout(formatShippingMethodsDirectly, 100);
-
+        // Only format shipping methods when arriving at step 2 for the first time
+        if (step === 2 && !hasFormattedShipping) {
+            console.log('Aakaari Checkout: First time on step 2, formatting shipping methods');
+            setTimeout(formatShippingMethodsDirectly, 200);
+        }
     });
 
-    // ALL 'forceShippingUpdate', 'setupBillingFieldMonitoring', 
+    // Only reformat on updated_checkout if it was triggered by user interaction
+    $(document.body).on('updated_checkout', function() {
+        if (isUserInteraction) {
+            console.log('Aakaari Checkout: Order summary updated after user selection');
+            isUserInteraction = false;
+        } else {
+            console.log('Aakaari Checkout: updated_checkout detected (not user interaction, skipping reformat)');
+        }
+    });
 
-    // and 'aak_step_changed' listeners have been REMOVED to stop loops.
+    // Notes:
+    // - Only formats shipping methods ONCE when step 2 is first accessed
+    // - Only triggers WooCommerce update when user clicks a DIFFERENT shipping method
+    // - This prevents infinite loops and unnecessary AJAX calls
 
 });
 
