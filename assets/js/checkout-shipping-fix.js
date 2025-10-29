@@ -26,6 +26,11 @@
 
 jQuery(function($) {
 
+    // State management to prevent loops
+    let isUpdating = false;
+    let updateTimeout = null;
+    let lastSelectedMethodId = null;
+
     /**
 
      * Function to format shipping options directly from WooCommerce's hidden source.
@@ -33,6 +38,12 @@ jQuery(function($) {
      */
 
     function formatShippingMethodsDirectly() {
+
+        // Prevent concurrent updates
+        if (isUpdating) {
+            console.log('Aakaari Checkout: Update already in progress, skipping...');
+            return;
+        }
 
         // The container for our custom UI
 
@@ -52,6 +63,7 @@ jQuery(function($) {
 
         }
 
+        isUpdating = true;
         let hasShippingMethods = false;
 
         // 1. Check for UL format
@@ -278,15 +290,22 @@ jQuery(function($) {
 
             if (methodId) {
 
-                console.log('Aakaari Checkout: User selected shipping ID: ' + methodId);
+                // Check if this is actually a new selection
+                if (methodId === lastSelectedMethodId) {
+                    console.log('Aakaari Checkout: Same method already selected, skipping update');
+                    return;
+                }
 
-                
+                console.log('Aakaari Checkout: User selected shipping ID: ' + methodId);
+                lastSelectedMethodId = methodId;
+
+
 
                 // Find the original radio button in the hidden source
 
                 const $originalInput = $sourceContainer.find('#' + methodId);
 
-                
+
 
                 if ($originalInput.length) {
 
@@ -296,7 +315,7 @@ jQuery(function($) {
 
                     $originalInput.prop('checked', true).trigger('change');
 
-                    
+
 
                     // Update our custom UI
 
@@ -320,6 +339,9 @@ jQuery(function($) {
 
         }
 
+        // Mark update as complete
+        isUpdating = false;
+
     }
 
     // --- Main Event Listeners ---
@@ -337,14 +359,23 @@ jQuery(function($) {
     // When WC finishes its AJAX, it rebuilds the hidden source div.
 
     // We must then re-run our function to rebuild our custom UI.
+    // Added debouncing to prevent rapid successive updates
 
     $(document.body).on('updated_checkout', function() {
 
-        console.log('Aakaari Checkout: "updated_checkout" detected, reformatting shipping methods.');
+        console.log('Aakaari Checkout: "updated_checkout" detected, scheduling reformat...');
 
-        // Add a small delay for safety
+        // Clear any pending update
+        if (updateTimeout) {
+            clearTimeout(updateTimeout);
+        }
 
-        setTimeout(formatShippingMethodsDirectly, 100);
+        // Debounce the update with a 300ms delay
+        updateTimeout = setTimeout(function() {
+            console.log('Aakaari Checkout: Executing debounced reformat');
+            formatShippingMethodsDirectly();
+            updateTimeout = null;
+        }, 300);
 
     });
 
