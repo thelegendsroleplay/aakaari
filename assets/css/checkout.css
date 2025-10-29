@@ -7,7 +7,7 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-.aak-checkout-v2 {
+.checkout-v2 {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #f6f8fc;
     color: #0f172a;
@@ -15,7 +15,7 @@
     min-height: 100vh;
 }
 
-.aak-checkout-v2 .container {
+.checkout-v2 .container {
     max-width: 600px;
     margin: 0 auto;
     padding: 0 16px;
@@ -503,7 +503,7 @@ select.input {
 
 /* Desktop */
 @media (min-width: 768px) {
-    .aak-checkout-v2 .container {
+    .checkout-v2 .container {
         max-width: 640px;
     }
 

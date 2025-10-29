@@ -11,7 +11,7 @@ defined('ABSPATH') || exit;
 $checkout = WC()->checkout();
 ?>
 
-<div class="aak-checkout-v2">
+<div class="checkout-v2">
 
     <!-- Header -->
     <div class="checkout-header">
@@ -21,7 +21,7 @@ $checkout = WC()->checkout();
             </a>
             <div class="secure-badge">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                <span><?php esc_html_e('Secure', 'woocommerce'); ?></span>
+                <span><?php esc_html_e('Secure Checkout', 'woocommerce'); ?></span>
             </div>
         </div>
     </div>
@@ -52,9 +52,12 @@ $checkout = WC()->checkout();
     <div class="checkout-content">
         <div class="container">
 
-            <form name="checkout" method="post" class="checkout-form" id="checkout-form" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data" novalidate>
+            <form name="checkout" method="post" class="checkout woocommerce-checkout" id="checkout-form" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data" novalidate>
 
                 <?php wp_nonce_field('woocommerce-process_checkout', 'woocommerce-process-checkout-nonce'); ?>
+                <?php wp_nonce_field('woocommerce-process_checkout', '_wpnonce'); ?>
+                <input type="hidden" name="woocommerce_checkout_update_totals" value="false">
+                <?php do_action('woocommerce_checkout_before_customer_details'); ?>
 
                 <!-- Step 1 -->
                 <div class="step-content" id="step-1">
@@ -73,6 +76,17 @@ $checkout = WC()->checkout();
 
                     <div class="card">
                         <h2><?php esc_html_e('Shipping Address', 'woocommerce'); ?></h2>
+
+                        <!-- Hidden shipping fields (will be synced from billing) -->
+                        <input type="hidden" name="shipping_first_name" id="shipping_first_name">
+                        <input type="hidden" name="shipping_last_name" id="shipping_last_name">
+                        <input type="hidden" name="shipping_address_1" id="shipping_address_1">
+                        <input type="hidden" name="shipping_address_2" id="shipping_address_2">
+                        <input type="hidden" name="shipping_city" id="shipping_city">
+                        <input type="hidden" name="shipping_state" id="shipping_state">
+                        <input type="hidden" name="shipping_postcode" id="shipping_postcode">
+                        <input type="hidden" name="shipping_country" id="shipping_country">
+
                         <div class="field-row">
                             <div class="field">
                                 <label><?php esc_html_e('First Name', 'woocommerce'); ?> <span class="req">*</span></label>

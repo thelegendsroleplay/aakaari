@@ -225,35 +225,17 @@ public function fix_shipping_calculations() {
             filemtime(get_stylesheet_directory() . '/assets/css/checkout.css')
         );
         
-        // Create necessary JS files if they don't exist
-        $this->ensure_checkout_files_exist();
-        
-        // Main checkout JS with enhanced dependency management
-        wp_enqueue_script(
-            'aakaari-checkout',
-            get_stylesheet_directory_uri() . '/assets/js/checkout.js',
-            ['jquery', 'wc-checkout', 'wc-address-i18n', 'wc-country-select'],
-            filemtime(get_stylesheet_directory() . '/assets/js/checkout.js'),
-            true
-        );
-        
-        // Add shipping fix script
-        wp_enqueue_script(
-            'aakaari-checkout-shipping-fix',
-            get_stylesheet_directory_uri() . '/assets/js/checkout-shipping-fix.js',
-            ['jquery', 'aakaari-checkout'],
-            filemtime(get_stylesheet_directory() . '/assets/js/checkout-shipping-fix.js'),
-            time() // Use timestamp to bypass caching
-        );
-        
-        // Data for JS
-        wp_localize_script('aakaari-checkout', 'aakaariCheckout', [
-            'cartUrl' => function_exists('wc_get_cart_url') ? wc_get_cart_url() : '',
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aakaari-checkout'),
-            'processNonce' => wp_create_nonce('woocommerce-process_checkout'),
-            'isDebug' => defined('WP_DEBUG') && WP_DEBUG,
-        ]);
+        // New checkout V2 script (clean, no loops)
+        $checkout_v2_path = get_stylesheet_directory() . '/assets/js/checkout-v2.js';
+        if (file_exists($checkout_v2_path)) {
+            wp_enqueue_script(
+                'checkout-v2',
+                get_stylesheet_directory_uri() . '/assets/js/checkout-v2.js',
+                ['jquery', 'wc-checkout'],
+                filemtime($checkout_v2_path),
+                true
+            );
+        }
         
         // Add debug mode if needed
         if (isset($_GET['checkout_debug']) && $_GET['checkout_debug'] == '1') {
