@@ -992,5 +992,14 @@
 
 .aak-checkout a:focus, .aak-checkout button:focus, .aak-checkout input:focus, .aak-checkout select:focus { outline: 2px solid rgba(79,70,229,0.45); outline-offset: 2px; }
 
+/* Full width checkout (order summary in step 3, no sidebar) */
+.checkout-grid--full-width { grid-template-columns: 1fr !important; max-width: 800px; margin: 0 auto; }
+.checkout-grid--full-width .form-column { max-width: 100%; }
+.checkout-grid--full-width .summary-column { display: none !important; }
+
+/* Order summary in Step 3 styling */
+.order-review-wrapper { padding: 0; }
+#step-3-content .card + .card { margin-top: 24px; }
+
 /* --- END OF FILE --- */
 
