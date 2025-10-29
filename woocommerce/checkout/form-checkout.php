@@ -183,13 +183,18 @@ $checkout = WC()->checkout();
 
                     <div class="card">
                         <h2><?php esc_html_e('Payment', 'woocommerce'); ?></h2>
-                        <div id="payment-options">
+                        <div id="payment-options" class="woocommerce-checkout-payment">
                             <?php if (WC()->cart->needs_payment()) : ?>
                                 <?php wc_get_template('checkout/payment.php', array(
                                     'checkout' => $checkout,
                                     'available_gateways' => WC()->payment_gateways()->get_available_payment_gateways(),
                                     'order_button_text' => __('Place Order', 'woocommerce'),
                                 )); ?>
+                            <?php else : ?>
+                                <button type="submit" class="btn btn-submit btn-place-order" name="woocommerce_checkout_place_order" id="place_order" value="<?php esc_attr_e('Place order', 'woocommerce'); ?>">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    <?php esc_html_e('Place Order', 'woocommerce'); ?>
+                                </button>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -199,16 +204,10 @@ $checkout = WC()->checkout();
                         <span><?php esc_html_e('Secure & encrypted', 'woocommerce'); ?></span>
                     </div>
 
-                    <div class="nav-btns">
-                        <button type="button" class="btn btn-back" data-prev="2">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                            <?php esc_html_e('Back', 'woocommerce'); ?>
-                        </button>
-                        <button type="submit" class="btn btn-submit" name="woocommerce_checkout_place_order">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                            <?php esc_html_e('Place Order', 'woocommerce'); ?>
-                        </button>
-                    </div>
+                    <button type="button" class="btn btn-back btn-back-step3" data-prev="2">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                        <?php esc_html_e('Back', 'woocommerce'); ?>
+                    </button>
                 </div>
 
             </form>
