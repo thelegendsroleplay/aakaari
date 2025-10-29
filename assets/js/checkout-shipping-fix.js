@@ -13,7 +13,7 @@
  */
 
 jQuery(function($) {
-    console.log('🚀 Aakaari Checkout Shipping Fix v2.0 - Loaded (User Interaction Only)');
+    console.log('✓ Aakaari Checkout Shipping Fix v2.0 loaded');
 
     // State management to prevent loops
     let hasFormattedShipping = false;
@@ -39,11 +39,7 @@ jQuery(function($) {
         const $sourceContainer = $('#aakaari-wc-shipping-source');
 
         if (!$sourceContainer.length) {
-
-            console.log('Aakaari Checkout: Error - Missing source container #aakaari-wc-shipping-source');
-
             return;
-
         }
 
         let hasShippingMethods = false;
@@ -118,7 +114,7 @@ jQuery(function($) {
 
             });
 
-            console.log('Aakaari Checkout: Found ' + $shippingMethodList.find('li').length + ' shipping methods (List format)');
+            // Found shipping methods in list format
 
         }
 
@@ -248,9 +244,7 @@ jQuery(function($) {
 
                 });
 
-                
-
-                console.log('Aakaari Checkout: Found ' + $shippingRows.length + ' shipping methods (Table format)');
+                // Found shipping methods in table format
 
             }
 
@@ -263,10 +257,7 @@ jQuery(function($) {
             const $this = $(this);
 
             if ($this.hasClass('selected')) {
-
-                console.log('Aakaari Checkout: Method already selected, no action needed');
                 return; // Already selected, do nothing
-
             }
 
             const methodId = $this.data('method-id');
@@ -275,13 +266,11 @@ jQuery(function($) {
 
                 // Check if this is actually a new selection
                 if (methodId === lastSelectedMethodId) {
-                    console.log('Aakaari Checkout: Same method already selected, skipping update');
                     return;
                 }
 
-                console.log('Aakaari Checkout: User clicked different shipping method: ' + methodId);
+                console.log('→ Updating order for shipping method: ' + methodId);
                 lastSelectedMethodId = methodId;
-                isUserInteraction = true; // Mark as user interaction
 
 
 
@@ -292,15 +281,12 @@ jQuery(function($) {
 
 
                 if ($originalInput.length) {
-
                     // Update our custom UI first
                     $container.find('.radio-option').removeClass('selected');
                     $this.addClass('selected');
 
                     // Then trigger WooCommerce update - this will update order summary
-                    console.log('Aakaari Checkout: Triggering WooCommerce update for new selection');
                     $originalInput.prop('checked', true).trigger('change');
-
                 }
 
             }
@@ -308,11 +294,7 @@ jQuery(function($) {
         });
 
         // 4. Handle case where no shipping methods are available
-
         if (!hasShippingMethods) {
-
-            console.log('Aakaari Checkout: No shipping methods found in source.');
-
             $container.html('<p>No shipping methods available for your address. Please check your address in Step 1.</p>');
 
         } else {
@@ -320,7 +302,6 @@ jQuery(function($) {
             const $selectedInput = $sourceContainer.find('input[name^="shipping_method["]:checked');
             if ($selectedInput.length) {
                 lastSelectedMethodId = $selectedInput.attr('id');
-                console.log('Aakaari Checkout: Current selected method: ' + lastSelectedMethodId);
             }
         }
 
@@ -333,29 +314,15 @@ jQuery(function($) {
 
     // Listen for step changes from the checkout controller
     $(document).on('aak_step_changed', function(event, step) {
-        console.log('Aakaari Checkout: Step changed to ' + step);
-
         // Only format shipping methods when arriving at step 2 for the first time
         if (step === 2 && !hasFormattedShipping) {
-            console.log('Aakaari Checkout: First time on step 2, formatting shipping methods');
+            console.log('Aakaari Checkout: Formatting shipping methods for step 2');
             setTimeout(formatShippingMethodsDirectly, 200);
         }
     });
 
-    // Only reformat on updated_checkout if it was triggered by user interaction
-    $(document.body).on('updated_checkout', function() {
-        if (isUserInteraction) {
-            console.log('Aakaari Checkout: Order summary updated after user selection');
-            isUserInteraction = false;
-        } else {
-            console.log('Aakaari Checkout: updated_checkout detected (not user interaction, skipping reformat)');
-        }
-    });
-
-    // Notes:
-    // - Only formats shipping methods ONCE when step 2 is first accessed
-    // - Only triggers WooCommerce update when user clicks a DIFFERENT shipping method
-    // - This prevents infinite loops and unnecessary AJAX calls
+    // That's it! No updated_checkout listener needed.
+    // We only update when user clicks a different shipping method.
 
 });
 
