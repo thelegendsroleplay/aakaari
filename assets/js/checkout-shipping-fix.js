@@ -1,30 +1,19 @@
 /**
-
- * Aakaari Checkout - Shipping Methods Fix (Simple, Reactive Version)
-
+ * Aakaari Checkout - Shipping Methods Fix v2.0
  *
-
- * Logic (as requested):
-
- * 1. Read shipping methods from the hidden '#aakaari-wc-shipping-source' div.
-
- * 2. Build the custom UI in '#aakaari-shipping-methods'.
-
- * 3. When a user clicks a custom option, check the original hidden radio button and trigger 'change'.
-
- * 4. WooCommerce's 'change' handler triggers 'update_checkout' AJAX.
-
- * 5. After AJAX completes ('updated_checkout'), re-run this script to rebuild the UI.
-
+ * Updated Logic (User Interaction Only):
  *
-
- * This version removes all 'forceShippingUpdate' and 'setupBillingFieldMonitoring'
-
- * to prevent recalculation loops.
-
+ * 1. Format shipping UI ONCE when user arrives at step 2
+ * 2. Display default selected shipping method (no auto-updates)
+ * 3. ONLY trigger WooCommerce update when user clicks a DIFFERENT method
+ * 4. Track user interactions to prevent automatic reformatting loops
+ *
+ * This prevents infinite loops and unnecessary AJAX calls.
+ * Updates happen ONLY on actual user interaction.
  */
 
 jQuery(function($) {
+    console.log('🚀 Aakaari Checkout Shipping Fix v2.0 - Loaded (User Interaction Only)');
 
     // State management to prevent loops
     let hasFormattedShipping = false;
