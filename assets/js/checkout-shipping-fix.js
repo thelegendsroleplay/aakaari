@@ -27,9 +27,9 @@
 jQuery(function($) {
 
     // State management to prevent loops
-    let isUpdating = false;
-    let updateTimeout = null;
+    let hasFormattedShipping = false;
     let lastSelectedMethodId = null;
+    let isUserInteraction = false;
 
     /**
 
@@ -38,12 +38,6 @@ jQuery(function($) {
      */
 
     function formatShippingMethodsDirectly() {
-
-        // Prevent concurrent updates
-        if (isUpdating) {
-            console.log('Aakaari Checkout: Update already in progress, skipping...');
-            return;
-        }
 
         // The container for our custom UI
 
@@ -63,7 +57,6 @@ jQuery(function($) {
 
         }
 
-        isUpdating = true;
         let hasShippingMethods = false;
 
         // 1. Check for UL format
@@ -282,6 +275,7 @@ jQuery(function($) {
 
             if ($this.hasClass('selected')) {
 
+                console.log('Aakaari Checkout: Method already selected, no action needed');
                 return; // Already selected, do nothing
 
             }
@@ -296,8 +290,9 @@ jQuery(function($) {
                     return;
                 }
 
-                console.log('Aakaari Checkout: User selected shipping ID: ' + methodId);
+                console.log('Aakaari Checkout: User clicked different shipping method: ' + methodId);
                 lastSelectedMethodId = methodId;
+                isUserInteraction = true; // Mark as user interaction
 
 
 
@@ -309,19 +304,13 @@ jQuery(function($) {
 
                 if ($originalInput.length) {
 
-                    // Check it and trigger 'change'
-
-                    // This is what tells WooCommerce to update the summary
-
-                    $originalInput.prop('checked', true).trigger('change');
-
-
-
-                    // Update our custom UI
-
+                    // Update our custom UI first
                     $container.find('.radio-option').removeClass('selected');
-
                     $this.addClass('selected');
+
+                    // Then trigger WooCommerce update - this will update order summary
+                    console.log('Aakaari Checkout: Triggering WooCommerce update for new selection');
+                    $originalInput.prop('checked', true).trigger('change');
 
                 }
 
@@ -337,51 +326,47 @@ jQuery(function($) {
 
             $container.html('<p>No shipping methods available for your address. Please check your address in Step 1.</p>');
 
+        } else {
+            // Store the currently selected method ID
+            const $selectedInput = $sourceContainer.find('input[name^="shipping_method["]:checked');
+            if ($selectedInput.length) {
+                lastSelectedMethodId = $selectedInput.attr('id');
+                console.log('Aakaari Checkout: Current selected method: ' + lastSelectedMethodId);
+            }
         }
 
-        // Mark update as complete
-        isUpdating = false;
+        // Mark that we've formatted the shipping methods
+        hasFormattedShipping = true;
 
     }
 
     // --- Main Event Listeners ---
 
-    // 1. Run on document ready
+    // Listen for step changes from the checkout controller
+    $(document).on('aak_step_changed', function(event, step) {
+        console.log('Aakaari Checkout: Step changed to ' + step);
 
-    // We add a small delay to ensure all DOM elements, including the source div, are ready.
-
-    setTimeout(formatShippingMethodsDirectly, 100);
-
-    // 2. Run after WooCommerce updates the checkout
-
-    // This is the *most important* listener.
-
-    // When WC finishes its AJAX, it rebuilds the hidden source div.
-
-    // We must then re-run our function to rebuild our custom UI.
-    // Added debouncing to prevent rapid successive updates
-
-    $(document.body).on('updated_checkout', function() {
-
-        console.log('Aakaari Checkout: "updated_checkout" detected, scheduling reformat...');
-
-        // Clear any pending update
-        if (updateTimeout) {
-            clearTimeout(updateTimeout);
+        // Only format shipping methods when arriving at step 2 for the first time
+        if (step === 2 && !hasFormattedShipping) {
+            console.log('Aakaari Checkout: First time on step 2, formatting shipping methods');
+            setTimeout(formatShippingMethodsDirectly, 200);
         }
-
-        // Debounce the update with a 300ms delay
-        updateTimeout = setTimeout(function() {
-            console.log('Aakaari Checkout: Executing debounced reformat');
-            formatShippingMethodsDirectly();
-            updateTimeout = null;
-        }, 300);
-
     });
 
-    // ALL 'forceShippingUpdate', 'setupBillingFieldMonitoring', 
+    // Only reformat on updated_checkout if it was triggered by user interaction
+    $(document.body).on('updated_checkout', function() {
+        if (isUserInteraction) {
+            console.log('Aakaari Checkout: Order summary updated after user selection');
+            isUserInteraction = false;
+        } else {
+            console.log('Aakaari Checkout: updated_checkout detected (not user interaction, skipping reformat)');
+        }
+    });
 
-    // and 'aak_step_changed' listeners have been REMOVED to stop loops.
+    // Notes:
+    // - Only formats shipping methods ONCE when step 2 is first accessed
+    // - Only triggers WooCommerce update when user clicks a DIFFERENT shipping method
+    // - This prevents infinite loops and unnecessary AJAX calls
 
 });
 
