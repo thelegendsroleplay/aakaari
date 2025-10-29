@@ -4,12 +4,12 @@
  * Path: yourtheme/woocommerce/checkout/form-checkout.php
  *
  * CUSTOM HTML STRUCTURE VERSION (with Country/State Fix)
- * - Manually builds a custom HTML layout for each field using a helper function.
- * - Uses custom CSS classes (aak-form-row, aak-label, etc.).
- * - Styles are applied via CSS to these custom classes.
- * - **Exception:** Country & State fields use `woocommerce_form_field()` for JS compatibility,
- * styled via specific CSS rules targeting WC wrappers inside our structure.
- * - This avoids conflicts with theme/WooCommerce default field structure.
+ * 
+ * This version includes fixes for:
+ * - Payment method processing
+ * - Form submission handling
+ * - Field movement issues
+ * - Validation with WooCommerce
  */
 
 defined('ABSPATH') || exit;
@@ -90,6 +90,9 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
     if (!empty($field['class']) && in_array('form-row-first', $field['class'])) $row_classes[] = 'aak-form-row-first';
     if (!empty($field['class']) && in_array('form-row-last', $field['class'])) $row_classes[] = 'aak-form-row-last';
     if (!empty($field['class']) && in_array('form-row-wide', $field['class'])) $row_classes[] = 'aak-form-row-wide';
+    
+    // Add update_totals_on_change class for JS if needed
+    if (!empty($field['class']) && in_array('update_totals_on_change', $field['class'])) $row_classes[] = 'update_totals_on_change';
 
     // Specific field type classes for targeting if needed
     $row_classes[] = 'aak-field-type-' . esc_attr($field['type']);
@@ -219,7 +222,23 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
     </div> <?php // End aak-form-row ?>
     <?php
 } // End aakaari_render_checkout_field()
+
+/**
+ * Added: Hidden wrapper for payment method issues fix
+ */
 ?>
+<div id="aakaari-payment-methods-fix" style="display:none;">
+    <script>
+    /* This ensures payment methods work after being moved in the DOM */
+    jQuery(function($) {
+        $(document.body).on('payment_method_selected', function() {
+            setTimeout(function() {
+                $('input[name="payment_method"]:checked').trigger('click');
+            }, 300);
+        });
+    });
+    </script>
+</div>
 
 <div id="checkout-container" class="aak-checkout">
     <div class="progress-bar-container">
@@ -262,6 +281,9 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
             <?php // Output hidden WC fields needed for processing ?>
             <?php wp_nonce_field( 'woocommerce-process_checkout', 'woocommerce-process-checkout-nonce' ); ?>
             <input type="hidden" name="woocommerce_checkout_update_totals" value="false"> <?php // Prevent unnecessary Ajax on field changes initially ?>
+            <?php if (WC()->cart->needs_payment()) : ?>
+                <input type="hidden" name="woocommerce-process-checkout-nonce" value="<?php echo esc_attr(wp_create_nonce('woocommerce-process_checkout')); ?>">
+            <?php endif; ?>
 
             <div class="checkout-grid">
                 <div class="form-column">
@@ -343,7 +365,7 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                                             'id' => 'ship-to-different-address-checkbox', // Ensure ID matches WC JS
                                         );
                                         // Render checkbox within our structure
-                                        echo '<div class="aak-form-row aak-form-row-wide" id="ship-to-different-address">';
+                                        echo '<div class="aak-form-row aak-form-row-wide update_totals_on_change" id="ship-to-different-address">';
                                         aakaari_render_checkout_field('ship_to_different_address', $ship_checkbox_field, $checkout->get_value( 'ship_to_different_address' ));
                                         echo '</div>';
                                         ?>
@@ -375,7 +397,7 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                                         'type' => 'checkbox',
                                         'label' => __( 'Save this information for next time', 'aakaari' ),
                                         'required' => false,
-                                        'id' => 'save-info' // Assuming 'save-info' is the correct ID if used by JS
+                                        'id' => 'save_info' // Using 'save_info' to match WC expectations
                                     );
                                      aakaari_render_checkout_field('save_info', $save_info_field, checked( WC()->checkout()->get_value('save_info'), 1, false ) );
                                  ?>
@@ -384,25 +406,38 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                     </div>
 
                     <div id="step-2-content" class="hidden">
+
                          <div class="card">
+
                              <div class="card-header">
+
                                  <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg></div>
+
                                  <div class="card-text">
+
                                      <h2><?php esc_html_e('Shipping Method', 'woocommerce'); ?></h2>
+
                                      <p><?php esc_html_e('Choose your delivery option', 'woocommerce'); ?></p>
+
                                  </div>
+
                              </div>
-                             <div class="radio-group" id="aakaari-shipping-methods">
-                                 <?php
-                                 // This section relies on WC default output which JS formats
-                                 if (WC()->cart->needs_shipping() && WC()->cart->show_shipping()) {
-                                     do_action( 'woocommerce_review_order_before_shipping' );
-                                     wc_cart_totals_shipping_html();
-                                     do_action( 'woocommerce_review_order_after_shipping' );
-                                 }
-                                 ?>
-                             </div>
+
+<div class="radio-group" id="aakaari-shipping-methods">
+     <p>Calculating shipping methods...</p>
+     <div class="aak-loading-spinner"></div>
+ </div>
+
+ <div id="aakaari-wc-shipping-source" style="display:none; height:0; overflow:hidden;">
+     <?php
+     if (WC()->cart->needs_shipping() && WC()->cart->show_shipping()) {
+         woocommerce_cart_totals_shipping_html();
+     }
+     ?>
+ </div>
+
                          </div>
+
                      </div>
 
                     <div id="step-3-content" class="hidden">
@@ -423,6 +458,8 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                                           'available_gateways' => $available_gateways,
                                           'order_button_text'  => apply_filters( 'woocommerce_order_button_text', __( 'Place order', 'woocommerce' ) ),
                                       ) );
+                                  } else {
+                                      echo '<div class="woocommerce-info">' . esc_html__('No payment needed for this order.', 'woocommerce') . '</div>';
                                   }
                                  ?>
                              </div>
@@ -440,119 +477,192 @@ function aakaari_render_checkout_field($key, $field, $value = null) {
                      </div>
                 </div>
 
-                <div class="summary-column">
-                     <div class="card summary-card">
-                         <h2><?php esc_html_e('Order Summary', 'woocommerce'); ?></h2>
-                         <div class="summary-items">
-                             <?php
-                             do_action( 'woocommerce_checkout_order_review_start' ); // Allow plugins to add content
-                             foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) :
-                                 $_product = apply_filters('woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key);
-                                 if ($_product && $_product->exists() && $cart_item['quantity'] > 0 && apply_filters('woocommerce_checkout_cart_item_visible', true, $cart_item, $cart_item_key)) :
-                             ?>
-                                     <div class="summary-item <?php echo esc_attr( apply_filters( 'woocommerce_cart_item_class', 'cart_item', $cart_item, $cart_item_key ) ); ?>">
-                                        <?php
-                                        $thumbnail = apply_filters( 'woocommerce_cart_item_thumbnail', $_product->get_image('woocommerce_thumbnail'), $cart_item, $cart_item_key );
-                                        echo $thumbnail; // PHPCS: XSS ok.
-                                        ?>
-                                         <div class="summary-item-details">
-                                             <p class="name"><?php echo wp_kses_post( apply_filters( 'woocommerce_cart_item_name', $_product->get_name(), $cart_item, $cart_item_key ) ) . '&nbsp;'; ?></p>
-                                             <?php echo apply_filters( 'woocommerce_checkout_cart_item_quantity', ' <p class="qty">' . sprintf( __('Qty: %s', 'woocommerce'), $cart_item['quantity'] ) . '</p>', $cart_item, $cart_item_key ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                             <?php // echo wc_get_formatted_cart_item_data( $cart_item ); // uncomment if you need variation data ?>
-                                             <p class="price"><?php echo apply_filters( 'woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal( $_product, $cart_item['quantity'] ), $cart_item, $cart_item_key ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
-                                         </div>
-                                     </div>
-                             <?php
-                                 endif;
-                             endforeach;
-                             do_action( 'woocommerce_checkout_order_review_list_end' ); // Allow plugins to add content
-                              ?>
-                         </div>
-                         <div class="summary-totals">
-                             <?php // Using standard WC hooks for totals ensures compatibility ?>
-                             <div class="summary-row cart-subtotal">
-                                 <span class="summary-label"><?php esc_html_e('Subtotal', 'woocommerce'); ?></span>
-                                 <span class="summary-value"><?php wc_cart_totals_subtotal_html(); ?></span>
-                             </div>
+<div class="summary-column">
+
+    <div class="card summary-card">
+
+        <h2><?php esc_html_e('Order Summary', 'woocommerce'); ?></h2>
+
+        <?php
+
+        /**
+
+         * This one function is all you need.
+
+         * It will load your new 'review-order.php' template.
+
+         */
+
+        woocommerce_order_review();
+
+        ?>
+
+        <?php // All the old, hard-coded summary-rows, coupons, and totals have been DELETED. ?>
+
+        <?php // Keep original WC review order actions for compatibility (e.g., Terms checkbox) ?>
+
+        <div class="wc-checkout-review-order-actions">
+
+            <?php do_action( 'woocommerce_review_order_before_submit' ); ?>
+
+            <?php // The Place Order button is handled by JS/Step logic now, but keep WC hook ?>
+
+            <noscript>
+
+                <?php esc_html_e( 'Since your browser does not support JavaScript, or it is disabled, please ensure you click the Place Order button when ready.', 'woocommerce' ); ?>
+
+                <br/><button type="submit" class="button alt" name="woocommerce_checkout_place_order" id="place_order" value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>" data-value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>"><?php esc_html_e( 'Place order', 'woocommerce' ); ?></button>
+
+            </noscript>
+
+            <?php do_action( 'woocommerce_review_order_after_submit' ); ?>
+
+        </div>
+
+        <div class="button-group hidden-lg">
+
+            <?php // Desktop 'Place Order' button - hidden until step 3 ?>
+
+            <button type="submit" class="btn btn-primary button alt<?php echo esc_attr( wc_wp_theme_get_element_class_name( 'button' ) ? ' ' . wc_wp_theme_get_element_class_name( 'button' ) : '' ); ?>" name="woocommerce_checkout_place_order" id="desktop-next-btn" value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>" data-value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>">
+
+                <span id="desktop-btn-text"><?php esc_html_e('Continue', 'woocommerce'); ?></span>
+
+            </button>
+
+            <button type="button" class="btn btn-outline" id="desktop-back-btn"><?php esc_html_e('Back', 'woocommerce'); ?></button>
+
+        </div>
+
+        <div class="terms-policy">
+
+            <?php // Use standard WC terms output for compatibility ?>
+
+            <?php wc_checkout_privacy_policy_text(); ?>
+
+        </div>
+
+        
+
+    </div> </div> ```
+
+**To be crystal clear, you are deleting this entire block of code:**
+
+```php
 
                              <?php foreach (WC()->cart->get_coupons() as $code => $coupon) : ?>
+
                                  <div class="summary-row cart-discount coupon-<?php echo esc_attr(sanitize_title($code)); ?>">
+
                                      <span class="summary-label"><?php wc_cart_totals_coupon_label($coupon); ?></span>
+
                                      <span class="summary-value"><?php wc_cart_totals_coupon_html($coupon); ?></span>
+
                                  </div>
+
                              <?php endforeach; ?>
 
                              <?php if (WC()->cart->needs_shipping() && WC()->cart->show_shipping()) : ?>
+
                                  <?php do_action('woocommerce_review_order_before_shipping'); ?>
+
                                  <div class="summary-row shipping">
+
                                      <span class="summary-label"><?php esc_html_e( 'Shipping', 'woocommerce' ); ?></span>
+
                                      <span class="summary-value"><?php echo wp_kses_post( WC()->cart->get_cart_shipping_total() ); ?></span> <?php // Display calculated total ?>
+
                                  </div>
+
                                  <?php do_action('woocommerce_review_order_after_shipping'); ?>
+
                              <?php endif; ?>
 
-
                             <?php foreach (WC()->cart->get_fees() as $fee) : ?>
+
                                 <div class="summary-row fee">
+
                                     <span class="summary-label"><?php echo esc_html($fee->name); ?></span>
+
                                     <span class="summary-value"><?php wc_cart_totals_fee_html($fee); ?></span>
+
                                 </div>
+
                             <?php endforeach; ?>
 
                              <?php if (wc_tax_enabled() && !WC()->cart->display_prices_including_tax()) : ?>
+
                                 <?php if ('itemized' === get_option('woocommerce_tax_total_display')) : ?>
+
                                      <?php foreach (WC()->cart->get_tax_totals() as $code => $tax) : // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited ?>
+
                                          <div class="summary-row tax-rate tax-rate-<?php echo esc_attr(sanitize_title($code)); ?>">
+
                                              <span class="summary-label"><?php echo esc_html($tax->label); ?></span>
+
                                              <span class="summary-value"><?php echo wp_kses_post($tax->formatted_amount); ?></span>
+
                                          </div>
+
                                      <?php endforeach; ?>
+
                                 <?php else : ?>
+
                                      <div class="summary-row tax-total">
+
                                          <span class="summary-label"><?php echo esc_html(WC()->countries->tax_or_vat()); ?></span>
+
                                          <span class="summary-value"><?php wc_cart_totals_taxes_total_html(); ?></span>
+
                                      </div>
+
                                 <?php endif; ?>
+
                              <?php endif; ?>
 
                              <?php do_action('woocommerce_review_order_before_order_total'); ?>
+
                              <div class="summary-row total order-total">
+
                                  <span class="summary-label"><?php esc_html_e('Total', 'woocommerce'); ?></span>
+
                                  <span class="summary-value"><?php wc_cart_totals_order_total_html(); ?></span>
+
                              </div>
+
                              <?php do_action('woocommerce_review_order_after_order_total'); ?>
+
                          </div>
 
-                         <?php // Keep original WC review order actions for compatibility (e.g., Terms checkbox) ?>
-                         <div class="wc-checkout-review-order-actions">
-                            <?php do_action( 'woocommerce_review_order_before_submit' ); ?>
-
-                            <?php // The Place Order button is handled by JS/Step logic now, but keep WC hook ?>
-                            <noscript>
-                                <?php esc_html_e( 'Since your browser does not support JavaScript, or it is disabled, please ensure you click the Place Order button when ready.', 'woocommerce' ); ?>
-                                <br/><button type="submit" class="button alt" name="woocommerce_checkout_place_order" id="place_order" value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>" data-value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>"><?php esc_html_e( 'Place order', 'woocommerce' ); ?></button>
-                            </noscript>
-
-                             <?php do_action( 'woocommerce_review_order_after_submit' ); ?>
-                         </div>
-
-
-                         <div class="button-group hidden-lg">
-                             <?php // Desktop 'Place Order' button - hidden until step 3 ?>
-                             <button type="submit" class="btn btn-primary button alt<?php echo esc_attr( wc_wp_theme_get_element_class_name( 'button' ) ? ' ' . wc_wp_theme_get_element_class_name( 'button' ) : '' ); ?>" name="woocommerce_checkout_place_order" id="desktop-next-btn" value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>" data-value="<?php esc_attr_e( 'Place order', 'woocommerce' ); ?>">
-                                 <span id="desktop-btn-text"><?php esc_html_e('Continue', 'woocommerce'); ?></span>
-                             </button>
-                             <button type="button" class="btn btn-outline" id="desktop-back-btn"><?php esc_html_e('Back', 'woocommerce'); ?></button>
-                         </div>
-                         <div class="terms-policy">
-                             <?php // Use standard WC terms output for compatibility ?>
-                            <?php wc_checkout_privacy_policy_text(); ?>
-                         </div>
-                     </div>
-                 </div>
-            </div>
+            <?php // Critical: Empty div to store fields before they're moved ?>
+            <div id="aak-fields-wrapper" style="display: none;"></div>
         </form>
     </div>
 </div>
+
+<?php 
+// JS debugging helper for checkout errors (only shown when WP_DEBUG is true)
+if (defined('WP_DEBUG') && WP_DEBUG) : ?>
+<script>
+jQuery(document).ready(function($) {
+    // Log checkout errors
+    $(document.body).on('checkout_error', function(event, error_message) {
+        console.log('Checkout Error:', error_message);
+    });
+    
+    // Log form submission attempts
+    $('#checkout-form').on('submit', function(e) {
+        console.log('Checkout form submitted', {
+            action: $('input[name="woocommerce_checkout_place_order"]').length ? 'place_order' : 'update',
+            payment_method: $('input[name="payment_method"]:checked').val()
+        });
+    });
+    
+    // Watch payment method changes
+    $(document.body).on('payment_method_selected', function() {
+        console.log('Payment method selected:', $('input[name="payment_method"]:checked').val());
+    });
+});
+</script>
+<?php endif; ?>
 
 <?php do_action('woocommerce_after_checkout_form', $checkout); ?>
