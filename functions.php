@@ -53,7 +53,7 @@ $required_files = array(
     'order-tracking-ajax.php',
     'order-tracking-admin.php',
     // New enhancements
-    'cod-otp-verification.php',
+    // 'cod-otp-verification.php', // Disabled COD OTP verification as per request
     'verified-seller-restrictions.php',
     'admin-color-variant-images.php',
 );
