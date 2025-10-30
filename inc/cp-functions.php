@@ -424,7 +424,7 @@ function aakaari_ajax_add_to_cart() {
     error_log('AJAX: Product found: ' . $product->get_name());
 
     // Parse designs (JSON)
-    $designs_raw = isset( $_REQUEST['designs'] ) ? wp_unslash( $_REQUEST['designs'] ) : '';
+    $designs_raw = isset( $_REQUEST['designs'] ) ? wp_unslash( $_REQUEST['designs'] ) : '[]'; // Default to an empty JSON array
     error_log('AJAX: Received designs JSON: ' . $designs_raw); // Log raw designs
     $designs = array();
     if ( $designs_raw ) {

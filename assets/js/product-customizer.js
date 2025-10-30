@@ -916,19 +916,21 @@
     
     // Function to update add to cart button state
     function updateAddToCartState() {
-        const hasDesigns = state.designs.length > 0;
-        const hasPrintType = !!state.selectedPrintType;
-        
-        if (hasDesigns && hasPrintType) {
+        const hasDesigns = state.designs.length > 0; // Does the user want customization?
+        const hasPrintType = !!state.selectedPrintType; // Has the user selected a print type?
+
+        // The button should be enabled if:
+        // 1. The user has NOT added any designs (they want the plain product).
+        // OR
+        // 2. The user HAS added designs AND has selected a print type.
+        if (!hasDesigns || (hasDesigns && hasPrintType)) {
             $('#add-to-cart-btn').prop('disabled', false);
             $('#add-to-cart-placeholder').addClass('hidden');
         } else {
+            // This block now only runs if designs are present but no print type is selected.
             $('#add-to-cart-btn').prop('disabled', true);
             $('#add-to-cart-placeholder').removeClass('hidden');
-            
-            if (!hasDesigns) {
-                $('#add-to-cart-placeholder').text('Add at least one design to continue');
-            } else if (!hasPrintType) {
+            if (hasDesigns && !hasPrintType) {
                 $('#add-to-cart-placeholder').text('Select a print type to continue');
             }
         }
