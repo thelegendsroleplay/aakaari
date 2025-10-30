@@ -47,6 +47,7 @@ $required_files = array(
     'print-studio-fabric-print-handlers.php',
     'functional-cart-functions.php',
     'woocommerce-checkout.php',
+    'shipping-config.php',
 );
 
 // Load each file with error checking

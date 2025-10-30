@@ -1,22 +1,42 @@
 /**
- * Checkout V2 - WooCommerce Integrated
- * Full backend integration with WooCommerce checkout system
+ * Checkout V2 - Simplified 2-Step
+ * Step 1: Information | Step 2: Payment
  */
 
 jQuery(function($) {
     'use strict';
 
     let currentStep = 1;
-    let hasFormattedShipping = false;
 
-    console.log('Checkout V2: Initialized with WooCommerce integration');
+    console.log('Checkout V2: 2-step simplified initialized');
+
+    // ========== SYNC BILLING TO SHIPPING ==========
+
+    function syncBillingToShipping() {
+        const fields = ['first_name', 'last_name', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country'];
+
+        fields.forEach(function(field) {
+            const billingValue = $('#billing_' + field).val();
+            $('#shipping_' + field).val(billingValue);
+        });
+    }
+
+    // Sync on field change
+    $(document).on('change input', '#step-1 input, #step-1 select', function() {
+        syncBillingToShipping();
+    });
 
     // ========== STEP NAVIGATION ==========
 
     function goToStep(step) {
-        if (step < 1 || step > 3) return;
+        if (step < 1 || step > 2) return;
 
         console.log('Navigating to step ' + step);
+
+        // Sync before moving to step 2
+        if (step === 2) {
+            syncBillingToShipping();
+        }
 
         // Hide all steps
         $('.step-content').hide();
@@ -26,8 +46,8 @@ jQuery(function($) {
 
         // Update progress bar
         $('.checkout-progress .step').removeClass('active completed');
-        for (let i = 1; i < step; i++) {
-            $('.checkout-progress .step[data-step="' + i + '"]').addClass('completed');
+        if (step === 2) {
+            $('.checkout-progress .step[data-step="1"]').addClass('completed');
         }
         $('.checkout-progress .step[data-step="' + step + '"]').addClass('active');
 
@@ -37,28 +57,15 @@ jQuery(function($) {
         // Scroll to top
         $('html, body').animate({ scrollTop: 0 }, 300);
 
-        // Step-specific actions
+        // Step 2: Trigger order review update
         if (step === 2) {
-            // Trigger WooCommerce to calculate shipping
-            $(document.body).trigger('update_checkout');
-
-            // Format shipping methods after a delay
-            if (!hasFormattedShipping) {
-                setTimeout(function() {
-                    formatShippingMethods();
-                }, 1000);
-            }
-        }
-
-        if (step === 3) {
-            // Trigger order review update
             $(document.body).trigger('update_checkout');
         }
     }
 
     // ========== BUTTON HANDLERS ==========
 
-    // Next buttons
+    // Next button
     $(document).on('click', '.btn-next', function(e) {
         e.preventDefault();
         const nextStep = parseInt($(this).attr('data-next'));
@@ -68,7 +75,7 @@ jQuery(function($) {
         }
     });
 
-    // Back buttons
+    // Back button
     $(document).on('click', '.btn-back', function(e) {
         e.preventDefault();
         const prevStep = parseInt($(this).attr('data-prev'));
@@ -78,156 +85,65 @@ jQuery(function($) {
     // ========== VALIDATION ==========
 
     function validateStep(step) {
-        const $step = $('#step-' + step);
         let isValid = true;
 
-        // Step 1: Validate billing fields
+        // Step 1: Validate required fields
         if (step === 1) {
-            $step.find('.validate-required').each(function() {
-                const $field = $(this).find('input, select, textarea').first();
+            const $step = $('#step-1');
 
-                if ($field.length) {
-                    const value = $field.val();
+            $step.find('.field').each(function() {
+                const $input = $(this).find('input[required], select[required]').first();
+
+                if ($input.length) {
+                    const value = $input.val();
 
                     if (!value || value.trim() === '') {
-                        $(this).addClass('woocommerce-invalid');
+                        $(this).addClass('field-error');
+                        $input.css('border-color', '#ef4444');
                         isValid = false;
                     } else {
-                        $(this).removeClass('woocommerce-invalid');
+                        $(this).removeClass('field-error');
+                        $input.css('border-color', '#d1d5db');
                     }
                 }
             });
 
             if (!isValid) {
                 alert('Please fill in all required fields');
+                // Scroll to first error
+                const $firstError = $step.find('.field-error').first();
+                if ($firstError.length) {
+                    $('html, body').animate({
+                        scrollTop: $firstError.offset().top - 100
+                    }, 300);
+                }
             }
         }
-
-        // Step 2: Validate shipping method selection
-        if (step === 2) {
-            const hasShipping = $('input[name^="shipping_method"]:checked').length > 0;
-
-            if (!hasShipping && $('#shipping-options .shipping-option').length > 0) {
-                alert('Please select a shipping method');
-                isValid = false;
-            }
-        }
-
-        // Step 3: Let WooCommerce handle payment validation
-        // WooCommerce will validate on form submission
 
         return isValid;
     }
 
-    // Clear validation errors on input
-    $(document).on('input change', 'input, select, textarea', function() {
-        $(this).closest('.form-row').removeClass('woocommerce-invalid');
+    // Clear validation on input
+    $(document).on('input change', 'input, select', function() {
+        $(this).css('border-color', '#d1d5db');
+        $(this).closest('.field').removeClass('field-error');
     });
 
-    // ========== SHIPPING METHODS ==========
+    // ========== FORM SUBMISSION ==========
 
-    function formatShippingMethods() {
-        const $container = $('#shipping-options');
-        const $wcShipping = $('#wc-shipping');
-
-        // Find shipping method inputs
-        const $methods = $wcShipping.find('input[name^="shipping_method"]');
-
-        if ($methods.length === 0) {
-            $container.html('<p style="text-align:center; color:#6b7280; padding: 20px;">Loading shipping methods...</p>');
-
-            // Retry once
-            setTimeout(function() {
-                const $retryMethods = $('#wc-shipping').find('input[name^="shipping_method"]');
-                if ($retryMethods.length > 0) {
-                    buildShippingUI($retryMethods, $container);
-                } else {
-                    $container.html('<p style="text-align:center; color:#6b7280;">No shipping methods available for your location.</p>');
-                }
-            }, 1500);
-
-            return;
-        }
-
-        buildShippingUI($methods, $container);
-    }
-
-    function buildShippingUI($methods, $container) {
-        $container.empty();
-
-        $methods.each(function() {
-            const $input = $(this);
-            const id = $input.attr('id');
-            const value = $input.val();
-            const isChecked = $input.is(':checked');
-
-            // Find the label
-            const $label = $('label[for="' + id + '"]');
-            if (!$label.length) return;
-
-            // Extract method name and price
-            let methodName = $label.clone().children().remove().end().text().trim();
-            const $price = $label.find('.woocommerce-Price-amount');
-            let priceHtml = $price.length ? $price.parent().html() : '';
-
-            // Clean up method name
-            if (methodName.includes(':')) {
-                methodName = methodName.split(':')[0].trim();
-            }
-
-            // Create custom shipping option
-            const $option = $('<div class="shipping-option' + (isChecked ? ' selected' : '') + '" data-id="' + id + '"></div>');
-            $option.html(`
-                <div class="info">
-                    <div class="radio"></div>
-                    <div class="name">${methodName}</div>
-                </div>
-                <div class="price">${priceHtml}</div>
-            `);
-
-            $container.append($option);
-        });
-
-        // Click handler for shipping options
-        $container.off('click').on('click', '.shipping-option', function() {
-            const id = $(this).data('id');
-
-            // Update UI
-            $('.shipping-option').removeClass('selected');
-            $(this).addClass('selected');
-
-            // Trigger the actual radio button
-            $('#' + id).prop('checked', true).trigger('change');
-        });
-
-        hasFormattedShipping = true;
-        console.log('Shipping methods formatted: ' + $methods.length + ' methods');
-    }
-
-    // ========== WOOCOMMERCE INTEGRATION ==========
-
-    // Listen for WooCommerce checkout updates
-    $(document.body).on('updated_checkout', function() {
-        console.log('WooCommerce checkout updated');
-
-        // Reformat shipping if on step 2
-        if (currentStep === 2) {
-            setTimeout(function() {
-                formatShippingMethods();
-            }, 300);
-        }
-    });
-
-    // Form submission - let WooCommerce handle everything
-    $('#checkout-form, form.checkout').on('submit', function(e) {
+    // Form submission - only allow on step 2
+    $('form.checkout').on('submit', function(e) {
         console.log('Form submission - Step ' + currentStep);
 
-        // Only allow submission on step 3
-        if (currentStep < 3) {
+        // Only allow submission on step 2
+        if (currentStep < 2) {
             e.preventDefault();
             console.log('Prevented submission - not on final step');
             return false;
         }
+
+        // Sync one more time
+        syncBillingToShipping();
 
         // Let WooCommerce handle the rest
         console.log('Allowing WooCommerce to process checkout');
@@ -245,10 +161,13 @@ jQuery(function($) {
         console.log('Starting checkout on step 1');
         goToStep(1);
 
-        // Add ship_to_different_address hidden field set to no (use billing for shipping)
+        // Add hidden field for ship_to_different_address (set to no)
         if (!$('input[name="ship_to_different_address"]').length) {
             $('<input type="hidden" name="ship_to_different_address" value="0">').appendTo('form.checkout');
         }
+
+        // Initial sync
+        syncBillingToShipping();
     });
 
 });
