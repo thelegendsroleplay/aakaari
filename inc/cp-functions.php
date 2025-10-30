@@ -221,9 +221,16 @@ function aakaari_cp_enqueue_assets_and_localize() {
         'sides' => !empty($studio_data['sides']) ? $studio_data['sides'] : aakaari_get_product_sides($product),
     );
 
+    // Get color-specific mockups
+    $color_mockups = get_post_meta($product_id, '_aakaari_color_mockups', true);
+    if (!is_array($color_mockups)) {
+        $color_mockups = array();
+    }
+
     // Localize arrays - use the converted print types
     wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_PRODUCTS', array( $product_data ) );
     wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_PRINT_TYPES', $print_types_for_customizer );
+    wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_COLOR_MOCKUPS', $color_mockups );
     wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_SETTINGS', array(
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'aakaari_customizer' ),
@@ -397,6 +404,93 @@ function aakaari_get_product_sides( $product ) {
  *
  * Returns { success: true, cart_item_key: '...' } on success, or WP_Error response on failure.
  */
+/**
+ * Validate design boundaries against print areas
+ *
+ * @param int $product_id Product ID
+ * @param array $designs Array of design data
+ * @return bool|WP_Error True on success, WP_Error on validation failure
+ */
+function aakaari_validate_design_boundaries($product_id, $designs) {
+    // Get product print studio data
+    $studio_data = get_post_meta($product_id, '_aakaari_print_studio_data', true);
+
+    if (empty($studio_data) || !is_array($studio_data)) {
+        return true; // No validation needed if no studio data
+    }
+
+    // Get print areas from studio data
+    $sides = isset($studio_data['sides']) ? $studio_data['sides'] : array();
+
+    if (empty($sides)) {
+        return true; // No validation needed if no sides defined
+    }
+
+    // Validate each design
+    foreach ($designs as $design) {
+        if (!isset($design['side']) || !isset($design['designs'])) {
+            continue;
+        }
+
+        $side_id = $design['side'];
+
+        // Find the corresponding side
+        $side_data = null;
+        foreach ($sides as $side) {
+            if (isset($side['id']) && $side['id'] === $side_id) {
+                $side_data = $side;
+                break;
+            }
+        }
+
+        if (!$side_data || empty($side_data['printAreas'])) {
+            continue; // No validation if side or print areas not found
+        }
+
+        // Get the first print area (assuming one main print area)
+        $print_area = $side_data['printAreas'][0];
+
+        if (empty($print_area)) {
+            continue;
+        }
+
+        // Extract print area boundaries
+        $pa_x = floatval($print_area['x']);
+        $pa_y = floatval($print_area['y']);
+        $pa_width = floatval($print_area['width']);
+        $pa_height = floatval($print_area['height']);
+
+        // Validate each design element
+        foreach ($design['designs'] as $element) {
+            if (!isset($element['x']) || !isset($element['y']) ||
+                !isset($element['width']) || !isset($element['height'])) {
+                continue;
+            }
+
+            $elem_x = floatval($element['x']);
+            $elem_y = floatval($element['y']);
+            $elem_width = floatval($element['width']);
+            $elem_height = floatval($element['height']);
+
+            // Check if element is completely within print area
+            $elem_right = $elem_x + $elem_width;
+            $elem_bottom = $elem_y + $elem_height;
+            $pa_right = $pa_x + $pa_width;
+            $pa_bottom = $pa_y + $pa_height;
+
+            if ($elem_x < $pa_x || $elem_y < $pa_y ||
+                $elem_right > $pa_right || $elem_bottom > $pa_bottom) {
+                return new WP_Error(
+                    'design_out_of_bounds',
+                    __('Your design extends outside the allowed print area. Please adjust your design to fit within the boundaries before adding to cart.', 'aakaari')
+                );
+            }
+        }
+    }
+
+    return true;
+}
+
 function aakaari_ajax_add_to_cart() {
     error_log('AJAX: aakaari_add_to_cart triggered.'); // Check if function runs
 
@@ -438,6 +532,13 @@ function aakaari_ajax_add_to_cart() {
         }
     } else {
         error_log('AJAX Warning: No designs payload received.'); // Log if designs are missing
+    }
+
+    // Validate design boundaries against print areas
+    $validation_result = aakaari_validate_design_boundaries($product_id, $designs);
+    if (is_wp_error($validation_result)) {
+        error_log('AJAX Error: Design boundary validation failed: ' . $validation_result->get_error_message());
+        wp_send_json_error(array('message' => $validation_result->get_error_message()), 400);
     }
 
     // Handle file uploads
@@ -629,6 +730,9 @@ function aakaari_order_item_meta_key_display( $display_key, $meta, $item ) {
     if ( $meta->key === '_aakaari_preview_image' ) {
         return __( 'Custom Design Preview', 'aakaari' );
     }
+    if ( $meta->key === '_aakaari_attachments' ) {
+        return __( 'Uploaded Design Files', 'aakaari' );
+    }
     return $display_key;
 }
 
@@ -638,12 +742,54 @@ function aakaari_order_item_meta_value_display( $display_value, $meta, $item ) {
     if ( $meta->key === '_aakaari_designs' ) {
         $designs = maybe_unserialize( $meta->value );
         if ( is_array($designs) && !empty($designs) ) {
-            $output = sprintf( _n( '%d custom design', '%d custom designs', count($designs), 'aakaari' ), count($designs) );
+            $output = '<div class="aakaari-design-details">';
+            $output .= '<p>' . sprintf( _n( '%d custom design', '%d custom designs', count($designs), 'aakaari' ), count($designs) ) . '</p>';
+
+            // Show print type, color, and side if available
+            if (!empty($designs[0]['printType'])) {
+                $output .= '<p><strong>Print Type:</strong> ' . esc_html(ucfirst(str_replace('_', ' ', $designs[0]['printType']))) . '</p>';
+            }
+            if (!empty($designs[0]['color'])) {
+                $output .= '<p><strong>Color:</strong> ' . esc_html($designs[0]['color']) . '</p>';
+            }
+            if (!empty($designs[0]['side'])) {
+                $output .= '<p><strong>Side:</strong> ' . esc_html(ucfirst($designs[0]['side'])) . '</p>';
+            }
+
+            $output .= '</div>';
             return $output;
         }
     }
     if ( $meta->key === '_aakaari_preview_image' ) {
-        return '<img src="' . esc_url($meta->value) . '" style="max-width:150px; height:auto;" alt="Custom Design" />';
+        $image_html = '<div class="aakaari-preview-image">';
+        $image_html .= '<a href="' . esc_url($meta->value) . '" target="_blank">';
+        $image_html .= '<img src="' . esc_url($meta->value) . '" style="max-width:150px; height:auto; border:1px solid #ddd; border-radius:4px;" alt="Custom Design" />';
+        $image_html .= '</a>';
+        $image_html .= '<p><a href="' . esc_url($meta->value) . '" download class="button" style="margin-top:10px;">Download Design</a></p>';
+        $image_html .= '</div>';
+        return $image_html;
+    }
+    if ( $meta->key === '_aakaari_attachments' ) {
+        $attachments = maybe_unserialize( $meta->value );
+        if ( is_array($attachments) && !empty($attachments) ) {
+            $output = '<div class="aakaari-attachments">';
+            foreach ($attachments as $attachment_id) {
+                $attachment_url = wp_get_attachment_url($attachment_id);
+                $attachment_thumb = wp_get_attachment_image_url($attachment_id, 'thumbnail');
+                if ($attachment_url) {
+                    $output .= '<div style="display:inline-block; margin:5px;">';
+                    if ($attachment_thumb) {
+                        $output .= '<a href="' . esc_url($attachment_url) . '" target="_blank">';
+                        $output .= '<img src="' . esc_url($attachment_thumb) . '" style="max-width:80px; height:auto; border:1px solid #ddd; border-radius:4px;" />';
+                        $output .= '</a><br>';
+                    }
+                    $output .= '<a href="' . esc_url($attachment_url) . '" download class="button" style="font-size:11px; padding:3px 8px;">Download</a>';
+                    $output .= '</div>';
+                }
+            }
+            $output .= '</div>';
+            return $output;
+        }
     }
     return $display_value;
 }

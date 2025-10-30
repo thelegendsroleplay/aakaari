@@ -885,4 +885,115 @@ function aakaari_ps_sync_print_types_to_attribute($product, $print_type_ids) {
 // Hook the new upload handler
 add_action('wp_ajax_aakaari_ps_upload_side_image', 'aakaari_ps_upload_side_image');
 
+/**
+ * AJAX Handler: Upload color-specific mockup image
+ * Action: aakaari_ps_upload_color_mockup
+ */
+function aakaari_ps_upload_color_mockup() {
+    aakaari_ps_ajax_check(); // Security check
+
+    if (empty($_FILES['color_mockup_file'])) {
+        wp_send_json_error('No file uploaded.', 400);
+    }
+
+    if (empty($_POST['color'])) {
+        wp_send_json_error('No color specified.', 400);
+    }
+
+    $color = sanitize_text_field($_POST['color']);
+    $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
+
+    $file = $_FILES['color_mockup_file'];
+
+    // Use WordPress's media uploader
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+
+    // Allow common image types
+    $allowed_mime_types = array(
+        'jpg|jpeg|jpe' => 'image/jpeg',
+        'png'          => 'image/png',
+        'gif'          => 'image/gif',
+        'webp'         => 'image/webp',
+    );
+
+    // Upload the file to the media library
+    $attachment_id = media_handle_upload('color_mockup_file', $product_id, array(), array(
+        'mimes' => $allowed_mime_types,
+        'test_form' => false
+    ));
+
+    if (is_wp_error($attachment_id)) {
+        wp_send_json_error('Upload Error: ' . $attachment_id->get_error_message(), 500);
+    }
+
+    // Get the URL of the uploaded image
+    $image_url = wp_get_attachment_image_url($attachment_id, 'full');
+
+    if (!$image_url) {
+        wp_delete_attachment($attachment_id, true); // Clean up
+        wp_send_json_error('Failed to get image URL after upload.', 500);
+    }
+
+    // Send back the attachment ID and URL
+    wp_send_json_success(array(
+        'message'       => 'Color mockup uploaded successfully.',
+        'attachment_id' => $attachment_id,
+        'url'           => $image_url,
+        'color'         => $color
+    ));
+}
+add_action('wp_ajax_aakaari_ps_upload_color_mockup', 'aakaari_ps_upload_color_mockup');
+
+/**
+ * AJAX Handler: Save color mockups with print areas
+ * Action: aakaari_ps_save_color_mockups
+ */
+function aakaari_ps_save_color_mockups() {
+    aakaari_ps_ajax_check(); // Security check
+
+    $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
+    $color_mockups = isset($_POST['color_mockups']) ? $_POST['color_mockups'] : array();
+
+    if (!$product_id) {
+        wp_send_json_error('Invalid product ID.', 400);
+    }
+
+    // Sanitize and validate color mockups data
+    $sanitized_mockups = array();
+    foreach ($color_mockups as $color => $mockup_data) {
+        $color_hex = sanitize_text_field($color);
+
+        $sanitized_mockups[$color_hex] = array(
+            'attachment_id' => isset($mockup_data['attachment_id']) ? absint($mockup_data['attachment_id']) : 0,
+            'url' => isset($mockup_data['url']) ? esc_url_raw($mockup_data['url']) : '',
+            'print_area' => array(
+                'x' => isset($mockup_data['print_area']['x']) ? floatval($mockup_data['print_area']['x']) : 0,
+                'y' => isset($mockup_data['print_area']['y']) ? floatval($mockup_data['print_area']['y']) : 0,
+                'width' => isset($mockup_data['print_area']['width']) ? floatval($mockup_data['print_area']['width']) : 100,
+                'height' => isset($mockup_data['print_area']['height']) ? floatval($mockup_data['print_area']['height']) : 100,
+            )
+        );
+    }
+
+    // Save to product meta
+    update_post_meta($product_id, '_aakaari_color_mockups', $sanitized_mockups);
+
+    // Also update the color variant images for backward compatibility
+    $variant_images = array();
+    foreach ($sanitized_mockups as $color => $mockup_data) {
+        if (!empty($mockup_data['attachment_id'])) {
+            $variant_images[$color] = $mockup_data['attachment_id'];
+        }
+    }
+    update_post_meta($product_id, '_aakaari_color_variant_images', $variant_images);
+
+    wp_send_json_success(array(
+        'message' => 'Color mockups saved successfully.',
+        'mockups' => $sanitized_mockups
+    ));
+}
+add_action('wp_ajax_aakaari_ps_save_color_mockups', 'aakaari_ps_save_color_mockups');
+
 ?>
