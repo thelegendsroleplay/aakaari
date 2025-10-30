@@ -435,39 +435,67 @@
     // Helper function to draw print area
     function drawPrintArea(ctx, area) {
         ctx.save();
-        
-        // Draw print area rectangle
+
+        // Draw semi-transparent fill to highlight the print area
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.05)'; // Light blue tint
+        ctx.fillRect(area.x, area.y, area.width, area.height);
+
+        // Draw print area rectangle with dashed border
         ctx.strokeStyle = '#3B82F6';
         ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]); // Dashed line
         ctx.strokeRect(area.x, area.y, area.width, area.height);
-        
-        // Add label if name exists
-        if (area.name) {
-            ctx.font = '12px Arial';
-            ctx.fillStyle = '#3B82F6';
-            ctx.fillText(area.name, area.x + 5, area.y - 5);
-        }
-        
+        ctx.setLineDash([]); // Reset dash
+
+        // Add prominent label at the top
+        const labelText = area.name || 'Design Area';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#3B82F6';
+        ctx.textAlign = 'left';
+        ctx.fillText('✓ ' + labelText, area.x + 10, area.y + 25);
+
+        // Add instruction text at the bottom
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#6B7280';
+        ctx.textAlign = 'center';
+        ctx.fillText('Place your designs here', area.x + area.width / 2, area.y + area.height - 15);
+
         ctx.restore();
     }
-    
+
     // Helper function to draw restriction area
     function drawRestrictionArea(ctx, area) {
         ctx.save();
-        
-        // Draw restriction area rectangle with red color
+
+        // Draw semi-transparent red overlay to show restricted area
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'; // Light red tint
+        ctx.fillRect(area.x, area.y, area.width, area.height);
+
+        // Draw restriction area rectangle with red dashed border
         ctx.strokeStyle = '#EF4444';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]); // Dashed line
         ctx.strokeRect(area.x, area.y, area.width, area.height);
-        
-        // Add label if name exists
-        if (area.name) {
-            ctx.font = '12px Arial';
-            ctx.fillStyle = '#EF4444';
-            ctx.fillText('No Print: ' + area.name, area.x + 5, area.y - 5);
+        ctx.setLineDash([]); // Reset dash
+
+        // Add warning label
+        const labelText = area.name || 'Restricted Zone';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#EF4444';
+        ctx.textAlign = 'left';
+        ctx.fillText('⚠ No Print: ' + labelText, area.x + 10, area.y + 25);
+
+        // Draw diagonal lines to indicate restriction
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+        ctx.lineWidth = 1;
+        const spacing = 20;
+        for (let i = area.x; i < area.x + area.width + area.height; i += spacing) {
+            ctx.beginPath();
+            ctx.moveTo(i, area.y);
+            ctx.lineTo(i - area.height, area.y + area.height);
+            ctx.stroke();
         }
-        
+
         ctx.restore();
     }
     
@@ -910,10 +938,21 @@
                     isSelected: true,
                     printType: state.selectedPrintType
                 };
-                
+
+                // Apply print area constraints to initial position
+                const constrainedPosition = constrainToPrintArea(
+                    design.x - design.width / 2, // Center the design
+                    design.y - design.height / 2,
+                    design.width,
+                    design.height
+                );
+
+                design.x = constrainedPosition.x;
+                design.y = constrainedPosition.y;
+
                 // Deselect all other designs
                 state.designs.forEach(d => d.isSelected = false);
-                
+
                 // Add design to state
                 state.designs.push(design);
                 
@@ -936,8 +975,8 @@
     // Function to add text design
     function addTextDesign(text) {
         if (!text) return;
-        
-        // Create new design
+
+        // Create new design with initial position
         const design = {
             id: Date.now().toString(),
             type: 'text',
@@ -953,19 +992,30 @@
             isSelected: true,
             printType: state.selectedPrintType
         };
-        
+
+        // Apply print area constraints to initial position
+        const constrainedPosition = constrainToPrintArea(
+            design.x - design.width / 2, // Center the design
+            design.y - design.height / 2,
+            design.width,
+            design.height
+        );
+
+        design.x = constrainedPosition.x;
+        design.y = constrainedPosition.y;
+
         // Deselect all other designs
         state.designs.forEach(d => d.isSelected = false);
-        
+
         // Add design to state
         state.designs.push(design);
-        
+
         // Update product state
         updateProductState();
-        
+
         // Render canvas
         renderCanvas();
-        
+
         // Add design to design list
         updateDesignList();
     }
@@ -1111,21 +1161,146 @@
         }
     }
     
+    /**
+     * Constrain design position to stay within print areas
+     * This ensures designs cannot be placed outside designated print zones
+     */
+    function constrainToPrintArea(x, y, width, height) {
+        // Get current side
+        const currentSide = state.product.sides[state.selectedSide];
+        if (!currentSide) {
+            return { x, y }; // No side data, return original position
+        }
+
+        // Get print areas
+        const printAreas = currentSide.printAreas || [];
+
+        // If no print areas defined, allow placement anywhere (backward compatibility)
+        if (printAreas.length === 0) {
+            console.warn('No print areas defined for this side. Designs can be placed anywhere.');
+            return { x, y };
+        }
+
+        // Find the largest print area (primary print area)
+        let primaryPrintArea = null;
+        let maxArea = 0;
+
+        printAreas.forEach(area => {
+            const areaSize = area.width * area.height;
+            if (areaSize > maxArea) {
+                maxArea = areaSize;
+                primaryPrintArea = area;
+            }
+        });
+
+        if (!primaryPrintArea) {
+            return { x, y }; // No valid print area found
+        }
+
+        // Constrain the design to stay within the primary print area
+        let constrainedX = x;
+        let constrainedY = y;
+
+        // Left boundary
+        if (constrainedX < primaryPrintArea.x) {
+            constrainedX = primaryPrintArea.x;
+        }
+
+        // Right boundary
+        if (constrainedX + width > primaryPrintArea.x + primaryPrintArea.width) {
+            constrainedX = primaryPrintArea.x + primaryPrintArea.width - width;
+        }
+
+        // Top boundary
+        if (constrainedY < primaryPrintArea.y) {
+            constrainedY = primaryPrintArea.y;
+        }
+
+        // Bottom boundary
+        if (constrainedY + height > primaryPrintArea.y + primaryPrintArea.height) {
+            constrainedY = primaryPrintArea.y + primaryPrintArea.height - height;
+        }
+
+        // Check if design is too large for print area
+        if (width > primaryPrintArea.width) {
+            console.warn('Design is wider than print area. Constraining to left edge.');
+            constrainedX = primaryPrintArea.x;
+        }
+
+        if (height > primaryPrintArea.height) {
+            console.warn('Design is taller than print area. Constraining to top edge.');
+            constrainedY = primaryPrintArea.y;
+        }
+
+        // Check restriction areas - designs cannot overlap with restriction zones
+        const restrictionAreas = currentSide.restrictionAreas || [];
+
+        restrictionAreas.forEach(restrictionArea => {
+            // Check if design would overlap with restriction area
+            const designRight = constrainedX + width;
+            const designBottom = constrainedY + height;
+            const restrictionRight = restrictionArea.x + restrictionArea.width;
+            const restrictionBottom = restrictionArea.y + restrictionArea.height;
+
+            // Check for overlap
+            const overlapsX = constrainedX < restrictionRight && designRight > restrictionArea.x;
+            const overlapsY = constrainedY < restrictionBottom && designBottom > restrictionArea.y;
+
+            if (overlapsX && overlapsY) {
+                // Design overlaps with restriction area - push it outside
+                console.log('Design overlaps restriction area, adjusting position...');
+
+                // Determine which direction to push the design
+                const pushLeft = designRight - restrictionArea.x;
+                const pushRight = restrictionRight - constrainedX;
+                const pushUp = designBottom - restrictionArea.y;
+                const pushDown = restrictionBottom - constrainedY;
+
+                // Find the minimum push distance
+                const minPush = Math.min(pushLeft, pushRight, pushUp, pushDown);
+
+                if (minPush === pushLeft && constrainedX - pushLeft >= primaryPrintArea.x) {
+                    constrainedX -= pushLeft;
+                } else if (minPush === pushRight && constrainedX + pushRight + width <= primaryPrintArea.x + primaryPrintArea.width) {
+                    constrainedX += pushRight;
+                } else if (minPush === pushUp && constrainedY - pushUp >= primaryPrintArea.y) {
+                    constrainedY -= pushUp;
+                } else if (minPush === pushDown && constrainedY + pushDown + height <= primaryPrintArea.y + primaryPrintArea.height) {
+                    constrainedY += pushDown;
+                }
+            }
+        });
+
+        return { x: constrainedX, y: constrainedY };
+    }
+
     function handleCanvasMouseMove(event) {
         if (!state.draggingDesign) return;
-        
+
         const canvas = state.canvas;
         if (!canvas) return;
-        
+
         // Calculate canvas coordinates
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        
-        // Update design position
-        state.draggingDesign.x = x - state.draggingOffset.x;
-        state.draggingDesign.y = y - state.draggingOffset.y;
-        
+
+        // Calculate new position
+        let newX = x - state.draggingOffset.x;
+        let newY = y - state.draggingOffset.y;
+
+        // Apply print area boundary constraints
+        const constrainedPosition = constrainToPrintArea(
+            newX,
+            newY,
+            state.draggingDesign.width,
+            state.draggingDesign.height
+        );
+
+        // Update design position with constraints applied
+        state.draggingDesign.x = constrainedPosition.x;
+        state.draggingDesign.y = constrainedPosition.y;
+
         // Re-render canvas
         renderCanvas();
     }
