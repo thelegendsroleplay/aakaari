@@ -4,6 +4,21 @@
  */
 
 defined('ABSPATH') || exit;
+
+// Get order from URL parameter
+$order_id = isset($_GET['order']) ? absint($_GET['order']) : 0;
+$order_key = isset($_GET['key']) ? wc_clean(wp_unslash($_GET['key'])) : '';
+
+if ($order_id > 0) {
+    $order = wc_get_order($order_id);
+
+    // Verify order key for security
+    if (!$order || !hash_equals($order->get_order_key(), $order_key)) {
+        $order = false;
+    }
+} else {
+    $order = false;
+}
 ?>
 
 <div class="order-received-page">
