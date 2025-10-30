@@ -469,10 +469,13 @@ function aakaari_ajax_add_to_cart() {
     // Now add to cart and include $designs + $attached_image_ids as cart item meta
     $cart_item_data = array(
         'aakaari_designs' => $designs,
-        'aakaari_attachments' => $attached_image_ids,
         'aakaari_timestamp' => time(),
     );
-    error_log('AJAX: Cart Item Data prepared: ' . print_r($cart_item_data, true)); // Log data before adding
+    // Only add attachments if they exist
+    if (!empty($attached_image_ids)) {
+        $cart_item_data['aakaari_attachments'] = $attached_image_ids;
+    }
+    error_log('AJAX: Cart Item Data prepared: ' . print_r($cart_item_data, true));
 
 
     $quantity = 1;
