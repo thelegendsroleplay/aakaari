@@ -48,6 +48,9 @@ $required_files = array(
     'functional-cart-functions.php',
     'woocommerce-checkout.php',
     'shipping-config.php',
+    'order-emails.php',
+    'order-tracking-ajax.php',
+    'order-tracking-admin.php',
 );
 
 // Load each file with error checking

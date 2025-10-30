@@ -101,7 +101,7 @@ function enqueue_login_assets() {
             array(),
             '1.0.0'
         );
-        
+
         // JavaScript
         wp_enqueue_script(
             'login-js',
@@ -113,3 +113,19 @@ function enqueue_login_assets() {
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_login_assets');
+
+/**
+ * Enqueue Order pages assets (Order Received & Track Order)
+ */
+function enqueue_order_pages_assets() {
+    // For WooCommerce order received page
+    if (is_order_received_page() || is_page('track-order')) {
+        wp_enqueue_style(
+            'order-pages-styles',
+            get_template_directory_uri() . '/assets/css/order-pages.css',
+            array(),
+            '1.0.0'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_order_pages_assets');
