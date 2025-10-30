@@ -932,8 +932,43 @@ select.input {
 
 /* Place order wrapper */
 .checkout-v2 .woocommerce-checkout-payment .form-row.place-order {
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    float: none !important;
+    clear: both !important;
+    text-align: left !important;
+}
+
+/* Ensure payment section and all wrappers are full width */
+.checkout-v2 #payment,
+.checkout-v2 .woocommerce-checkout-payment {
+    width: 100% !important;
+    display: block !important;
+    float: none !important;
+}
+
+/* Override any WooCommerce column layouts on payment */
+.checkout-v2 .woocommerce-checkout-payment .form-row {
+    width: 100% !important;
+    float: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Force full width on desktop for all payment children */
+@media (min-width: 768px) {
+    .checkout-v2 .woocommerce-checkout-payment .form-row.place-order,
+    .checkout-v2 .woocommerce-checkout-payment .woocommerce-terms-and-conditions-wrapper,
+    .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-text {
+        width: 100% !important;
+        max-width: 100% !important;
+        float: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        text-align: center !important;
+    }
 }
 
 /* Hide noscript */
