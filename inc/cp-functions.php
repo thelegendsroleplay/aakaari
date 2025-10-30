@@ -440,7 +440,29 @@ function aakaari_ajax_add_to_cart() {
         error_log('AJAX Warning: No designs payload received.'); // Log if designs are missing
     }
 
-    // ... (file upload code remains the same) ...
+    // Handle file uploads
+    $attached_image_ids = array();
+    if ( ! empty( $_FILES['files'] ) ) {
+        $files = $_FILES['files'];
+        // Re-format the $_FILES array for easier processing
+        $files_reformatted = array();
+        foreach ($files['name'] as $key => $name) {
+            $files_reformatted[$key] = array(
+                'name'     => $name,
+                'type'     => $files['type'][$key],
+                'tmp_name' => $files['tmp_name'][$key],
+                'error'    => $files['error'][$key],
+                'size'     => $files['size'][$key],
+            );
+        }
+
+        foreach ( $files_reformatted as $file ) {
+            $attach_id = aakaari_handle_upload_and_attach( $file );
+            if ( $attach_id ) {
+                $attached_image_ids[] = $attach_id;
+            }
+        }
+    }
     error_log('AJAX: Processed file uploads (if any). Attached IDs: ' . print_r($attached_image_ids, true));
 
 
