@@ -412,6 +412,7 @@ function aakaari_approve_application() {
             $user = get_user_by('email', $applicant_email);
             if ($user) {
                 // Mark onboarding completed only on approval
+                update_user_meta($user->ID, 'email_verified', 'true');
                 update_user_meta($user->ID, 'onboarding_status', 'approved');
                 update_user_meta($user->ID, 'account_status', 'active');
                 update_user_meta($user->ID, 'approved_date', current_time('mysql'));
