@@ -1097,30 +1097,8 @@ body {
   }
 }
 
-/* Dark mode support (optional) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text-dark: #F9FAFB;
-    --text-medium: #D1D5DB;
-    --text-light: #9CA3AF;
-    --bg-light: #111827;
-    --border-color: #374151;
-  }
-
-  .aakaari-hero-section {
-    background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
-  }
-
-  .fp-card,
-  .how-step {
-    background-color: #1F2937;
-    border-color: #374151;
-  }
-
-  .hero-image {
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  }
-}
+/* Dark mode auto-detection disabled to maintain consistent theme appearance
+   Dark mode is controlled by theme settings, not browser/OS preferences */
 
 /* Print styles */
 @media print {

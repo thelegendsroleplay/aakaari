@@ -79,10 +79,12 @@ class Aakaari_COD_OTP_Verification {
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('cod_otp_nonce'),
             'messages' => array(
-                'otp_sent'     => __('OTP sent to your phone number', 'aakaari'),
-                'otp_verified' => __('OTP verified successfully', 'aakaari'),
-                'otp_invalid'  => __('Invalid OTP. Please try again.', 'aakaari'),
-                'otp_required' => __('Please verify your phone number with OTP for COD orders', 'aakaari'),
+                'otp_sent'     => __('Verification code sent to your email', 'aakaari'),
+                'otp_verified' => __('Email verified successfully', 'aakaari'),
+                'otp_invalid'  => __('Invalid verification code. Please try again.', 'aakaari'),
+                'otp_required' => __('Email Verification Required for COD Orders', 'aakaari'),
+                'enter_details' => __('Please fill in your email and phone number first', 'aakaari'),
+                'check_email'  => __('Check your email for the verification code', 'aakaari'),
             ),
         ));
     }
@@ -123,11 +125,15 @@ class Aakaari_COD_OTP_Verification {
 
         if ($sent) {
             wp_send_json_success(array(
-                'message' => __('OTP sent to your email and phone number', 'aakaari'),
-                'masked_phone' => $this->mask_phone($phone),
+                'message' => sprintf(
+                    __('A 6-digit verification code has been sent to %s. Please check your email (including spam folder).', 'aakaari'),
+                    $this->mask_email($email)
+                ),
+                'masked_email' => $this->mask_email($email),
+                'expires_in' => 10, // minutes
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to send OTP. Please try again.', 'aakaari')));
+            wp_send_json_error(array('message' => __('Failed to send verification code. Please check your email address and try again.', 'aakaari')));
         }
     }
 
@@ -215,20 +221,76 @@ class Aakaari_COD_OTP_Verification {
      * Send OTP via email
      */
     private function send_otp_email($email, $phone, $otp) {
-        $subject = __('Your COD Verification Code - Aakaari', 'aakaari');
+        $subject = __('Your Cash on Delivery Verification Code', 'aakaari');
 
-        $message = sprintf(
-            __('Your verification code for Cash on Delivery order is: %s', 'aakaari'),
-            '<strong>' . $otp . '</strong>'
-        );
-        $message .= '<br><br>';
-        $message .= __('This code will expire in 10 minutes.', 'aakaari');
-        $message .= '<br><br>';
-        $message .= sprintf(__('Phone: %s', 'aakaari'), $this->mask_phone($phone));
+        $site_name = get_bloginfo('name');
+
+        $message = '
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+            <div style="background-color: #ffffff; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #333; margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+                    ' . esc_html($site_name) . '
+                </h2>
+
+                <h3 style="color: #007bff; margin-bottom: 20px;">Email Verification Required</h3>
+
+                <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+                    To complete your Cash on Delivery order, please verify your email address using the code below:
+                </p>
+
+                <div style="background-color: #e7f3ff; border-left: 4px solid #007bff; padding: 20px; margin: 30px 0; text-align: center;">
+                    <p style="color: #666; margin: 0 0 10px 0; font-size: 14px;">Your Verification Code</p>
+                    <h1 style="color: #007bff; margin: 0; font-size: 36px; letter-spacing: 8px; font-family: monospace;">
+                        ' . esc_html($otp) . '
+                    </h1>
+                </div>
+
+                <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #856404; font-size: 14px;">
+                        <strong>⏱ This code will expire in 10 minutes</strong>
+                    </p>
+                </div>
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h4 style="color: #333; margin-bottom: 10px;">Order Details:</h4>
+                    <p style="color: #666; margin: 5px 0; font-size: 14px;">
+                        <strong>Email:</strong> ' . esc_html($email) . '<br>
+                        <strong>Phone:</strong> ' . esc_html($phone) . '<br>
+                        <strong>Payment Method:</strong> Cash on Delivery
+                    </p>
+                </div>
+
+                <p style="color: #999; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                    If you didn\'t request this verification code, please ignore this email or contact our support team.
+                </p>
+            </div>
+        </div>';
 
         $headers = array('Content-Type: text/html; charset=UTF-8');
 
         return wp_mail($email, $subject, $message, $headers);
+    }
+
+    /**
+     * Mask email address for security
+     */
+    private function mask_email($email) {
+        $parts = explode('@', $email);
+        if (count($parts) != 2) {
+            return $email;
+        }
+
+        $name = $parts[0];
+        $domain = $parts[1];
+
+        $name_length = strlen($name);
+        if ($name_length <= 2) {
+            $masked_name = str_repeat('*', $name_length);
+        } else {
+            $masked_name = substr($name, 0, 2) . str_repeat('*', $name_length - 2);
+        }
+
+        return $masked_name . '@' . $domain;
     }
 
     /**
