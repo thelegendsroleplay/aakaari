@@ -246,6 +246,77 @@ function aakaari_ps_load_data() {
 add_action('wp_ajax_aakaari_ps_load_data', 'aakaari_ps_load_data');
 
 /**
+ * Helper Function: Get or create attachment from URL
+ * Downloads an image from a URL and creates a WordPress attachment
+ * Returns attachment ID or false on failure
+ */
+function aakaari_ps_get_or_create_attachment_from_url($image_url, $post_id = 0) {
+    // Validate URL
+    if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
+        return false;
+    }
+
+    // Check if this URL already exists as an attachment
+    global $wpdb;
+    $attachment = $wpdb->get_col($wpdb->prepare(
+        "SELECT ID FROM {$wpdb->posts} WHERE guid = %s AND post_type = 'attachment' LIMIT 1",
+        $image_url
+    ));
+
+    if (!empty($attachment)) {
+        return $attachment[0];
+    }
+
+    // Include required WordPress files
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+    // Download the image
+    $tmp = download_url($image_url);
+
+    if (is_wp_error($tmp)) {
+        error_log("Aakaari PS: Failed to download image from {$image_url}: " . $tmp->get_error_message());
+        return false;
+    }
+
+    // Get the filename and extension
+    $file_array = array();
+    preg_match('/[^\?]+\.(jpg|jpeg|gif|png|webp)/i', $image_url, $matches);
+
+    if (empty($matches)) {
+        // If we can't get extension from URL, try to get it from the downloaded file
+        $image_info = getimagesize($tmp);
+        if ($image_info && isset($image_info['mime'])) {
+            $ext = image_type_to_extension($image_info[2], false);
+            $file_array['name'] = 'product-image-' . uniqid() . '.' . $ext;
+        } else {
+            $file_array['name'] = 'product-image-' . uniqid() . '.jpg';
+        }
+    } else {
+        $file_array['name'] = basename($matches[0]);
+    }
+
+    $file_array['tmp_name'] = $tmp;
+
+    // Handle the upload
+    $attachment_id = media_handle_sideload($file_array, $post_id, null);
+
+    // Clean up temp file
+    if (is_file($tmp)) {
+        @unlink($tmp);
+    }
+
+    // Check for errors
+    if (is_wp_error($attachment_id)) {
+        error_log("Aakaari PS: Failed to create attachment: " . $attachment_id->get_error_message());
+        return false;
+    }
+
+    return $attachment_id;
+}
+
+/**
  * AJAX Handler: Saves a Product (Creates or Updates)
  * Action: aakaari_ps_save_product
  */
@@ -348,7 +419,7 @@ function aakaari_ps_save_product() {
         ];
 
         $product->update_meta_data('_aakaari_print_studio_data', $studio_data);
-        
+
         // **Sync to WooCommerce product attributes**
         if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
             aakaari_ps_sync_colors_to_attribute($product, $studio_data['colors']);
@@ -361,6 +432,22 @@ function aakaari_ps_save_product() {
         }
 
         $new_product_id = $product->save();
+
+        // **Set Featured Image from first side image**
+        // This ensures WooCommerce displays the product image properly
+        if (!empty($sanitized_sides) && isset($sanitized_sides[0]['imageUrl']) && !empty($sanitized_sides[0]['imageUrl'])) {
+            $image_url = $sanitized_sides[0]['imageUrl'];
+            $attachment_id = aakaari_ps_get_or_create_attachment_from_url($image_url, $new_product_id);
+
+            if ($attachment_id) {
+                set_post_thumbnail($new_product_id, $attachment_id);
+                error_log("Aakaari PS: Set featured image (attachment #{$attachment_id}) for product #{$new_product_id}");
+            } else {
+                error_log("Aakaari PS: Failed to create attachment for product #{$new_product_id} from URL: {$image_url}");
+            }
+        } else {
+            error_log("Aakaari PS: No side image available to set as featured image for product #{$new_product_id}");
+        }
 
         if ($new_product_id === 0) {
              throw new Exception('Failed to save product to WooCommerce.');
