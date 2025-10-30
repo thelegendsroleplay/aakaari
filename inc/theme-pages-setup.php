@@ -12,9 +12,9 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Get page definitions
+ * Create all required pages for the theme
  */
-function aakaari_get_page_definitions() {
+function aakaari_create_required_pages() {
     // Define all pages needed by the theme
     $pages = array(
         // WooCommerce pages
@@ -71,7 +71,7 @@ function aakaari_get_page_definitions() {
         'reseller-dashboard' => array(
             'title' => 'Reseller Dashboard',
             'content' => '',
-            'template' => 'dashboard.php',
+            'template' => 'reseller-dashboard.php',
             'option' => 'aakaari_dashboard_page_id'
         ),
         'admin-dashboard' => array(
@@ -106,57 +106,6 @@ function aakaari_get_page_definitions() {
         ),
     );
 
-    return $pages;
-}
-
-/**
- * Update template for existing pages
- */
-function aakaari_update_page_templates() {
-    $pages = aakaari_get_page_definitions();
-    $updated = 0;
-
-    foreach ($pages as $slug => $page) {
-        if (empty($page['template'])) {
-            continue;
-        }
-
-        $page_id = get_option($page['option']);
-        if (!$page_id) {
-            continue;
-        }
-
-        $existing_page = get_post($page_id);
-        if (!$existing_page || $existing_page->post_status === 'trash') {
-            continue;
-        }
-
-        // Check if template file exists
-        $template_file = get_template_directory() . '/' . $page['template'];
-        if (!file_exists($template_file)) {
-            error_log("Aakaari: Template file not found: {$template_file}");
-            continue;
-        }
-
-        // Get current template
-        $current_template = get_post_meta($page_id, '_wp_page_template', true);
-
-        // Update if template is not set or different
-        if ($current_template !== $page['template']) {
-            update_post_meta($page_id, '_wp_page_template', $page['template']);
-            $updated++;
-            error_log("Aakaari: Updated template for '{$page['title']}' to '{$page['template']}'");
-        }
-    }
-
-    return $updated;
-}
-
-/**
- * Create all required pages for the theme
- */
-function aakaari_create_required_pages() {
-    $pages = aakaari_get_page_definitions();
     $created_pages = array();
     $updated_pages = array();
 
@@ -180,15 +129,9 @@ function aakaari_create_required_pages() {
                 // Page exists with correct slug, just update the option
                 update_option($page['option'], $existing->ID);
 
-                // Update template if specified and file exists
+                // Update template if specified
                 if (!empty($page['template'])) {
-                    $template_file = get_template_directory() . '/' . $page['template'];
-                    if (file_exists($template_file)) {
-                        update_post_meta($existing->ID, '_wp_page_template', $page['template']);
-                        error_log("Aakaari: Assigned template '{$page['template']}' to existing page '{$page['title']}'");
-                    } else {
-                        error_log("Aakaari: Template file not found: {$template_file}");
-                    }
+                    update_post_meta($existing->ID, '_wp_page_template', $page['template']);
                 }
 
                 $updated_pages[] = $page['title'];
@@ -209,15 +152,9 @@ function aakaari_create_required_pages() {
                 $new_page_id = wp_insert_post($page_data);
 
                 if ($new_page_id && !is_wp_error($new_page_id)) {
-                    // Set template if specified and file exists
+                    // Set template if specified
                     if (!empty($page['template'])) {
-                        $template_file = get_template_directory() . '/' . $page['template'];
-                        if (file_exists($template_file)) {
-                            update_post_meta($new_page_id, '_wp_page_template', $page['template']);
-                            error_log("Aakaari: Assigned template '{$page['template']}' to page '{$page['title']}'");
-                        } else {
-                            error_log("Aakaari: Template file not found: {$template_file}");
-                        }
+                        update_post_meta($new_page_id, '_wp_page_template', $page['template']);
                     }
 
                     // Store page ID in option
@@ -281,15 +218,8 @@ add_action('admin_notices', function() {
  */
 add_action('after_switch_theme', function() {
     $summary = aakaari_create_required_pages();
-
-    // Also update templates for any existing pages
-    $template_updates = aakaari_update_page_templates();
-    if ($template_updates > 0) {
-        error_log("Aakaari: Updated templates for {$template_updates} pages after theme activation");
-    }
-
     set_transient('aakaari_pages_created_notice', $summary, 60);
-}, 20); // Run after pages are created
+});
 
 /**
  * Add admin menu item for manual page creation
@@ -312,7 +242,7 @@ function aakaari_pages_setup_page() {
         wp_die('Unauthorized access');
     }
 
-    // Handle manual page creation trigger
+    // Handle manual trigger
     if (isset($_POST['create_pages']) && check_admin_referer('aakaari_create_pages')) {
         $summary = aakaari_create_required_pages();
 
@@ -327,19 +257,6 @@ function aakaari_pages_setup_page() {
             }
         } else {
             echo 'All required pages already exist.';
-        }
-        echo '</p></div>';
-    }
-
-    // Handle manual template update trigger
-    if (isset($_POST['update_templates']) && check_admin_referer('aakaari_update_templates')) {
-        $updated = aakaari_update_page_templates();
-
-        echo '<div class="notice notice-success"><p>';
-        if ($updated > 0) {
-            echo '<strong>Success!</strong> Updated templates for ' . esc_html($updated) . ' pages.';
-        } else {
-            echo 'All page templates are already correctly assigned.';
         }
         echo '</p></div>';
     }
@@ -363,72 +280,56 @@ function aakaari_pages_setup_page() {
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
-                    <th style="width: 25%;">Page</th>
-                    <th style="width: 15%;">Status</th>
-                    <th style="width: 10%;">ID</th>
-                    <th style="width: 30%;">Template</th>
-                    <th style="width: 20%;">Template Status</th>
+                    <th>Page</th>
+                    <th>Status</th>
+                    <th>ID</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
-                $pages_def = aakaari_get_page_definitions();
+                $page_options = array(
+                    'Shop' => 'woocommerce_shop_page_id',
+                    'Cart' => 'woocommerce_cart_page_id',
+                    'Checkout' => 'woocommerce_checkout_page_id',
+                    'My Account' => 'woocommerce_myaccount_page_id',
+                    'Login' => 'aakaari_login_page_id',
+                    'Register' => 'aakaari_register_page_id',
+                    'Become a Reseller' => 'aakaari_reseller_page_id',
+                    'Application Pending' => 'aakaari_pending_page_id',
+                    'Reseller Dashboard' => 'aakaari_dashboard_page_id',
+                    'Admin Dashboard' => 'aakaari_admin_dashboard_page_id',
+                    'Track Order' => 'aakaari_track_order_page_id',
+                    'Contact' => 'aakaari_contact_page_id',
+                    'How It Works' => 'aakaari_how_it_works_page_id',
+                    'Pricing' => 'aakaari_pricing_page_id',
+                );
 
-                foreach ($pages_def as $slug => $page_def) {
-                    $page_id = get_option($page_def['option']);
+                foreach ($page_options as $page_name => $option) {
+                    $page_id = get_option($option);
                     $page = $page_id ? get_post($page_id) : null;
                     $status = $page && $page->post_status === 'publish' ? '✅ Exists' : '❌ Missing';
                     $id_display = $page_id ? $page_id : '-';
 
-                    // Check template status
-                    $template_display = $page_def['template'] ? $page_def['template'] : 'Default';
-                    $template_status = '-';
-
-                    if ($page && $page->post_status === 'publish' && !empty($page_def['template'])) {
-                        $current_template = get_post_meta($page_id, '_wp_page_template', true);
-                        $template_file = get_template_directory() . '/' . $page_def['template'];
-
-                        if (!file_exists($template_file)) {
-                            $template_status = '❌ File Missing';
-                        } elseif ($current_template === $page_def['template']) {
-                            $template_status = '✅ Correct';
-                        } else {
-                            $template_status = '⚠️ Not Assigned';
-                        }
-                    }
-
                     echo '<tr>';
-                    echo '<td><strong>' . esc_html($page_def['title']) . '</strong></td>';
+                    echo '<td>' . esc_html($page_name) . '</td>';
                     echo '<td>' . $status . '</td>';
                     echo '<td>' . esc_html($id_display) . '</td>';
-                    echo '<td><code>' . esc_html($template_display) . '</code></td>';
-                    echo '<td>' . $template_status . '</td>';
                     echo '</tr>';
                 }
                 ?>
             </tbody>
         </table>
 
-        <div style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
-            <form method="post" style="margin: 0;">
-                <?php wp_nonce_field('aakaari_create_pages'); ?>
-                <button type="submit" name="create_pages" class="button button-primary button-large">
-                    📄 Create/Update Missing Pages
-                </button>
-            </form>
+        <form method="post" style="margin-top: 20px;">
+            <?php wp_nonce_field('aakaari_create_pages'); ?>
+            <button type="submit" name="create_pages" class="button button-primary button-large">
+                Create/Update Missing Pages
+            </button>
+        </form>
 
-            <form method="post" style="margin: 0;">
-                <?php wp_nonce_field('aakaari_update_templates'); ?>
-                <button type="submit" name="update_templates" class="button button-secondary button-large">
-                    🎨 Update Page Templates
-                </button>
-            </form>
-        </div>
-
-        <div style="margin-top: 20px; padding: 15px; background: #f0f6fc; border-left: 4px solid #0073aa; border-radius: 4px;">
-            <p style="margin: 0 0 10px 0;"><strong>📄 Create/Update Missing Pages:</strong> Creates pages that don't exist and assigns templates.</p>
-            <p style="margin: 0;"><strong>🎨 Update Page Templates:</strong> Updates templates for existing pages that have incorrect or missing template assignments.</p>
-        </div>
+        <p style="margin-top: 20px; color: #666;">
+            <strong>Note:</strong> This will only create pages that don't exist. Existing pages will not be modified.
+        </p>
     </div>
     <?php
 }
