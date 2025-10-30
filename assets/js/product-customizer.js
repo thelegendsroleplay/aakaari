@@ -21,20 +21,30 @@
         selectedColor: null,
         selectedPrintType: null,
         designs: [],
-        
+
         // Canvas
         canvas: null,
         ctx: null,
         canvasScale: 1.0,
         canvasOffset: { x: 0, y: 0 },
-        
+        canvasWidth: 0,
+        canvasHeight: 0,
+
+        // Print Studio coordinate system (fixed size)
+        PRINT_STUDIO_WIDTH: 500,
+        PRINT_STUDIO_HEIGHT: 500,
+
+        // Scaling factors for coordinate transformation
+        scaleX: 1.0,
+        scaleY: 1.0,
+
         // Interaction state
         draggingDesign: null,
         draggingOffset: { x: 0, y: 0 },
         resizingDesign: null,
         resizeStartSize: { width: 0, height: 0 },
         resizeStartPoint: { x: 0, y: 0 },
-        
+
         // Pricing
         basePrice: 0,
         totalPrice: 0,
@@ -101,11 +111,65 @@
             console.error('Canvas element not found!');
             return;
         }
-        
+
         state.ctx = state.canvas.getContext('2d');
-        
+
+        // Store canvas dimensions
+        state.canvasWidth = state.canvas.width;
+        state.canvasHeight = state.canvas.height;
+
+        // Calculate scaling factors for coordinate transformation
+        // Print Studio uses 500x500, we need to scale to actual canvas size
+        state.scaleX = state.canvasWidth / state.PRINT_STUDIO_WIDTH;
+        state.scaleY = state.canvasHeight / state.PRINT_STUDIO_HEIGHT;
+
+        console.log('Canvas setup complete:');
+        console.log('- Canvas size:', state.canvasWidth, 'x', state.canvasHeight);
+        console.log('- Print Studio size:', state.PRINT_STUDIO_WIDTH, 'x', state.PRINT_STUDIO_HEIGHT);
+        console.log('- Scale factors:', state.scaleX.toFixed(3), 'x', state.scaleY.toFixed(3));
+
         // Initial canvas render
         renderCanvas();
+    }
+
+    /**
+     * Transform print area coordinates from Print Studio to Canvas coordinates
+     */
+    function transformPrintArea(area) {
+        if (!area) return null;
+
+        return {
+            x: area.x * state.scaleX,
+            y: area.y * state.scaleY,
+            width: area.width * state.scaleX,
+            height: area.height * state.scaleY,
+            name: area.name
+        };
+    }
+
+    /**
+     * Get the primary (largest) print area, transformed to canvas coordinates
+     */
+    function getPrimaryPrintArea() {
+        const currentSide = state.product.sides[state.selectedSide];
+        if (!currentSide || !currentSide.printAreas || currentSide.printAreas.length === 0) {
+            return null;
+        }
+
+        // Find largest print area
+        let primaryArea = currentSide.printAreas[0];
+        let maxSize = primaryArea.width * primaryArea.height;
+
+        currentSide.printAreas.forEach(area => {
+            const size = area.width * area.height;
+            if (size > maxSize) {
+                maxSize = size;
+                primaryArea = area;
+            }
+        });
+
+        // Return transformed coordinates
+        return transformPrintArea(primaryArea);
     }
     
     function setupSideSelector() {
@@ -434,65 +498,73 @@
     
     // Helper function to draw print area
     function drawPrintArea(ctx, area) {
+        // Transform area to canvas coordinates
+        const transformed = transformPrintArea(area);
+        if (!transformed) return;
+
         ctx.save();
 
         // Draw semi-transparent fill to highlight the print area
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.05)'; // Light blue tint
-        ctx.fillRect(area.x, area.y, area.width, area.height);
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)'; // Light blue tint
+        ctx.fillRect(transformed.x, transformed.y, transformed.width, transformed.height);
 
         // Draw print area rectangle with dashed border
         ctx.strokeStyle = '#3B82F6';
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 4]); // Dashed line
-        ctx.strokeRect(area.x, area.y, area.width, area.height);
+        ctx.strokeRect(transformed.x, transformed.y, transformed.width, transformed.height);
         ctx.setLineDash([]); // Reset dash
 
         // Add prominent label at the top
-        const labelText = area.name || 'Design Area';
+        const labelText = transformed.name || 'Design Area';
         ctx.font = 'bold 14px Arial';
         ctx.fillStyle = '#3B82F6';
         ctx.textAlign = 'left';
-        ctx.fillText('✓ ' + labelText, area.x + 10, area.y + 25);
+        ctx.fillText('✓ ' + labelText, transformed.x + 10, transformed.y + 25);
 
         // Add instruction text at the bottom
         ctx.font = '12px Arial';
         ctx.fillStyle = '#6B7280';
         ctx.textAlign = 'center';
-        ctx.fillText('Place your designs here', area.x + area.width / 2, area.y + area.height - 15);
+        ctx.fillText('Place your designs here', transformed.x + transformed.width / 2, transformed.y + transformed.height - 15);
 
         ctx.restore();
     }
 
     // Helper function to draw restriction area
     function drawRestrictionArea(ctx, area) {
+        // Transform area to canvas coordinates
+        const transformed = transformPrintArea(area);
+        if (!transformed) return;
+
         ctx.save();
 
         // Draw semi-transparent red overlay to show restricted area
         ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'; // Light red tint
-        ctx.fillRect(area.x, area.y, area.width, area.height);
+        ctx.fillRect(transformed.x, transformed.y, transformed.width, transformed.height);
 
         // Draw restriction area rectangle with red dashed border
         ctx.strokeStyle = '#EF4444';
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]); // Dashed line
-        ctx.strokeRect(area.x, area.y, area.width, area.height);
+        ctx.strokeRect(transformed.x, transformed.y, transformed.width, transformed.height);
         ctx.setLineDash([]); // Reset dash
 
         // Add warning label
-        const labelText = area.name || 'Restricted Zone';
+        const labelText = transformed.name || 'Restricted Zone';
         ctx.font = 'bold 14px Arial';
         ctx.fillStyle = '#EF4444';
         ctx.textAlign = 'left';
-        ctx.fillText('⚠ No Print: ' + labelText, area.x + 10, area.y + 25);
+        ctx.fillText('⚠ No Print: ' + labelText, transformed.x + 10, transformed.y + 25);
 
         // Draw diagonal lines to indicate restriction
         ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
         ctx.lineWidth = 1;
         const spacing = 20;
-        for (let i = area.x; i < area.x + area.width + area.height; i += spacing) {
+        for (let i = transformed.x; i < transformed.x + transformed.width + transformed.height; i += spacing) {
             ctx.beginPath();
-            ctx.moveTo(i, area.y);
-            ctx.lineTo(i - area.height, area.y + area.height);
+            ctx.moveTo(i, transformed.y);
+            ctx.lineTo(i - transformed.height, transformed.y + transformed.height);
             ctx.stroke();
         }
 
@@ -939,10 +1011,10 @@
                     printType: state.selectedPrintType
                 };
 
-                // Apply print area constraints to initial position
+                // Apply print area constraints to initial position (using center coordinates)
                 const constrainedPosition = constrainToPrintArea(
-                    design.x - design.width / 2, // Center the design
-                    design.y - design.height / 2,
+                    design.x,
+                    design.y,
                     design.width,
                     design.height
                 );
@@ -993,10 +1065,10 @@
             printType: state.selectedPrintType
         };
 
-        // Apply print area constraints to initial position
+        // Apply print area constraints to initial position (using center coordinates)
         const constrainedPosition = constrainToPrintArea(
-            design.x - design.width / 2, // Center the design
-            design.y - design.height / 2,
+            design.x,
+            design.y,
             design.width,
             design.height
         );
@@ -1164,87 +1236,77 @@
     /**
      * Constrain design position to stay within print areas
      * This ensures designs cannot be placed outside designated print zones
+     * Uses transformed coordinates to match canvas size
+     *
+     * IMPORTANT: This function expects CENTER-based coordinates (design.x, design.y = center)
+     * since that's how designs are positioned throughout the customizer
      */
-    function constrainToPrintArea(x, y, width, height) {
-        // Get current side
-        const currentSide = state.product.sides[state.selectedSide];
-        if (!currentSide) {
-            return { x, y }; // No side data, return original position
-        }
+    function constrainToPrintArea(centerX, centerY, width, height) {
+        // Get transformed print area (already scaled to canvas size)
+        const printArea = getPrimaryPrintArea();
 
-        // Get print areas
-        const printAreas = currentSide.printAreas || [];
-
-        // If no print areas defined, allow placement anywhere (backward compatibility)
-        if (printAreas.length === 0) {
+        if (!printArea) {
             console.warn('No print areas defined for this side. Designs can be placed anywhere.');
-            return { x, y };
+            return { x: centerX, y: centerY };
         }
 
-        // Find the largest print area (primary print area)
-        let primaryPrintArea = null;
-        let maxArea = 0;
+        // Convert center-based coordinates to top-left for boundary checking
+        let left = centerX - width / 2;
+        let top = centerY - height / 2;
 
-        printAreas.forEach(area => {
-            const areaSize = area.width * area.height;
-            if (areaSize > maxArea) {
-                maxArea = areaSize;
-                primaryPrintArea = area;
-            }
-        });
-
-        if (!primaryPrintArea) {
-            return { x, y }; // No valid print area found
-        }
-
-        // Constrain the design to stay within the primary print area
-        let constrainedX = x;
-        let constrainedY = y;
+        // Constrain the design to stay within the print area (using top-left coordinates)
+        let constrainedLeft = left;
+        let constrainedTop = top;
 
         // Left boundary
-        if (constrainedX < primaryPrintArea.x) {
-            constrainedX = primaryPrintArea.x;
+        if (constrainedLeft < printArea.x) {
+            constrainedLeft = printArea.x;
         }
 
         // Right boundary
-        if (constrainedX + width > primaryPrintArea.x + primaryPrintArea.width) {
-            constrainedX = primaryPrintArea.x + primaryPrintArea.width - width;
+        if (constrainedLeft + width > printArea.x + printArea.width) {
+            constrainedLeft = printArea.x + printArea.width - width;
         }
 
         // Top boundary
-        if (constrainedY < primaryPrintArea.y) {
-            constrainedY = primaryPrintArea.y;
+        if (constrainedTop < printArea.y) {
+            constrainedTop = printArea.y;
         }
 
         // Bottom boundary
-        if (constrainedY + height > primaryPrintArea.y + primaryPrintArea.height) {
-            constrainedY = primaryPrintArea.y + primaryPrintArea.height - height;
+        if (constrainedTop + height > printArea.y + printArea.height) {
+            constrainedTop = printArea.y + printArea.height - height;
         }
 
         // Check if design is too large for print area
-        if (width > primaryPrintArea.width) {
+        if (width > printArea.width) {
             console.warn('Design is wider than print area. Constraining to left edge.');
-            constrainedX = primaryPrintArea.x;
+            constrainedLeft = printArea.x;
         }
 
-        if (height > primaryPrintArea.height) {
+        if (height > printArea.height) {
             console.warn('Design is taller than print area. Constraining to top edge.');
-            constrainedY = primaryPrintArea.y;
+            constrainedTop = printArea.y;
         }
 
-        // Check restriction areas - designs cannot overlap with restriction zones
-        const restrictionAreas = currentSide.restrictionAreas || [];
+        // Check restriction areas - transform and check each one
+        const currentSide = state.product.sides[state.selectedSide];
+        const restrictionAreas = currentSide?.restrictionAreas || [];
 
-        restrictionAreas.forEach(restrictionArea => {
-            // Check if design would overlap with restriction area
-            const designRight = constrainedX + width;
-            const designBottom = constrainedY + height;
+        restrictionAreas.forEach(area => {
+            // Transform restriction area to canvas coordinates
+            const restrictionArea = transformPrintArea(area);
+            if (!restrictionArea) return;
+
+            // Check if design would overlap with restriction area (using top-left coordinates)
+            const designRight = constrainedLeft + width;
+            const designBottom = constrainedTop + height;
             const restrictionRight = restrictionArea.x + restrictionArea.width;
             const restrictionBottom = restrictionArea.y + restrictionArea.height;
 
             // Check for overlap
-            const overlapsX = constrainedX < restrictionRight && designRight > restrictionArea.x;
-            const overlapsY = constrainedY < restrictionBottom && designBottom > restrictionArea.y;
+            const overlapsX = constrainedLeft < restrictionRight && designRight > restrictionArea.x;
+            const overlapsY = constrainedTop < restrictionBottom && designBottom > restrictionArea.y;
 
             if (overlapsX && overlapsY) {
                 // Design overlaps with restriction area - push it outside
@@ -1252,26 +1314,30 @@
 
                 // Determine which direction to push the design
                 const pushLeft = designRight - restrictionArea.x;
-                const pushRight = restrictionRight - constrainedX;
+                const pushRight = restrictionRight - constrainedLeft;
                 const pushUp = designBottom - restrictionArea.y;
-                const pushDown = restrictionBottom - constrainedY;
+                const pushDown = restrictionBottom - constrainedTop;
 
                 // Find the minimum push distance
                 const minPush = Math.min(pushLeft, pushRight, pushUp, pushDown);
 
-                if (minPush === pushLeft && constrainedX - pushLeft >= primaryPrintArea.x) {
-                    constrainedX -= pushLeft;
-                } else if (minPush === pushRight && constrainedX + pushRight + width <= primaryPrintArea.x + primaryPrintArea.width) {
-                    constrainedX += pushRight;
-                } else if (minPush === pushUp && constrainedY - pushUp >= primaryPrintArea.y) {
-                    constrainedY -= pushUp;
-                } else if (minPush === pushDown && constrainedY + pushDown + height <= primaryPrintArea.y + primaryPrintArea.height) {
-                    constrainedY += pushDown;
+                if (minPush === pushLeft && constrainedLeft - pushLeft >= printArea.x) {
+                    constrainedLeft -= pushLeft;
+                } else if (minPush === pushRight && constrainedLeft + pushRight + width <= printArea.x + printArea.width) {
+                    constrainedLeft += pushRight;
+                } else if (minPush === pushUp && constrainedTop - pushUp >= printArea.y) {
+                    constrainedTop -= pushUp;
+                } else if (minPush === pushDown && constrainedTop + pushDown + height <= printArea.y + printArea.height) {
+                    constrainedTop += pushDown;
                 }
             }
         });
 
-        return { x: constrainedX, y: constrainedY };
+        // Convert back to center-based coordinates for return
+        const constrainedCenterX = constrainedLeft + width / 2;
+        const constrainedCenterY = constrainedTop + height / 2;
+
+        return { x: constrainedCenterX, y: constrainedCenterY };
     }
 
     function handleCanvasMouseMove(event) {
@@ -1312,19 +1378,20 @@
     
     // Function to add to cart
     function addToCart() {
-        // Check if we have designs and print type
-        if (state.designs.length === 0 || !state.selectedPrintType) {
-            alert('Please add at least one design and select a print type before adding to cart.');
+        // Customization is now OPTIONAL
+        // Only validate print type if user has added designs
+        if (state.designs.length > 0 && !state.selectedPrintType) {
+            alert('Please select a print type for your custom design.');
             return;
         }
-        
+
         // Show loading state
         const addToCartBtn = $('#add-to-cart-btn');
         const originalText = addToCartBtn.text();
         addToCartBtn.text('Adding...');
         addToCartBtn.prop('disabled', true);
-        
-        // Prepare designs data (including print type)
+
+        // Prepare designs data (empty array if no designs)
         const designsData = state.designs.map(design => {
             const designData = {
                 id: design.id,
