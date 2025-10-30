@@ -16,7 +16,7 @@
     });
 
     function init() {
-        // Show/hide OTP field based on payment method
+        // Show/hide OTP section based on payment method
         $(document.body).on('change', 'input[name="payment_method"]', function() {
             toggleOTPField();
         });
@@ -24,7 +24,7 @@
         // Initial check
         toggleOTPField();
 
-        // Add OTP UI to checkout
+        // Add OTP UI to checkout if it doesn't exist
         addOTPUI();
 
         // Handle OTP send button
@@ -37,7 +37,7 @@
         $(document).on('click', '#resend-cod-otp', handleSendOTP);
 
         // Validate OTP before checkout
-        $(document.body).on('checkout_place_order', validateCODCheckout);
+        $('form.checkout').on('checkout_place_order', validateCODCheckout);
 
         // Listen for checkout updates
         $(document.body).on('updated_checkout', function() {
@@ -48,18 +48,15 @@
 
     function toggleOTPField() {
         const selectedMethod = $('input[name="payment_method"]:checked').val();
-        const $otpSection = $('#cod-otp-section');
-        const $otpField = $('.cod-otp-field');
+        const $otpSection = $('#cod-otp-section'); // Our custom section
 
         if (selectedMethod === 'cod') {
-            $otpField.removeClass('hidden').show();
             if ($otpSection.length) {
                 $otpSection.slideDown();
             } else {
-                addOTPUI();
+                addOTPUI(); // Add it if it was removed by a checkout update
             }
         } else {
-            $otpField.addClass('hidden').hide();
             $otpSection.slideUp();
             otpVerified = false;
         }
@@ -177,10 +174,9 @@
             return;
         }
 
-        const phone = $('#billing_phone').val();
         const email = $('#billing_email').val();
 
-        if (!phone || !email) {
+        if (!email || !$('#billing_email').is(':valid')) {
             showMessage(aakaariCODOTP.messages.enter_details, 'error');
             return;
         }
@@ -195,7 +191,6 @@
             data: {
                 action: 'send_cod_otp',
                 nonce: aakaariCODOTP.nonce,
-                phone: phone,
                 email: email
             },
             success: function(response) {
@@ -230,10 +225,9 @@
         e.preventDefault();
 
         const otp = $('#cod-otp-input').val();
-        const phone = $('#billing_phone').val();
         const email = $('#billing_email').val();
 
-        if (!otp || otp.length !== 6) {
+        if (!otp || !/^\d{6}$/.test(otp)) {
             showMessage('Please enter a valid 6-digit code', 'error');
             return;
         }
@@ -247,7 +241,6 @@
             data: {
                 action: 'verify_cod_otp',
                 nonce: aakaariCODOTP.nonce,
-                phone: phone,
                 email: email,
                 otp: otp
             },
@@ -277,7 +270,7 @@
         const selectedMethod = $('input[name="payment_method"]:checked').val();
 
         if (selectedMethod === 'cod' && !otpVerified) {
-            showMessage(aakaariCODOTP.messages.otp_required, 'error');
+            showMessage('Please verify your email with the OTP to place a Cash on Delivery order.', 'error');
             scrollToOTPSection();
             return false;
         }
