@@ -796,6 +796,7 @@ function initializeCustomProductsAdmin() {
                 $checkbox.prop('checked', !!p.isActive);
                 $checkbox.on('change', () => {
                     p.isActive = $checkbox.prop('checked');
+                    render(); // Re-render to reflect the change immediately
                 });
                 $statusDiv.append($checkbox);
                 $statusDiv.append($('<span>').css('margin-left', '6px').text($checkbox.prop('checked') ? 'Active' : 'Inactive'));

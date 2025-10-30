@@ -17,8 +17,11 @@ $current_user = wp_get_current_user();
 $user_id = $current_user->ID;
 $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
 
-// Get application status from URL parameter
-$status_param = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+// If user is already approved, redirect them to their dashboard.
+if ($onboarding_status === 'approved' || $onboarding_status === 'completed') {
+    wp_redirect(aakaari_get_dashboard_url());
+    exit;
+}
 
 // CRITICAL FIX: REMOVED THE DASHBOARD REDIRECT COMPLETELY
 // The code that was redirecting to dashboard has been removed to prevent the redirect loop
@@ -247,7 +250,7 @@ $db_application_status = $application_info['status'];
 $application = $application_info['application'];
 
 // Use URL parameter status if provided, otherwise use status from database
-$display_status = !empty($status_param) ? $status_param : $db_application_status;
+$display_status = $db_application_status;
 
 // Optional debugging for admins only
 if (current_user_can('administrator')) {

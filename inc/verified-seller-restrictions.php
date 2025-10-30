@@ -49,21 +49,27 @@ class Aakaari_Verified_Seller_Restrictions {
      * Check if current user is a verified seller
      */
     private function is_verified_seller() {
+        // Administrators have full access
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
         if (!is_user_logged_in()) {
             return false;
         }
 
         $user_id = get_current_user_id();
+        $user = get_userdata($user_id);
 
         // Check if user has verified email
         $email_verified = get_user_meta($user_id, 'email_verified', true);
-        if ($email_verified !== 'true' && $email_verified !== true) {
+        if ('true' != $email_verified && true !== $email_verified) {
             return false;
         }
 
         // Check if user has approved onboarding status
         $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-        if ($onboarding_status !== 'approved') {
+        if ('approved' !== $onboarding_status && 'completed' !== $onboarding_status) {
             return false;
         }
 
@@ -71,7 +77,7 @@ class Aakaari_Verified_Seller_Restrictions {
         $user = wp_get_current_user();
         if (!in_array('reseller', (array) $user->roles) && !in_array('administrator', (array) $user->roles)) {
             return false;
-        }
+        } // Note: Admin check is now at the top of the function.
 
         return true;
     }
@@ -261,13 +267,13 @@ class Aakaari_Verified_Seller_Restrictions {
             exit;
         }
 
-        if ($onboarding_status === 'pending') {
+        if ($onboarding_status === 'pending' || $onboarding_status === 'submitted') {
             // Redirect to application pending page
             wp_redirect(home_url('/application-pending'));
             exit;
         }
 
-        if ($onboarding_status !== 'approved') {
+        if ($onboarding_status !== 'approved' && $onboarding_status !== 'completed') {
             // Redirect to become a seller page
             wp_redirect(home_url('/become-a-reseller'));
             exit;
@@ -304,7 +310,7 @@ class Aakaari_Verified_Seller_Restrictions {
             );
         }
 
-        if ($onboarding_status === 'pending') {
+        if ($onboarding_status === 'pending' || $onboarding_status === 'submitted') {
             return array(
                 'status' => 'pending_approval',
                 'message' => __('Your application is pending approval', 'aakaari'),
@@ -313,7 +319,7 @@ class Aakaari_Verified_Seller_Restrictions {
             );
         }
 
-        if ($onboarding_status === 'approved') {
+        if ($onboarding_status === 'approved' || $onboarding_status === 'completed') {
             return array(
                 'status' => 'verified',
                 'message' => __('You are a verified seller', 'aakaari'),
