@@ -763,30 +763,40 @@ select.input {
 
 /* ========== STEP 2: PAYMENT METHODS ========== */
 
+/* Remove grey background from payment wrapper */
+.checkout-v2 #payment {
+    background: transparent !important;
+}
+
 .checkout-v2 .woocommerce-checkout-payment {
-    margin-top: 12px;
+    margin-top: 0;
 }
 
 /* Payment method list */
 .checkout-v2 .woocommerce-checkout-payment .wc_payment_methods {
     list-style: none;
-    margin: 0 0 20px 0;
+    margin: 0 0 16px 0;
     padding: 0;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .wc_payment_method {
     border: 1.5px solid #e5e7eb;
     border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: 18px;
+    margin-bottom: 10px;
     transition: all 0.2s;
     cursor: pointer;
     background: #fff;
 }
 
+.checkout-v2 .woocommerce-checkout-payment .wc_payment_method:last-child {
+    margin-bottom: 0;
+}
+
 .checkout-v2 .woocommerce-checkout-payment .wc_payment_method:hover {
     border-color: #2563EB;
-    background: rgba(37,99,235,0.02);
+    background: #fafbff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.08);
 }
 
 /* Show radio buttons */
@@ -797,6 +807,7 @@ select.input {
     cursor: pointer;
     margin: 0;
     accent-color: #2563EB;
+    flex-shrink: 0;
 }
 
 /* Style label */
@@ -805,7 +816,7 @@ select.input {
     align-items: center;
     gap: 12px;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     color: #0f172a;
     cursor: pointer;
     margin: 0;
@@ -814,65 +825,82 @@ select.input {
 /* Highlight selected payment method */
 .checkout-v2 .woocommerce-checkout-payment .wc_payment_method input[type="radio"]:checked ~ label {
     color: #2563EB;
+    font-weight: 600;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .wc_payment_method:has(input[type="radio"]:checked) {
     border-color: #2563EB;
-    background: rgba(37,99,235,0.05);
+    background: #f0f6ff;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
 /* Payment description box */
 .checkout-v2 .woocommerce-checkout-payment .payment_box {
     margin-top: 12px;
     margin-left: 32px;
-    padding: 12px 16px;
+    padding: 12px;
     background: #f9fafb;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 13px;
     color: #64748b;
-    line-height: 1.6;
-    border-left: 3px solid #2563EB;
+    line-height: 1.5;
+    border-left: 2px solid #94a3b8;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .payment_box p {
     margin: 0;
 }
 
-.checkout-v2 .woocommerce-checkout-payment .payment_box p:last-child {
-    margin-bottom: 0;
+/* Privacy policy - centered and clean */
+.checkout-v2 .woocommerce-checkout-payment .woocommerce-terms-and-conditions-wrapper {
+    margin: 24px 0 0 0;
+    padding: 0;
+    background: transparent;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 20px;
+    width: 100%;
+    display: block;
+    clear: both;
 }
 
-/* Terms and conditions */
-.checkout-v2 .woocommerce-checkout-payment .woocommerce-terms-and-conditions-wrapper {
-    margin: 20px 0;
-    padding: 16px;
-    background: #f9fafb;
-    border-radius: 8px;
-    font-size: 13px;
-    color: #64748b;
-    line-height: 1.6;
+.checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-text {
+    text-align: center;
+    width: 100%;
+    display: block;
+    padding: 0 16px;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-text p {
-    margin: 0;
+    margin: 0 auto;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.7;
+    max-width: 100%;
+    text-align: center;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-link {
     color: #2563EB;
-    text-decoration: underline;
+    text-decoration: none;
     font-weight: 500;
+    transition: all 0.2s;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-link:hover {
     color: #1d4ed8;
+    text-decoration: underline;
 }
 
 /* Terms checkbox if present */
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-terms-and-conditions-checkbox-text {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 14px;
+    background: #fafbff;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 
 .checkout-v2 .woocommerce-checkout-payment input[type="checkbox"] {
@@ -881,6 +909,15 @@ select.input {
     cursor: pointer;
     margin-top: 2px;
     accent-color: #2563EB;
+    flex-shrink: 0;
+}
+
+.checkout-v2 .woocommerce-checkout-payment .woocommerce-terms-and-conditions-checkbox-text label {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.6;
+    cursor: pointer;
+    font-weight: normal;
 }
 
 /* Place order wrapper */
@@ -898,7 +935,7 @@ select.input {
 .checkout-v2 .woocommerce-checkout-payment #place_order,
 .checkout-v2 .woocommerce-checkout-payment .button.alt {
     width: 100%;
-    height: 52px;
+    height: 54px;
     border: none;
     border-radius: 10px;
     font-size: 16px;
@@ -906,29 +943,34 @@ select.input {
     cursor: pointer;
     background: #2563EB;
     color: #fff;
-    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
-    transition: all 0.2s;
-    margin-top: 20px;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+    transition: all 0.3s ease;
+    margin-top: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    font-size: 15px;
 }
 
 .checkout-v2 .woocommerce-checkout-payment #place_order:hover,
 .checkout-v2 .woocommerce-checkout-payment .button.alt:hover {
     background: #1d4ed8;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(37,99,235,0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37,99,235,0.45);
 }
 
 .checkout-v2 .woocommerce-checkout-payment #place_order:active,
 .checkout-v2 .woocommerce-checkout-payment .button.alt:active {
     transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
 }
 
 .checkout-v2 .woocommerce-checkout-payment #place_order:disabled,
 .checkout-v2 .woocommerce-checkout-payment .button.alt:disabled {
-    background: #94a3b8;
+    background: #cbd5e1;
+    color: #94a3b8;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -936,7 +978,7 @@ select.input {
 
 /* Loading state */
 .checkout-v2 .woocommerce-checkout-payment .blockUI.blockOverlay {
-    background: rgba(255,255,255,0.8) !important;
+    background: rgba(255,255,255,0.9) !important;
     border-radius: 10px;
 }
 
