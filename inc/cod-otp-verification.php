@@ -24,22 +24,22 @@ class Aakaari_COD_OTP_Verification {
      */
     private function hooks() {
         // Add OTP verification step for COD orders
-        add_action('woocommerce_checkout_process', [$this, 'verify_cod_otp']);
+        // add_action('woocommerce_checkout_process', [$this, 'verify_cod_otp']); // DISABLED as per request
 
         // AJAX handlers
-        add_action('wp_ajax_send_cod_otp', [$this, 'ajax_send_otp']);
-        add_action('wp_ajax_nopriv_send_cod_otp', [$this, 'ajax_send_otp']);
-        add_action('wp_ajax_verify_cod_otp', [$this, 'ajax_verify_otp']);
-        add_action('wp_ajax_nopriv_verify_cod_otp', [$this, 'ajax_verify_otp']);
+        // add_action('wp_ajax_send_cod_otp', [$this, 'ajax_send_otp']);
+        // add_action('wp_ajax_nopriv_send_cod_otp', [$this, 'ajax_send_otp']);
+        // add_action('wp_ajax_verify_cod_otp', [$this, 'ajax_verify_otp']);
+        // add_action('wp_ajax_nopriv_verify_cod_otp', [$this, 'ajax_verify_otp']);
 
         // Add OTP field to checkout
-        add_filter('woocommerce_checkout_fields', [$this, 'add_otp_field']);
+        // add_filter('woocommerce_checkout_fields', [$this, 'add_otp_field']);
 
         // Enqueue scripts
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
+        // add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
 
         // Store OTP verification status in order
-        add_action('woocommerce_checkout_create_order', [$this, 'store_otp_verification'], 10, 2);
+        // add_action('woocommerce_checkout_create_order', [$this, 'store_otp_verification'], 10, 2);
     }
 
     /**
