@@ -17,6 +17,14 @@ if (!defined('ABSPATH')) {
 function aakaari_create_required_pages() {
     // Define all pages needed by the theme
     $pages = array(
+        // Home page (must be first for front page setting)
+        'home' => array(
+            'title' => 'Home',
+            'content' => '',
+            'template' => 'page-home.php',
+            'option' => 'aakaari_home_page_id'
+        ),
+
         // WooCommerce pages
         'shop' => array(
             'title' => 'Shop',
@@ -27,13 +35,13 @@ function aakaari_create_required_pages() {
         'cart' => array(
             'title' => 'Cart',
             'content' => '<!-- wp:shortcode -->[woocommerce_cart]<!-- /wp:shortcode -->',
-            'template' => '',
+            'template' => 'template-cart.php',
             'option' => 'woocommerce_cart_page_id'
         ),
         'checkout' => array(
             'title' => 'Checkout',
             'content' => '<!-- wp:shortcode -->[woocommerce_checkout]<!-- /wp:shortcode -->',
-            'template' => '',
+            'template' => 'template-checkout.php',
             'option' => 'woocommerce_checkout_page_id'
         ),
         'my-account' => array(
@@ -172,12 +180,83 @@ function aakaari_create_required_pages() {
     // Store creation timestamp
     update_option('aakaari_pages_created_at', current_time('mysql'));
 
+    // Configure WordPress and WooCommerce settings
+    aakaari_configure_site_settings();
+
     // Return summary
     return array(
         'created' => $created_pages,
         'updated' => $updated_pages,
         'total' => count($created_pages) + count($updated_pages)
     );
+}
+
+/**
+ * Get correct dashboard URL based on user role
+ */
+function aakaari_get_dashboard_url() {
+    if (!is_user_logged_in()) {
+        return home_url('/login/');
+    }
+
+    // Check if user is admin
+    if (current_user_can('manage_options')) {
+        $admin_dashboard_id = get_option('aakaari_admin_dashboard_page_id');
+        if ($admin_dashboard_id) {
+            return get_permalink($admin_dashboard_id);
+        }
+        return home_url('/admin-dashboard/');
+    }
+
+    // Check if user is reseller
+    if (current_user_can('edit_posts')) {
+        $reseller_dashboard_id = get_option('aakaari_dashboard_page_id');
+        if ($reseller_dashboard_id) {
+            return get_permalink($reseller_dashboard_id);
+        }
+        return home_url('/reseller-dashboard/');
+    }
+
+    // Default to WooCommerce My Account
+    return wc_get_page_permalink('myaccount');
+}
+
+/**
+ * Configure WordPress reading settings and WooCommerce settings
+ */
+function aakaari_configure_site_settings() {
+    // Get home page ID
+    $home_page_id = get_option('aakaari_home_page_id');
+
+    // Set WordPress reading settings to use static front page
+    if ($home_page_id) {
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $home_page_id);
+        error_log("Aakaari: Set home page (ID: {$home_page_id}) as front page");
+    }
+
+    // Ensure WooCommerce pages are properly configured
+    $wc_pages = array(
+        'woocommerce_shop_page_id',
+        'woocommerce_cart_page_id',
+        'woocommerce_checkout_page_id',
+        'woocommerce_myaccount_page_id'
+    );
+
+    foreach ($wc_pages as $option) {
+        $page_id = get_option($option);
+        if ($page_id) {
+            // Verify page exists and is published
+            $page = get_post($page_id);
+            if ($page && $page->post_status === 'publish') {
+                error_log("Aakaari: Verified WooCommerce page option '{$option}' = {$page_id}");
+            }
+        }
+    }
+
+    // Flush rewrite rules to ensure proper routing
+    flush_rewrite_rules();
+    error_log("Aakaari: Flushed rewrite rules");
 }
 
 /**
