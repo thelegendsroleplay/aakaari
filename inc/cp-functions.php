@@ -17,6 +17,10 @@ function aakaari_cp_enqueue_assets_and_localize() {
     wp_enqueue_script( 'lucide-icons', 'https://unpkg.com/lucide@latest', array(), null, true );
     wp_enqueue_script( 'aakaari-product-customizer', $js_path, array( 'jquery', 'lucide-icons' ), '1.0.1', true );
 
+    // Enqueue enhancements
+    $enhancements_path = get_stylesheet_directory_uri() . '/assets/js/product-customizer-enhancements.js';
+    wp_enqueue_script( 'aakaari-product-customizer-enhancements', $enhancements_path, array( 'jquery', 'aakaari-product-customizer' ), '1.0.0', true );
+
     global $post, $product;
     if ( empty( $product ) || ! is_object( $product ) || ! method_exists( $product, 'get_id' ) ) {
         $product = wc_get_product( isset( $post ) ? $post->ID : get_the_ID() );
@@ -94,28 +98,41 @@ function aakaari_cp_enqueue_assets_and_localize() {
     }
 
     // IMPROVED: Transform Print Studio colors format (hex array) to product customizer format (object array)
+    // ENHANCED: Include color variant images
     $colors_for_customizer = array();
+    $color_variant_images = get_post_meta($product_id, '_aakaari_color_variant_images', true);
+    if (!is_array($color_variant_images)) {
+        $color_variant_images = array();
+    }
+
     if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
         // Print Studio saves colors as array of hex values: ['#FF0000', '#00FF00']
-        // Product customizer needs: [{name: 'Red', color: '#FF0000'}, ...]
+        // Product customizer needs: [{name: 'Red', color: '#FF0000', image: 'url'}, ...]
         error_log('Converting ' . count($studio_data['colors']) . ' colors from Print Studio');
         foreach ($studio_data['colors'] as $hex) {
             $color_name = aakaari_hex_to_color_name($hex); // Convert hex back to name
+
+            // Get color variant image URL if available
+            $color_image_url = '';
+            if (isset($color_variant_images[$hex])) {
+                $color_image_url = wp_get_attachment_image_url($color_variant_images[$hex], 'full') ?: '';
+            }
+
             $colors_for_customizer[] = array(
                 'name' => $color_name,
                 'color' => $hex,
-                'image' => '', // No per-color image override
+                'image' => $color_image_url, // Per-color image override
             );
-            error_log("  - Converted: $hex => $color_name");
+            error_log("  - Converted: $hex => $color_name" . ($color_image_url ? " (with image)" : ""));
         }
     }
-    
+
     // Fallback if no colors configured in Print Studio
     if (empty($colors_for_customizer)) {
         error_log('No Print Studio colors found, using fallback colors');
         $colors_for_customizer = aakaari_get_product_colors($product);
     }
-    
+
     error_log('Final colors for customizer: ' . print_r($colors_for_customizer, true));
 
     // IMPROVED: Transform Print Studio fabrics format
@@ -506,13 +523,13 @@ add_filter( 'woocommerce_get_item_data', 'aakaari_display_customization_cart_ite
 function aakaari_display_customization_cart_item_data( $item_data, $cart_item ) {
     if ( isset( $cart_item['aakaari_designs'] ) && is_array($cart_item['aakaari_designs']) ) {
         $design_count = count( $cart_item['aakaari_designs'] );
-        
+
         $item_data[] = array(
             'key'     => __( 'Customized', 'aakaari' ),
             'value'   => sprintf( _n( '%d custom design', '%d custom designs', $design_count, 'aakaari' ), $design_count ),
             'display' => '',
         );
-        
+
         // Add print type if available
         if (!empty($cart_item['aakaari_designs'][0]['printType'])) {
             $item_data[] = array(
@@ -521,6 +538,87 @@ function aakaari_display_customization_cart_item_data( $item_data, $cart_item ) 
                 'display' => '',
             );
         }
+
+        // Add selected color if available
+        if (!empty($cart_item['aakaari_designs'][0]['color'])) {
+            $item_data[] = array(
+                'key'     => __( 'Color', 'aakaari' ),
+                'value'   => ucfirst($cart_item['aakaari_designs'][0]['color']),
+                'display' => '',
+            );
+        }
+
+        // Add selected side if available
+        if (!empty($cart_item['aakaari_designs'][0]['side'])) {
+            $item_data[] = array(
+                'key'     => __( 'Side', 'aakaari' ),
+                'value'   => ucfirst($cart_item['aakaari_designs'][0]['side']),
+                'display' => '',
+            );
+        }
     }
     return $item_data;
+}
+
+// Display customization preview image in cart
+add_filter( 'woocommerce_cart_item_thumbnail', 'aakaari_cart_item_customization_thumbnail', 10, 3 );
+function aakaari_cart_item_customization_thumbnail( $thumbnail, $cart_item, $cart_item_key ) {
+    // Check if this item has customization
+    if ( isset( $cart_item['aakaari_designs'] ) && !empty($cart_item['aakaari_designs']) ) {
+        // Check if we have a preview image URL
+        if ( !empty($cart_item['aakaari_preview_image']) ) {
+            $thumbnail = '<img src="' . esc_url($cart_item['aakaari_preview_image']) . '" alt="Customized Product" class="attachment-woocommerce_thumbnail" />';
+        }
+        // Check if we have attachment IDs
+        elseif ( isset($cart_item['aakaari_attachments']) && !empty($cart_item['aakaari_attachments']) ) {
+            $first_attachment = reset($cart_item['aakaari_attachments']);
+            $image_url = wp_get_attachment_image_url($first_attachment, 'woocommerce_thumbnail');
+            if ($image_url) {
+                $thumbnail = '<img src="' . esc_url($image_url) . '" alt="Customized Product" class="attachment-woocommerce_thumbnail" />';
+            }
+        }
+    }
+    return $thumbnail;
+}
+
+// Save customization data to order items
+add_action( 'woocommerce_checkout_create_order_line_item', 'aakaari_save_customization_to_order', 10, 4 );
+function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $order ) {
+    if ( isset( $values['aakaari_designs'] ) ) {
+        $item->add_meta_data( '_aakaari_designs', $values['aakaari_designs'], true );
+    }
+    if ( isset( $values['aakaari_attachments'] ) ) {
+        $item->add_meta_data( '_aakaari_attachments', $values['aakaari_attachments'], true );
+    }
+    if ( isset( $values['aakaari_preview_image'] ) ) {
+        $item->add_meta_data( '_aakaari_preview_image', $values['aakaari_preview_image'], true );
+    }
+}
+
+// Display customization in order admin
+add_filter( 'woocommerce_order_item_display_meta_key', 'aakaari_order_item_meta_key_display', 10, 3 );
+function aakaari_order_item_meta_key_display( $display_key, $meta, $item ) {
+    if ( $meta->key === '_aakaari_designs' ) {
+        return __( 'Customization Details', 'aakaari' );
+    }
+    if ( $meta->key === '_aakaari_preview_image' ) {
+        return __( 'Custom Design Preview', 'aakaari' );
+    }
+    return $display_key;
+}
+
+// Format customization data display in orders
+add_filter( 'woocommerce_order_item_display_meta_value', 'aakaari_order_item_meta_value_display', 10, 3 );
+function aakaari_order_item_meta_value_display( $display_value, $meta, $item ) {
+    if ( $meta->key === '_aakaari_designs' ) {
+        $designs = maybe_unserialize( $meta->value );
+        if ( is_array($designs) && !empty($designs) ) {
+            $output = sprintf( _n( '%d custom design', '%d custom designs', count($designs), 'aakaari' ), count($designs) );
+            return $output;
+        }
+    }
+    if ( $meta->key === '_aakaari_preview_image' ) {
+        return '<img src="' . esc_url($meta->value) . '" style="max-width:150px; height:auto;" alt="Custom Design" />';
+    }
+    return $display_value;
 }
