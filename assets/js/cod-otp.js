@@ -8,6 +8,8 @@
 
     let otpVerified = false;
     let otpSendCooldown = false;
+    let otpTimer = null;
+    let timeRemaining = 600; // 10 minutes in seconds
 
     $(document).ready(function() {
         init();
@@ -71,48 +73,90 @@
         // Check if OTP section already exists
         if ($('#cod-otp-section').length) return;
 
-        // Create OTP verification UI
+        // Create OTP verification UI with improved design and steps
         const otpHTML = `
-            <div id="cod-otp-section" class="cod-otp-verification" style="display:none; margin-top:15px; padding:15px; background:#f8f9fa; border-radius:8px;">
-                <h4 style="margin:0 0 10px 0; font-size:14px; font-weight:600;">
-                    ${aakaariCODOTP.messages.otp_required}
-                </h4>
+            <div id="cod-otp-section" class="cod-otp-verification" style="display:none; margin-top:15px; padding:20px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background:#fff; border-radius:8px; padding:20px;">
+                    <div style="display:flex; align-items:center; margin-bottom:15px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2" style="margin-right:10px;">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <h4 style="margin:0; font-size:16px; font-weight:600; color:#333;">
+                            ${aakaariCODOTP.messages.otp_required}
+                        </h4>
+                    </div>
 
-                <div id="otp-send-section">
-                    <p style="font-size:13px; margin:0 0 10px 0; color:#6c757d;">
-                        We'll send a verification code to your phone number
-                    </p>
-                    <button type="button" id="send-cod-otp" class="button alt" style="margin-bottom:10px;">
-                        Send OTP
-                    </button>
-                </div>
+                    <!-- Step Indicator -->
+                    <div id="step-indicator" style="display:flex; justify-content:space-between; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #f0f0f0;">
+                        <div class="step-item active" data-step="1" style="flex:1; text-align:center; position:relative;">
+                            <div class="step-number" style="width:32px; height:32px; border-radius:50%; background:#667eea; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:600; margin-bottom:5px;">1</div>
+                            <div style="font-size:11px; color:#667eea; font-weight:500;">Send Code</div>
+                        </div>
+                        <div class="step-item" data-step="2" style="flex:1; text-align:center; position:relative;">
+                            <div class="step-number" style="width:32px; height:32px; border-radius:50%; background:#e0e0e0; color:#999; display:inline-flex; align-items:center; justify-content:center; font-weight:600; margin-bottom:5px;">2</div>
+                            <div style="font-size:11px; color:#999; font-weight:500;">Verify</div>
+                        </div>
+                        <div class="step-item" data-step="3" style="flex:1; text-align:center; position:relative;">
+                            <div class="step-number" style="width:32px; height:32px; border-radius:50%; background:#e0e0e0; color:#999; display:inline-flex; align-items:center; justify-content:center; font-weight:600; margin-bottom:5px;">✓</div>
+                            <div style="font-size:11px; color:#999; font-weight:500;">Complete</div>
+                        </div>
+                    </div>
 
-                <div id="otp-verify-section" style="display:none;">
-                    <div style="margin-bottom:10px;">
-                        <input type="text" id="cod-otp-input" placeholder="Enter 6-digit OTP"
-                               maxlength="6" pattern="[0-9]{6}"
-                               style="width:150px; margin-right:10px; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                        <button type="button" id="verify-cod-otp" class="button alt">
-                            Verify OTP
+                    <!-- Send Section -->
+                    <div id="otp-send-section">
+                        <p style="font-size:14px; margin:0 0 15px 0; color:#666; line-height:1.6;">
+                            We'll send a 6-digit verification code to your email address. Please ensure your email is correct.
+                        </p>
+                        <button type="button" id="send-cod-otp" class="button alt" style="width:100%; background:#667eea; border:none; padding:12px; font-weight:600; font-size:14px;">
+                            📧 Send Verification Code
                         </button>
                     </div>
-                    <p style="font-size:12px; margin:0; color:#6c757d;">
-                        Didn't receive OTP?
-                        <a href="#" id="resend-cod-otp" style="color:#007bff;">Resend</a>
-                    </p>
-                </div>
 
-                <div id="otp-success-section" style="display:none;">
-                    <div style="display:flex; align-items:center; color:#28a745;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                        <span style="font-weight:600;">Phone number verified successfully!</span>
+                    <!-- Verify Section -->
+                    <div id="otp-verify-section" style="display:none;">
+                        <p style="font-size:14px; margin:0 0 15px 0; color:#666; line-height:1.6;">
+                            ${aakaariCODOTP.messages.check_email}
+                        </p>
+                        <div style="margin-bottom:15px;">
+                            <label style="display:block; margin-bottom:5px; color:#666; font-size:13px; font-weight:500;">Verification Code</label>
+                            <input type="text" id="cod-otp-input" placeholder="Enter 6-digit code"
+                                   maxlength="6" pattern="[0-9]{6}"
+                                   style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:6px; font-size:18px; letter-spacing:4px; text-align:center; font-family:monospace; font-weight:600; box-sizing:border-box;">
+                        </div>
+                        <button type="button" id="verify-cod-otp" class="button alt" style="width:100%; background:#667eea; border:none; padding:12px; font-weight:600; font-size:14px; margin-bottom:10px;">
+                            ✓ Verify Code
+                        </button>
+                        <p style="font-size:13px; margin:0; color:#666; text-align:center;">
+                            Didn't receive the code?
+                            <a href="#" id="resend-cod-otp" style="color:#667eea; font-weight:600; text-decoration:none;">Resend Code</a>
+                        </p>
+                        <div id="timer-section" style="text-align:center; margin-top:10px; font-size:12px; color:#999;">
+                            Code expires in: <span id="otp-timer" style="font-weight:600; color:#f59e0b;">10:00</span>
+                        </div>
                     </div>
-                </div>
 
-                <div id="otp-message" style="margin-top:10px; padding:8px; border-radius:4px; display:none;"></div>
+                    <!-- Success Section -->
+                    <div id="otp-success-section" style="display:none;">
+                        <div style="text-align:center; padding:20px 0;">
+                            <div style="width:60px; height:60px; border-radius:50%; background:#d4edda; display:inline-flex; align-items:center; justify-content:center; margin-bottom:15px;">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="3">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
+                            <h4 style="margin:0 0 8px 0; color:#28a745; font-size:16px; font-weight:600;">
+                                Email Verified Successfully!
+                            </h4>
+                            <p style="margin:0; color:#666; font-size:13px;">
+                                You can now proceed with your order
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Message Section -->
+                    <div id="otp-message" style="margin-top:15px; padding:12px; border-radius:6px; display:none; font-size:13px;"></div>
+                </div>
             </div>
         `;
 
@@ -129,7 +173,7 @@
         e.preventDefault();
 
         if (otpSendCooldown) {
-            showMessage('Please wait before requesting another OTP', 'error');
+            showMessage('Please wait before requesting another code', 'error');
             return;
         }
 
@@ -137,12 +181,13 @@
         const email = $('#billing_email').val();
 
         if (!phone || !email) {
-            showMessage('Please enter your phone number and email first', 'error');
+            showMessage(aakaariCODOTP.messages.enter_details, 'error');
             return;
         }
 
         const $button = $(this);
-        $button.prop('disabled', true).text('Sending...');
+        const originalText = $button.text();
+        $button.prop('disabled', true).html('📧 Sending...');
 
         $.ajax({
             url: aakaariCODOTP.ajax_url,
@@ -156,8 +201,12 @@
             success: function(response) {
                 if (response.success) {
                     showMessage(response.data.message, 'success');
+                    updateStepIndicator(2);
                     $('#otp-send-section').slideUp();
                     $('#otp-verify-section').slideDown();
+
+                    // Start countdown timer
+                    startOTPTimer();
 
                     // Set cooldown
                     otpSendCooldown = true;
@@ -165,14 +214,14 @@
                         otpSendCooldown = false;
                     }, 60000); // 60 seconds
                 } else {
-                    showMessage(response.data.message || 'Failed to send OTP', 'error');
+                    showMessage(response.data.message || 'Failed to send verification code', 'error');
                 }
             },
             error: function() {
-                showMessage('Failed to send OTP. Please try again.', 'error');
+                showMessage('Failed to send verification code. Please try again.', 'error');
             },
             complete: function() {
-                $button.prop('disabled', false).text('Send OTP');
+                $button.prop('disabled', false).html(originalText);
             }
         });
     }
@@ -185,12 +234,12 @@
         const email = $('#billing_email').val();
 
         if (!otp || otp.length !== 6) {
-            showMessage('Please enter a valid 6-digit OTP', 'error');
+            showMessage('Please enter a valid 6-digit code', 'error');
             return;
         }
 
         const $button = $(this);
-        $button.prop('disabled', true).text('Verifying...');
+        $button.prop('disabled', true).html('⏳ Verifying...');
 
         $.ajax({
             url: aakaariCODOTP.ajax_url,
@@ -205,19 +254,21 @@
             success: function(response) {
                 if (response.success) {
                     otpVerified = true;
+                    stopOTPTimer();
                     showMessage(response.data.message, 'success');
+                    updateStepIndicator(3);
                     $('#otp-verify-section').slideUp();
                     $('#otp-success-section').slideDown();
                 } else {
-                    showMessage(response.data.message || 'Invalid OTP', 'error');
+                    showMessage(response.data.message || 'Invalid verification code', 'error');
                     $('#cod-otp-input').val('').focus();
                 }
             },
             error: function() {
-                showMessage('Failed to verify OTP. Please try again.', 'error');
+                showMessage('Failed to verify code. Please try again.', 'error');
             },
             complete: function() {
-                $button.prop('disabled', false).text('Verify OTP');
+                $button.prop('disabled', false).html('✓ Verify Code');
             }
         });
     }
@@ -259,6 +310,84 @@
             $('html, body').animate({
                 scrollTop: $section.offset().top - 100
             }, 500);
+        }
+    }
+
+    function updateStepIndicator(step) {
+        $('#step-indicator .step-item').each(function() {
+            const itemStep = $(this).data('step');
+            const $stepNumber = $(this).find('.step-number');
+            const $stepText = $(this).find('div:last');
+
+            if (itemStep < step) {
+                // Completed step
+                $stepNumber.css({
+                    'background': '#28a745',
+                    'color': '#fff'
+                });
+                $stepText.css('color', '#28a745');
+            } else if (itemStep === step) {
+                // Current step
+                $stepNumber.css({
+                    'background': '#667eea',
+                    'color': '#fff'
+                });
+                $stepText.css('color', '#667eea');
+            } else {
+                // Future step
+                $stepNumber.css({
+                    'background': '#e0e0e0',
+                    'color': '#999'
+                });
+                $stepText.css('color', '#999');
+            }
+        });
+    }
+
+    function startOTPTimer() {
+        timeRemaining = 600; // Reset to 10 minutes
+        updateTimerDisplay();
+
+        // Clear any existing timer
+        if (otpTimer) {
+            clearInterval(otpTimer);
+        }
+
+        // Start new timer
+        otpTimer = setInterval(function() {
+            timeRemaining--;
+            updateTimerDisplay();
+
+            if (timeRemaining <= 0) {
+                stopOTPTimer();
+                showMessage('Verification code expired. Please request a new one.', 'error');
+                $('#otp-verify-section').slideUp();
+                $('#otp-send-section').slideDown();
+                updateStepIndicator(1);
+            }
+        }, 1000);
+    }
+
+    function stopOTPTimer() {
+        if (otpTimer) {
+            clearInterval(otpTimer);
+            otpTimer = null;
+        }
+    }
+
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        const display = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        $('#otp-timer').text(display);
+
+        // Change color as time runs out
+        if (timeRemaining < 60) {
+            $('#otp-timer').css('color', '#dc3545'); // Red
+        } else if (timeRemaining < 180) {
+            $('#otp-timer').css('color', '#f59e0b'); // Orange
+        } else {
+            $('#otp-timer').css('color', '#28a745'); // Green
         }
     }
 
