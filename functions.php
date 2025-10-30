@@ -29,6 +29,7 @@ if (!is_dir($inc_dir)) {
 // List of required files
 $required_files = array(
     'theme-setup.php',
+    'theme-pages-setup.php', // Automatic page creation
     'woocommerce.php',
     'page-assets.php',
     'reseller-cta.php',
