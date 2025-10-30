@@ -95,22 +95,21 @@ class Aakaari_COD_OTP_Verification {
     public function ajax_send_otp() {
         check_ajax_referer('cod_otp_nonce', 'nonce');
 
-        $phone = sanitize_text_field($_POST['phone'] ?? '');
         $email = sanitize_email($_POST['email'] ?? '');
 
-        if (empty($phone) || empty($email)) {
-            wp_send_json_error(array('message' => __('Phone number and email are required', 'aakaari')));
+        if (empty($email) || !is_email($email)) {
+            wp_send_json_error(array('message' => __('A valid email address is required', 'aakaari')));
         }
 
         // Generate 6-digit OTP
         $otp = wp_rand(100000, 999999);
 
         // Store OTP in transient (valid for 10 minutes)
-        $transient_key = 'cod_otp_' . md5($phone . $email);
+        $transient_key = 'cod_otp_' . md5($email);
         set_transient($transient_key, $otp, 600);
 
         // Store attempt count
-        $attempt_key = 'cod_otp_attempts_' . md5($phone . $email);
+        $attempt_key = 'cod_otp_attempts_' . md5($email);
         $attempts = get_transient($attempt_key) ?: 0;
         $attempts++;
         set_transient($attempt_key, $attempts, 3600); // 1 hour
@@ -121,7 +120,7 @@ class Aakaari_COD_OTP_Verification {
         }
 
         // Send OTP via email
-        $sent = $this->send_otp_email($email, $phone, $otp);
+        $sent = $this->send_otp_email($email, $otp);
 
         if ($sent) {
             wp_send_json_success(array(
@@ -143,16 +142,15 @@ class Aakaari_COD_OTP_Verification {
     public function ajax_verify_otp() {
         check_ajax_referer('cod_otp_nonce', 'nonce');
 
-        $phone = sanitize_text_field($_POST['phone'] ?? '');
         $email = sanitize_email($_POST['email'] ?? '');
         $submitted_otp = sanitize_text_field($_POST['otp'] ?? '');
 
-        if (empty($phone) || empty($email) || empty($submitted_otp)) {
-            wp_send_json_error(array('message' => __('All fields are required', 'aakaari')));
+        if (empty($email) || empty($submitted_otp)) {
+            wp_send_json_error(array('message' => __('Email and OTP are required', 'aakaari')));
         }
 
         // Get stored OTP
-        $transient_key = 'cod_otp_' . md5($phone . $email);
+        $transient_key = 'cod_otp_' . md5($email);
         $stored_otp = get_transient($transient_key);
 
         if (!$stored_otp) {
@@ -161,7 +159,7 @@ class Aakaari_COD_OTP_Verification {
 
         if ($stored_otp == $submitted_otp) {
             // Store verification status
-            $verified_key = 'cod_otp_verified_' . md5($phone . $email);
+            $verified_key = 'cod_otp_verified_' . md5($email);
             set_transient($verified_key, true, 1800); // 30 minutes
 
             // Delete OTP after successful verification
@@ -184,16 +182,15 @@ class Aakaari_COD_OTP_Verification {
             return;
         }
 
-        $phone = isset($_POST['billing_phone']) ? sanitize_text_field($_POST['billing_phone']) : '';
         $email = isset($_POST['billing_email']) ? sanitize_email($_POST['billing_email']) : '';
 
         // Check if OTP was verified
-        $verified_key = 'cod_otp_verified_' . md5($phone . $email);
+        $verified_key = 'cod_otp_verified_' . md5($email);
         $is_verified = get_transient($verified_key);
 
         if (!$is_verified) {
             wc_add_notice(
-                __('Please verify your phone number with OTP for Cash on Delivery orders.', 'aakaari'),
+                __('Please verify your email with OTP for Cash on Delivery orders.', 'aakaari'),
                 'error'
             );
         }
@@ -204,9 +201,8 @@ class Aakaari_COD_OTP_Verification {
      */
     public function store_otp_verification($order, $data) {
         if ($order->get_payment_method() === 'cod') {
-            $phone = $data['billing_phone'] ?? '';
             $email = $data['billing_email'] ?? '';
-            $verified_key = 'cod_otp_verified_' . md5($phone . $email);
+            $verified_key = 'cod_otp_verified_' . md5($email);
             $is_verified = get_transient($verified_key);
 
             $order->update_meta_data('_cod_otp_verified', $is_verified ? 'yes' : 'no');
@@ -220,7 +216,7 @@ class Aakaari_COD_OTP_Verification {
     /**
      * Send OTP via email
      */
-    private function send_otp_email($email, $phone, $otp) {
+    private function send_otp_email($email, $otp) {
         $subject = __('Your Cash on Delivery Verification Code', 'aakaari');
 
         $site_name = get_bloginfo('name');
@@ -255,7 +251,6 @@ class Aakaari_COD_OTP_Verification {
                     <h4 style="color: #333; margin-bottom: 10px;">Order Details:</h4>
                     <p style="color: #666; margin: 5px 0; font-size: 14px;">
                         <strong>Email:</strong> ' . esc_html($email) . '<br>
-                        <strong>Phone:</strong> ' . esc_html($phone) . '<br>
                         <strong>Payment Method:</strong> Cash on Delivery
                     </p>
                 </div>
