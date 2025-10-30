@@ -5,6 +5,55 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Get product mockups supporting both WooCommerce variations and color slugs
+ *
+ * @param int $product_id Product ID
+ * @return array Mockup data indexed by variation ID or color slug
+ */
+function aakaari_get_product_mockups($product_id) {
+    $mockups = array();
+
+    // First, try to get color-specific mockups stored on the parent product
+    $color_mockups = get_post_meta($product_id, '_aakaari_color_mockups', true);
+    if (is_array($color_mockups)) {
+        $mockups = $color_mockups;
+    }
+
+    // Check if this is a variable product with actual variations
+    $product = wc_get_product($product_id);
+    if ($product && $product->is_type('variable')) {
+        $variations = $product->get_available_variations();
+
+        foreach ($variations as $variation) {
+            $variation_id = $variation['variation_id'];
+
+            // Check if this variation has its own mockup
+            $variation_mockup = get_post_meta($variation_id, '_variation_mockup_data', true);
+
+            if (!empty($variation_mockup) && is_array($variation_mockup)) {
+                // Store by variation ID
+                $mockups['variation_' . $variation_id] = $variation_mockup;
+
+                // Also store by color attribute if available
+                $attributes = $variation['attributes'];
+                if (isset($attributes['attribute_pa_color'])) {
+                    $mockups[$attributes['attribute_pa_color']] = $variation_mockup;
+                }
+            }
+        }
+    }
+
+    // Ensure mockups are valid
+    foreach ($mockups as $key => $mockup) {
+        if (!isset($mockup['attachment_id']) || !isset($mockup['url'])) {
+            unset($mockups[$key]);
+        }
+    }
+
+    return $mockups;
+}
+
 function aakaari_cp_enqueue_assets_and_localize() {
     if ( ! function_exists( 'is_product' ) || ! is_product() ) {
         return; // only enqueue on single product pages
@@ -221,11 +270,8 @@ function aakaari_cp_enqueue_assets_and_localize() {
         'sides' => !empty($studio_data['sides']) ? $studio_data['sides'] : aakaari_get_product_sides($product),
     );
 
-    // Get color-specific mockups
-    $color_mockups = get_post_meta($product_id, '_aakaari_color_mockups', true);
-    if (!is_array($color_mockups)) {
-        $color_mockups = array();
-    }
+    // Get color-specific mockups (supports both variation IDs and color slugs)
+    $color_mockups = aakaari_get_product_mockups($product_id);
 
     // Localize arrays - use the converted print types
     wp_localize_script( 'aakaari-product-customizer', 'AAKAARI_PRODUCTS', array( $product_data ) );
@@ -489,6 +535,38 @@ function aakaari_validate_design_boundaries($product_id, $designs) {
     }
 
     return true;
+}
+
+/**
+ * Hook into WooCommerce add to cart validation to check design boundaries
+ * This provides server-side protection even if JavaScript is bypassed
+ */
+add_filter('woocommerce_add_to_cart_validation', 'aakaari_wc_validate_add_to_cart', 10, 3);
+function aakaari_wc_validate_add_to_cart($passed, $product_id, $quantity) {
+    // Only validate if there are custom designs in the request
+    if (isset($_POST['aakaari_designs']) || isset($_REQUEST['designs'])) {
+        $designs_raw = isset($_POST['aakaari_designs']) ? $_POST['aakaari_designs'] : (isset($_REQUEST['designs']) ? $_REQUEST['designs'] : '');
+
+        if (!empty($designs_raw)) {
+            // Handle both JSON string and already-decoded array
+            if (is_string($designs_raw)) {
+                $designs = json_decode(stripslashes($designs_raw), true);
+            } else {
+                $designs = $designs_raw;
+            }
+
+            if (!empty($designs) && is_array($designs)) {
+                $validation_result = aakaari_validate_design_boundaries($product_id, $designs);
+
+                if (is_wp_error($validation_result)) {
+                    wc_add_notice($validation_result->get_error_message(), 'error');
+                    return false;
+                }
+            }
+        }
+    }
+
+    return $passed;
 }
 
 function aakaari_ajax_add_to_cart() {

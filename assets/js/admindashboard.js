@@ -1630,7 +1630,7 @@ function initializeCustomProductsAdmin() {
                 data: {
                     action: 'aakaari_get_order_details',
                     order_id: orderId,
-                    nonce: typeof aakaariAdmin !== 'undefined' ? aakaariAdmin.nonce : ''
+                    nonce: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.nonce : ''
                 },
                 success: function(response) {
                     if (response.success && response.data) {
@@ -1866,7 +1866,7 @@ function initializeCustomProductsAdmin() {
                     order_id: orderId,
                     status: newStatus,
                     note: note,
-                    nonce: typeof aakaariAdmin !== 'undefined' ? aakaariAdmin.nonce : ''
+                    nonce: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.nonce : ''
                 },
                 success: function(response) {
                     if (response.success) {
