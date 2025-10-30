@@ -858,17 +858,25 @@ select.input {
     background: transparent;
     border-top: 1px solid #f1f5f9;
     padding-top: 20px;
+    width: 100%;
+    display: block;
+    clear: both;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-text {
     text-align: center;
+    width: 100%;
+    display: block;
+    padding: 0 16px;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-text p {
-    margin: 0;
+    margin: 0 auto;
     font-size: 12px;
     color: #94a3b8;
     line-height: 1.7;
+    max-width: 100%;
+    text-align: center;
 }
 
 .checkout-v2 .woocommerce-checkout-payment .woocommerce-privacy-policy-link {
