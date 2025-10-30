@@ -174,6 +174,10 @@ public function fix_shipping_calculations() {
         $this->fix_payment_nonce();
             // Fix shipping calculations - ADD THIS LINE
         $this->fix_shipping_calculations();
+
+        // Ensure order received page works properly
+        add_action('woocommerce_thankyou', [$this, 'ensure_order_received_display'], 1);
+        add_filter('woocommerce_get_checkout_order_received_url', [$this, 'fix_order_received_url'], 10, 2);
     }
     
     /**
@@ -1050,7 +1054,7 @@ jQuery(function($) {
         // Trigger updates based on step
         if (step === 2 || step === 3) {
             $('body').trigger('update_checkout');
-            
+
             if (step === 3) {
                 setTimeout(function() {
                     $(document.body).trigger('payment_method_selected');
@@ -1058,9 +1062,12 @@ jQuery(function($) {
                 }, 300);
             }
         }
-        
+
         // Trigger a custom event that other scripts can listen for
         $(document).trigger('aak_step_changed', [step]);
+
+        // Store current step for debugging
+        sessionStorage.setItem('checkout_step', step);
         
         // Close any open Select2 dropdowns
         if ($.fn.select2) {
@@ -1599,6 +1606,58 @@ EOT;
         
         // Write the file
         file_put_contents($file_path, $template_content);
+    }
+
+    /**
+     * Ensure order received page displays correctly
+     */
+    public function ensure_order_received_display($order_id) {
+        if (!$order_id) {
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+
+        // Log for debugging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Order received page loaded for order #' . $order_id);
+        }
+
+        // Ensure order key is set
+        if (!$order->get_order_key()) {
+            $order->set_order_key(wc_generate_order_key());
+            $order->save();
+        }
+    }
+
+    /**
+     * Fix order received URL to ensure proper parameters
+     */
+    public function fix_order_received_url($url, $order) {
+        if (!$order) {
+            return $url;
+        }
+
+        $order_id = $order->get_id();
+        $order_key = $order->get_order_key();
+
+        // Ensure we have both order ID and key
+        if (!$order_key) {
+            $order_key = wc_generate_order_key();
+            $order->set_order_key($order_key);
+            $order->save();
+        }
+
+        // Build URL with proper parameters
+        $url = wc_get_endpoint_url('order-received', $order_id, wc_get_checkout_url());
+        $url = add_query_arg(array(
+            'key' => $order_key,
+        ), $url);
+
+        return $url;
     }
 }
 

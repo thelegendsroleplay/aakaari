@@ -51,6 +51,10 @@ $required_files = array(
     'order-emails.php',
     'order-tracking-ajax.php',
     'order-tracking-admin.php',
+    // New enhancements
+    'cod-otp-verification.php',
+    'verified-seller-restrictions.php',
+    'admin-color-variant-images.php',
 );
 
 // Load each file with error checking
