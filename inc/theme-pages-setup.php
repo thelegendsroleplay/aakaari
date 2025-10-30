@@ -209,7 +209,8 @@ function aakaari_get_dashboard_url() {
     }
 
     // Check if user is reseller
-    if (current_user_can('edit_posts')) {
+    $user = wp_get_current_user();
+    if (in_array('reseller', (array) $user->roles)) {
         $reseller_dashboard_id = get_option('aakaari_dashboard_page_id');
         if ($reseller_dashboard_id) {
             return get_permalink($reseller_dashboard_id);

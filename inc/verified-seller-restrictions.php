@@ -63,13 +63,13 @@ class Aakaari_Verified_Seller_Restrictions {
 
         // Check if user has verified email
         $email_verified = get_user_meta($user_id, 'email_verified', true);
-        if ('true' != $email_verified && true !== $email_verified) {
+        if ($email_verified != true) { // Simpler check for truthiness
             return false;
         }
 
         // Check if user has approved onboarding status
         $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-        if ('approved' !== $onboarding_status && 'completed' !== $onboarding_status) {
+        if ($onboarding_status !== 'approved' && $onboarding_status !== 'completed') {
             return false;
         }
 
