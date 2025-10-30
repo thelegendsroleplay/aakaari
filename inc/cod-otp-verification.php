@@ -175,12 +175,16 @@ class Aakaari_COD_OTP_Verification {
      * Verify COD OTP during checkout process
      */
     public function verify_cod_otp() {
+        // This function is hooked into 'woocommerce_checkout_process'.
+        // It runs when the 'Place Order' button is clicked.
+
         $payment_method = isset($_POST['payment_method']) ? sanitize_text_field($_POST['payment_method']) : '';
 
         // Only verify for COD orders
         if ($payment_method !== 'cod') {
             return;
         }
+        error_log("Aakaari COD Check: Processing COD order. Checking for OTP verification.");
 
         $email = isset($_POST['billing_email']) ? sanitize_email($_POST['billing_email']) : '';
 
@@ -189,11 +193,13 @@ class Aakaari_COD_OTP_Verification {
         $is_verified = get_transient($verified_key);
 
         if (!$is_verified) {
+            error_log("Aakaari COD Check: OTP not verified for email: " . $email);
             wc_add_notice(
                 __('Please verify your email with OTP for Cash on Delivery orders.', 'aakaari'),
                 'error'
             );
         }
+        error_log("Aakaari COD Check: OTP check passed for email: " . $email);
     }
 
     /**

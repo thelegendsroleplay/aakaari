@@ -130,6 +130,17 @@ jQuery(function($) {
             // On the final step, handle form submission
             else if (currentStep === totalSteps) {
                 debug('Place order button clicked');
+
+                // AAKAARI FIX: Intercept for COD OTP Verification
+                const paymentMethod = $('input[name="payment_method"]:checked').val();
+                const isOtpVerified = window.otpVerified || false; // Check global OTP status
+
+                if (paymentMethod === 'cod' && !isOtpVerified) {
+                    e.preventDefault(); // Prevent form submission
+                    $('#send-cod-otp').trigger('click'); // Trigger the OTP sending process
+                    debug('COD selected but not verified. Triggering OTP flow.');
+                    return false;
+                }
                 
                 if (!validateStep(currentStep)) {
                     e.preventDefault();
