@@ -1869,12 +1869,41 @@
             return designData;
         });
         
+        // Get product ID - try multiple sources
+        let productId = null;
+        if (state.product && state.product.id) {
+            productId = state.product.id;
+        } else if (state.product && state.product.woocommerceId) {
+            productId = state.product.woocommerceId;
+        } else {
+            // Fallback: try to get from page URL or data attribute
+            const urlMatch = window.location.pathname.match(/product[\/-]([^\/]+)/);
+            if (urlMatch) {
+                // Try to extract ID from slug (would need AJAX call to resolve)
+                console.warn('Could not determine product ID from state');
+            }
+        }
+
+        // Validate product ID before proceeding
+        if (!productId) {
+            console.error('Product ID missing. State:', state.product);
+            alert('Error: Product ID is missing. Please refresh the page and try again.');
+            addToCartBtn.text(originalText);
+            addToCartBtn.prop('disabled', false);
+            return;
+        }
+
         // Create form data
         const formData = new FormData();
         formData.append('action', 'aakaari_add_to_cart');
-        formData.append('security', AAKAARI_SETTINGS.nonce);
-        formData.append('product_id', state.product.id);
+        formData.append('security', AAKAARI_SETTINGS.nonce || '');
+        formData.append('product_id', productId);
         formData.append('designs', JSON.stringify(designsData));
+        
+        // Debug logging
+        console.log('Add to cart - Product ID:', productId);
+        console.log('Add to cart - Nonce:', AAKAARI_SETTINGS.nonce ? 'Present' : 'Missing');
+        console.log('Add to cart - Designs count:', designsData.length);
         
         // Capture and append preview image (data URL)
         try {
@@ -1948,9 +1977,30 @@
                     addToCartBtn.prop('disabled', false);
                 }
             },
-            error: function() {
-                // Show error
-                alert('Error adding to cart. Please try again.');
+            error: function(xhr, status, error) {
+                // Show detailed error for debugging
+                let errorMsg = 'Error adding to cart. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                    errorMsg = xhr.responseJSON.data.message;
+                } else if (xhr.responseText) {
+                    // Try to parse response text
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.data && response.data.message) {
+                            errorMsg = response.data.message;
+                        }
+                    } catch (e) {
+                        console.error('AJAX Error Response:', xhr.responseText);
+                    }
+                }
+                console.error('Add to cart failed:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    response: xhr.responseJSON || xhr.responseText,
+                    error: error
+                });
+                
+                alert(errorMsg);
                 
                 // Reset button
                 addToCartBtn.text(originalText);
