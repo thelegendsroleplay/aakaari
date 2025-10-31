@@ -700,6 +700,7 @@ get_header('minimal'); // Use a minimal header or create one
                                         <th>Reseller</th>
                                         <th>Customer</th>
                                         <th>Products</th>
+                                        <th>Customization</th>
                                         <th>Amount</th>
                                         <th>Date</th>
                                         <th>Payment</th>
@@ -715,6 +716,13 @@ get_header('minimal'); // Use a minimal header or create one
                                                 <td><?php echo esc_html($order['reseller']); ?></td>
                                                 <td><?php echo esc_html($order['customer']); ?></td>
                                                 <td><?php echo esc_html($order['products']); ?> items</td>
+                                                <td style="text-align: center;">
+                                                    <?php if (!empty($order['has_customization'])): ?>
+                                                        <span style="display: inline-block; background: #2271b1; color: white; font-size: 10px; padding: 3px 8px; border-radius: 3px; font-weight: bold;">CUSTOM</span>
+                                                    <?php else: ?>
+                                                        <span style="color: #999;">—</span>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td>₹<?php echo esc_html(number_format($order['amount'])); ?></td>
                                                 <td><?php echo esc_html($order['date']); ?></td>
                                                 <td>
@@ -746,7 +754,7 @@ get_header('minimal'); // Use a minimal header or create one
                                         <?php endforeach; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="9" class="aakaari-text-center aakaari-py-8">
+                                            <td colspan="10" class="aakaari-text-center aakaari-py-8">
                                                 <p class="aakaari-text-muted">No orders found matching your criteria.</p>
                                             </td>
                                         </tr>
