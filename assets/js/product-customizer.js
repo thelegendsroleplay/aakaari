@@ -1055,19 +1055,132 @@
         // TODO: Reset canvas transform
     }
 
+    // Smart image optimization for large files only
+    // Only compresses if file is too large for server upload (> 5MB)
+    // Maintains high quality and resolution suitable for printing
+    function optimizeImageIfNeeded(file) {
+        return new Promise((resolve, reject) => {
+            if (!file || !file.type.startsWith('image/')) {
+                reject(new Error('Invalid file type'));
+                return;
+            }
+
+            const fileSizeMB = file.size / (1024 * 1024);
+            const MAX_FILE_SIZE_MB = 5; // Only compress files larger than 5MB
+
+            // For files under 5MB, keep original without any changes
+            if (fileSizeMB < MAX_FILE_SIZE_MB) {
+                console.log('File size OK (' + fileSizeMB.toFixed(2) + 'MB), keeping original');
+                resolve(file);
+                return;
+            }
+
+            console.log('File is large (' + fileSizeMB.toFixed(2) + 'MB), optimizing for upload...');
+
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Failed to read file'));
+
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onerror = () => reject(new Error('Failed to load image'));
+
+                img.onload = function() {
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Only resize if dimensions are very large (> 5000px)
+                    // This maintains high print quality
+                    const MAX_DIMENSION = 5000;
+
+                    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                        const aspectRatio = width / height;
+                        if (width > height) {
+                            width = MAX_DIMENSION;
+                            height = MAX_DIMENSION / aspectRatio;
+                        } else {
+                            height = MAX_DIMENSION;
+                            width = MAX_DIMENSION * aspectRatio;
+                        }
+                        console.log('Resizing to:', Math.round(width) + 'x' + Math.round(height) + 'px');
+                    } else {
+                        console.log('Dimensions OK, keeping:', width + 'x' + height + 'px');
+                    }
+
+                    // Create canvas for optimization
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Use high quality (0.95) to maintain image quality for printing
+                    canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            reject(new Error('Failed to optimize image'));
+                            return;
+                        }
+
+                        // Create optimized file
+                        const optimizedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+
+                        const optimizedSizeMB = optimizedFile.size / (1024 * 1024);
+                        console.log('Image optimized:', {
+                            original: fileSizeMB.toFixed(2) + 'MB',
+                            optimized: optimizedSizeMB.toFixed(2) + 'MB',
+                            reduction: ((1 - optimizedFile.size / file.size) * 100).toFixed(1) + '%'
+                        });
+
+                        resolve(optimizedFile);
+                    }, 'image/jpeg', 0.95); // High quality JPEG
+                };
+
+                img.src = e.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
     // Function to handle image upload
-    // IMPORTANT: Stores the ORIGINAL file without any compression or modification
-    // Only the canvas preview is scaled for display, the actual uploaded file remains unchanged
+    // Only optimizes very large files (> 5MB) to prevent upload failures
+    // Maintains original quality for files under 5MB
     function handleImageUpload(file) {
         if (!file) return;
 
-        // Log original file info - this exact file will be saved
-        console.log('Uploading ORIGINAL file (no modifications):', {
+        // Log original file info
+        console.log('Processing upload:', {
             name: file.name,
             size: (file.size / 1024 / 1024).toFixed(2) + 'MB',
-            dimensions: 'Will be determined',
             type: file.type
         });
+
+        // Show loading indicator for large files
+        const originalText = $('#add-image-btn').text();
+        $('#add-image-btn').text('Processing...').prop('disabled', true);
+
+        // Optimize only if needed (> 5MB)
+        optimizeImageIfNeeded(file).then(processedFile => {
+            // Process the file (original or optimized)
+            processImageForCanvas(processedFile);
+
+            // Reset button
+            $('#add-image-btn').text(originalText).prop('disabled', false);
+        }).catch(error => {
+            console.error('Image processing failed:', error);
+            alert('Failed to process image: ' + error.message);
+
+            // Reset button
+            $('#add-image-btn').text(originalText).prop('disabled', false);
+        });
+    }
+
+    // Process image for canvas display and storage
+    function processImageForCanvas(file) {
+        if (!file) return;
         
         // Create reader to load image
         const reader = new FileReader();
@@ -1076,11 +1189,11 @@
             const img = new Image();
             
             img.onload = function() {
-                // Log actual image dimensions from the original file
-                console.log('Original image dimensions:', img.width + 'x' + img.height + 'px');
+                // Log actual image dimensions
+                console.log('Image dimensions:', img.width + 'x' + img.height + 'px');
 
-                // Calculate size based on image dimensions FOR CANVAS DISPLAY ONLY
-                // This scaling is ONLY for the canvas preview, the original file remains unchanged
+                // Calculate size for CANVAS DISPLAY ONLY
+                // This scaling is ONLY for the canvas preview, not for the saved file
                 const maxDimension = 200;
                 let width = img.width;
                 let height = img.height;
@@ -1093,7 +1206,7 @@
                     height = maxDimension;
                 }
 
-                console.log('Canvas preview dimensions (scaled):', Math.round(width) + 'x' + Math.round(height) + 'px');
+                console.log('Canvas preview dimensions:', Math.round(width) + 'x' + Math.round(height) + 'px');
 
                 // Create new design
                 const design = {
@@ -1101,7 +1214,7 @@
                     type: 'image',
                     image: img,
                     src: event.target.result,
-                    file: file, // CRITICAL: Store the ORIGINAL File object (unmodified) for upload to server
+                    file: file, // Store file for upload (original if < 5MB, optimized if >= 5MB)
                     sideIndex: state.selectedSide,
                     x: state.canvas.width / 2,
                     y: state.canvas.height / 2,
