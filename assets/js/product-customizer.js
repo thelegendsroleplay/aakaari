@@ -1936,6 +1936,9 @@
                 designData.color = design.color;
             } else if (design.type === 'image') {
                 designData.src = design.src;
+                // CRITICAL: Include attachment ID and URL for original uploaded image
+                designData.attachmentId = design.attachmentId;
+                designData.attachmentUrl = design.attachmentUrl;
             }
             
             return designData;
