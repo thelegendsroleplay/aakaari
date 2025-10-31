@@ -71,15 +71,7 @@ $payout_stats = aakaari_get_payout_stats();
 // Format the current date for display
 $current_date = date('F j, Y');
 
-// Enqueue styles and scripts
-wp_enqueue_style('aakaari-admin-dashboard-style', get_template_directory_uri() . '/assets/css/admindashboard.css', array(), '1.0.0');
-wp_enqueue_script('aakaari-admin-dashboard-script', get_template_directory_uri() . '/assets/js/admindashboard.js', array('jquery'), '1.0.0', true);
-
-// Localize script with AJAX URL and nonce
-wp_localize_script('aakaari-admin-dashboard-script', 'aakaari_admin_ajax', array(
-    'ajax_url' => admin_url('admin-ajax.php'),
-    'nonce' => wp_create_nonce('aakaari_ajax_nonce')
-));
+// Note: Scripts and styles are enqueued via wp_enqueue_scripts hook in admin-dashboard-functions.php
 
 get_header('minimal'); // Use a minimal header or create one
 ?>

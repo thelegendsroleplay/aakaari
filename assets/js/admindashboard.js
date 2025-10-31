@@ -1609,19 +1609,23 @@ function initializeCustomProductsAdmin() {
         }
 
         // --- Order Action Handlers ---
+        console.log('Aakaari Admin Dashboard: Order handlers initialized');
 
         // Handle view order details
         $(document).on('click', '[data-action="view-order"]', function(e) {
             e.preventDefault();
+            console.log('View order details clicked');
+
             const orderId = $(this).data('id');
+            console.log('Order ID:', orderId);
 
             if (!orderId) {
-                showToast('Invalid order ID', 'error');
+                alert('Invalid order ID');
                 return;
             }
 
-            // Show loading toast
-            showToast('Loading order details...', 'info');
+            // Show loading indicator
+            alert('Loading order details for Order #' + orderId + '...');
 
             // Get order details via AJAX
             $.ajax({
