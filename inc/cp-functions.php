@@ -74,7 +74,7 @@ function aakaari_cp_enqueue_assets_and_localize() {
     // Only enqueue main JS if file exists
     $product_customizer_deps = array( 'jquery', 'lucide-icons' );
     if ( file_exists( $js_file ) ) {
-        wp_enqueue_script( 'aakaari-product-customizer', $js_path, $product_customizer_deps, '1.0.1', true );
+        wp_enqueue_script( 'aakaari-product-customizer', $js_path, $product_customizer_deps, filemtime( $js_file ), true );
         $enhancements_deps = array( 'jquery', 'aakaari-product-customizer' );
     } else {
         // If main file doesn't exist, enhancements can depend on jquery and lucide only
