@@ -1913,6 +1913,19 @@
         addToCartBtn.text('Adding...');
         addToCartBtn.prop('disabled', true);
 
+        // DEBUG: Check state.designs first
+        console.log('=== ADD TO CART DEBUG START ===');
+        console.log('Total designs in state:', state.designs.length);
+        state.designs.forEach((design, index) => {
+            console.log(`Design ${index}:`, {
+                type: design.type,
+                attachmentId: design.attachmentId,
+                attachmentUrl: design.attachmentUrl,
+                hasSrc: !!design.src,
+                hasFile: !!design.file
+            });
+        });
+
         // Prepare designs data (empty array if no designs)
         const designsData = state.designs.map(design => {
             const designData = {
@@ -1928,7 +1941,7 @@
                 flipV: !!design.flipV,
                 printType: state.selectedPrintType
             };
-            
+
             if (design.type === 'text') {
                 designData.text = design.text;
                 designData.fontSize = design.fontSize;
@@ -1939,10 +1952,18 @@
                 // CRITICAL: Include attachment ID and URL for original uploaded image
                 designData.attachmentId = design.attachmentId;
                 designData.attachmentUrl = design.attachmentUrl;
+
+                console.log('Image design data prepared:', {
+                    id: designData.id,
+                    attachmentId: designData.attachmentId,
+                    attachmentUrl: designData.attachmentUrl
+                });
             }
-            
+
             return designData;
         });
+
+        console.log('Designs data prepared for server:', JSON.stringify(designsData, null, 2));
         
         // Get product ID - try multiple sources
         let productId = null;

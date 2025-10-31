@@ -772,21 +772,38 @@ function aakaari_ajax_add_to_cart() {
 
     // Extract attachment IDs from designs array
     // Images are uploaded immediately when user selects them, so attachment IDs are already available
+    error_log('=== EXTRACTING ATTACHMENT IDs FROM DESIGNS ===');
+    error_log('Total designs received: ' . count($designs));
+
     $attached_image_ids = array();
     if (!empty($designs) && is_array($designs)) {
-        foreach ($designs as $design) {
+        foreach ($designs as $index => $design) {
+            error_log('Processing design ' . $index . ': ' . print_r($design, true));
+
             // Check if this is an image design with attachmentId
-            if (isset($design['type']) && $design['type'] === 'image' && !empty($design['attachmentId'])) {
-                $attachment_id = intval($design['attachmentId']);
-                if ($attachment_id > 0 && !in_array($attachment_id, $attached_image_ids)) {
-                    $attached_image_ids[] = $attachment_id;
-                    error_log('AJAX: Found image design with attachment ID: ' . $attachment_id);
+            if (isset($design['type']) && $design['type'] === 'image') {
+                error_log('Found image design, checking for attachmentId...');
+
+                if (!empty($design['attachmentId'])) {
+                    $attachment_id = intval($design['attachmentId']);
+                    error_log('attachmentId found: ' . $attachment_id);
+
+                    if ($attachment_id > 0 && !in_array($attachment_id, $attached_image_ids)) {
+                        $attached_image_ids[] = $attachment_id;
+                        error_log('SUCCESS: Added attachment ID: ' . $attachment_id);
+                    } else {
+                        error_log('WARNING: Attachment ID invalid or duplicate: ' . $attachment_id);
+                    }
+                } else {
+                    error_log('ERROR: Image design missing attachmentId! Design keys: ' . implode(', ', array_keys($design)));
                 }
             }
         }
     }
-    
-    error_log('AJAX: Processed file uploads and extracted original images. Total Attached IDs: ' . print_r($attached_image_ids, true));
+
+    error_log('=== FINAL RESULT ===');
+    error_log('Total Attached IDs extracted: ' . count($attached_image_ids));
+    error_log('Attached IDs: ' . print_r($attached_image_ids, true));
 
     // Get original attachment ID (first uploaded file)
     // IMPORTANT: If no files in $_FILES but we have designs with images, use the attachment ID from designs
