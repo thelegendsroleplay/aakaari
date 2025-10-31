@@ -1361,6 +1361,7 @@ function aakaari_ajax_get_order_details() {
         $designs = $item->get_meta("_aakaari_designs");
         $attachments = $item->get_meta("_aakaari_attachments");
         $preview_img_url = $item->get_meta("_aakaari_preview_image");
+        $print_area_img_url = $item->get_meta("_aakaari_print_area_image");
 
         // Check if this is a customized product
         $is_customized = !empty($designs) || !empty($attachments) || !empty($preview_img_url);
@@ -1374,6 +1375,15 @@ function aakaari_ajax_get_order_details() {
                 $preview_image .= "<img src='" . esc_url($preview_img_url) . "' alt='Customer Design' style='max-width: 300px; max-height: 300px; border: 1px solid #ddd; border-radius: 4px; padding: 5px;' />";
                 $preview_image .= "</div>";
                 $meta_display .= $preview_image;
+            }
+
+            // Show print area PNG if available
+            if (!empty($print_area_img_url)) {
+                $meta_display .= "<div class='print-area-preview' style='margin-top:10px;'>";
+                $meta_display .= "<strong style='color:#2271b1;'>🎯 Print Area (PNG):</strong><br>";
+                $meta_display .= "<img src='" . esc_url($print_area_img_url) . "' alt='Print Area' style='max-width: 300px; max-height: 300px; border: 1px solid #ddd; border-radius: 4px; padding: 5px;' />";
+                $meta_display .= "<div style='margin-top:6px;'><a href='" . esc_url($print_area_img_url) . "' target='_blank' download class='button button-small' style='background:#2271b1; color:white;'>Download PNG</a></div>";
+                $meta_display .= "</div>";
             }
 
             // Show customization details
@@ -1405,7 +1415,7 @@ function aakaari_ajax_get_order_details() {
             // Show uploaded files with download links
             if (!empty($attachments) && is_array($attachments)) {
                 $meta_display .= "<div class='uploaded-files' style='margin-top: 12px;'>";
-                $meta_display .= "<strong style='color: #2271b1;'>📁 Uploaded Design Files (" . count($attachments) . "):</strong><br>";
+                $meta_display .= "<strong style='color: #2271b1;'>📁 Original Uploaded Design Files (" . count($attachments) . "):</strong><br>";
                 $meta_display .= "<div style='margin-top: 8px;'>";
 
                 foreach ($attachments as $index => $attachment_id) {
@@ -1423,7 +1433,7 @@ function aakaari_ajax_get_order_details() {
 
                         $meta_display .= "<div>";
                         $meta_display .= "<a href=\"" . esc_url($attachment_url) . "\" target=\"_blank\" download class='button button-small' style='background: #2271b1; color: white; padding: 4px 12px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 12px;'>";
-                        $meta_display .= "⬇ Download: " . esc_html($file_name);
+                        $meta_display .= "⬇ Download original: " . esc_html($file_name);
                         $meta_display .= "</a>";
                         $meta_display .= "</div>";
                         $meta_display .= "</div>";

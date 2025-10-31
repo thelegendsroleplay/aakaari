@@ -58,8 +58,7 @@
         // Override existing drag/drop handlers to enforce boundaries
         setupBoundaryEnforcement();
 
-        // Show print area overlay
-        showPrintAreaOverlay();
+        // Overlay disabled per UX request
     }
 
     /**
@@ -134,55 +133,8 @@
      * Show print area overlay on canvas
      */
     function showPrintAreaOverlay() {
-        if (!printAreaBounds) return;
-
-        const canvas = document.getElementById('interactive-canvas');
-        if (!canvas) return;
-
-        // Create overlay element
-        const overlay = document.createElement('div');
-        overlay.id = 'print-area-overlay';
-        overlay.style.cssText = `
-            position: absolute;
-            border: 2px dashed #2196F3;
-            background: rgba(33, 150, 243, 0.1);
-            pointer-events: none;
-            z-index: 10;
-        `;
-
-        // Position overlay based on print area bounds
-        const canvasRect = canvas.getBoundingClientRect();
-        const scale = canvasRect.width / canvas.width;
-
-        overlay.style.left = (printAreaBounds.x * scale) + 'px';
-        overlay.style.top = (printAreaBounds.y * scale) + 'px';
-        overlay.style.width = (printAreaBounds.width * scale) + 'px';
-        overlay.style.height = (printAreaBounds.height * scale) + 'px';
-
-        // Insert overlay
-        const canvasContainer = canvas.parentElement;
-        if (canvasContainer && !document.getElementById('print-area-overlay')) {
-            canvasContainer.style.position = 'relative';
-            canvasContainer.appendChild(overlay);
-
-            // Add helper text
-            const helperText = document.createElement('div');
-            helperText.id = 'print-area-helper-text';
-            helperText.style.cssText = `
-                position: absolute;
-                top: 10px;
-                left: 10px;
-                background: rgba(33, 150, 243, 0.9);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 4px;
-                font-size: 12px;
-                z-index: 11;
-                pointer-events: none;
-            `;
-            helperText.textContent = 'Design area - Place your designs within this area';
-            canvasContainer.appendChild(helperText);
-        }
+        // disabled
+        return;
     }
 
     /**
@@ -195,22 +147,14 @@
         if (!canvas) return;
 
         const overlay = document.getElementById('print-area-overlay');
-        if (!overlay) {
-            // If overlay doesn't exist, create it
-            showPrintAreaOverlay();
-            return;
+        // Overlay disabled: remove if exists
+        if (overlay) {
+            overlay.parentElement && overlay.parentElement.removeChild(overlay);
         }
-
-        // Update overlay position and size
-        const canvasRect = canvas.getBoundingClientRect();
-        const scale = canvasRect.width / canvas.width;
-
-        overlay.style.left = (printAreaBounds.x * scale) + 'px';
-        overlay.style.top = (printAreaBounds.y * scale) + 'px';
-        overlay.style.width = (printAreaBounds.width * scale) + 'px';
-        overlay.style.height = (printAreaBounds.height * scale) + 'px';
-
-        console.log('Print area overlay updated');
+        const helper = document.getElementById('print-area-helper-text');
+        if (helper) {
+            helper.parentElement && helper.parentElement.removeChild(helper);
+        }
     }
 
     /**

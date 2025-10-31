@@ -42,14 +42,21 @@
         draggingDesign: null,
         draggingOffset: { x: 0, y: 0 },
         resizingDesign: null,
+        activeHandle: null,
         resizeStartSize: { width: 0, height: 0 },
         resizeStartPoint: { x: 0, y: 0 },
+        resizeStartCenter: { x: 0, y: 0 },
 
         // Pricing
         basePrice: 0,
         totalPrice: 0,
         printCost: 0
     };
+
+    // Touch capability
+    const isTouchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    state.isTouchCapable = isTouchCapable;
+    state.pinch = { active: false, startDistance: 0, baseWidth: 0, baseHeight: 0 };
     
     // Initialize when document is ready
     $(document).ready(function() {
@@ -341,6 +348,28 @@
         $('#interactive-canvas').on('mousemove', handleCanvasMouseMove);
         $('#interactive-canvas').on('mouseup', handleCanvasMouseUp);
         $('#interactive-canvas').on('mouseleave', handleCanvasMouseUp);
+        // Desktop wheel-scale (hold Ctrl or Shift)
+        $('#interactive-canvas').on('wheel', function(e) {
+            const selected = state.designs.find(d => d.isSelected && d.type === 'image' && d.sideIndex === state.selectedSide);
+            if (!selected) return;
+            if (!e.ctrlKey && !e.shiftKey) return; // require modifier to avoid page scroll conflicts
+            e.preventDefault();
+            const delta = e.originalEvent ? e.originalEvent.deltaY : e.deltaY;
+            const factor = delta > 0 ? 0.9 : 1.1; // zoom out/in
+            let newW = Math.max(10, Math.round(selected.width * factor));
+            let newH = Math.max(10, Math.round(selected.height * factor));
+            const constrained = constrainToPrintArea(selected.x, selected.y, newW, newH);
+            selected.x = constrained.x;
+            selected.y = constrained.y;
+            selected.width = newW;
+            selected.height = newH;
+            renderCanvas();
+        });
+
+        // Touch support
+        $('#interactive-canvas').on('touchstart', handleCanvasTouchStart);
+        $('#interactive-canvas').on('touchmove', handleCanvasTouchMove);
+        $('#interactive-canvas').on('touchend touchcancel', handleCanvasTouchEnd);
         
         // Zoom controls
         $('#zoom-in-btn').on('click', function() {
@@ -423,13 +452,7 @@
             ctx.textAlign = 'center';
             ctx.fillText(state.product.name, canvas.width / 2, canvas.height / 2);
         }
-        
-        // Draw print areas
-        if (currentSide.printAreas && currentSide.printAreas.length > 0) {
-            currentSide.printAreas.forEach(area => {
-                drawPrintArea(ctx, area);
-            });
-        }
+        // Print areas are drawn later in the pipeline to avoid duplicate overlays
         
         // Draw restriction areas
         if (currentSide.restrictionAreas && currentSide.restrictionAreas.length > 0) {
@@ -479,6 +502,15 @@
                 const height = design.height;
                 
                 // Draw the image centered at the design position
+                // Apply rotation and flips
+                if (design.rotation) {
+                    ctx.rotate((design.rotation * Math.PI) / 180);
+                }
+                const scaleX = design.flipH ? -1 : 1;
+                const scaleY = design.flipV ? -1 : 1;
+                if (scaleX !== 1 || scaleY !== 1) {
+                    ctx.scale(scaleX, scaleY);
+                }
                 ctx.drawImage(design.image, -width/2, -height/2, width, height);
                 
                 // Draw selection box if selected
@@ -505,28 +537,22 @@
         ctx.save();
 
         // Draw semi-transparent fill to highlight the print area
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)'; // Light blue tint
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
         ctx.fillRect(transformed.x, transformed.y, transformed.width, transformed.height);
 
         // Draw print area rectangle with dashed border
         ctx.strokeStyle = '#3B82F6';
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]); // Dashed line
+        ctx.setLineDash([8, 4]);
         ctx.strokeRect(transformed.x, transformed.y, transformed.width, transformed.height);
-        ctx.setLineDash([]); // Reset dash
+        ctx.setLineDash([]);
 
-        // Add prominent label at the top
+        // Add label
         const labelText = transformed.name || 'Design Area';
         ctx.font = 'bold 14px Arial';
         ctx.fillStyle = '#3B82F6';
         ctx.textAlign = 'left';
         ctx.fillText('✓ ' + labelText, transformed.x + 10, transformed.y + 25);
-
-        // Add instruction text at the bottom
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#6B7280';
-        ctx.textAlign = 'center';
-        ctx.fillText('Place your designs here', transformed.x + transformed.width / 2, transformed.y + transformed.height - 15);
 
         ctx.restore();
     }
@@ -571,30 +597,88 @@
         ctx.restore();
     }
     
-    // Helper function to draw resize handles
+    // Helper function to draw resize handles with icons
     function drawResizeHandles(ctx, x, y, width, height) {
-        const handleSize = 8;
-        const halfHandle = handleSize / 2;
+        const handleSize = state.isTouchCapable ? 32 : 24; // Much larger for easier interaction
+        const padding = 8;
+        const boxX = x - padding;
+        const boxY = y - padding;
+        const boxW = width + padding * 2;
+        const boxH = height + padding * 2;
         
-        ctx.fillStyle = '#3B82F6';
+        // Draw 8 handles: 4 corners + 4 edges (midpoints)
+        const handles = [
+            { x: boxX, y: boxY, corner: 'nw', type: 'corner' },
+            { x: boxX + boxW / 2 - handleSize / 2, y: boxY, corner: 'n', type: 'edge' },
+            { x: boxX + boxW - handleSize, y: boxY, corner: 'ne', type: 'corner' },
+            { x: boxX + boxW - handleSize, y: boxY + boxH / 2 - handleSize / 2, corner: 'e', type: 'edge' },
+            { x: boxX + boxW - handleSize, y: boxY + boxH - handleSize, corner: 'se', type: 'corner' },
+            { x: boxX + boxW / 2 - handleSize / 2, y: boxY + boxH - handleSize, corner: 's', type: 'edge' },
+            { x: boxX, y: boxY + boxH - handleSize, corner: 'sw', type: 'corner' },
+            { x: boxX, y: boxY + boxH / 2 - handleSize / 2, corner: 'w', type: 'edge' }
+        ];
         
-        // Draw 8 resize handles (corners and sides)
-        // Top left
-        ctx.fillRect(x - halfHandle, y - halfHandle, handleSize, handleSize);
-        // Top middle
-        ctx.fillRect(x + width/2 - halfHandle, y - halfHandle, handleSize, handleSize);
-        // Top right
-        ctx.fillRect(x + width - halfHandle, y - halfHandle, handleSize, handleSize);
-        // Middle left
-        ctx.fillRect(x - halfHandle, y + height/2 - halfHandle, handleSize, handleSize);
-        // Middle right
-        ctx.fillRect(x + width - halfHandle, y + height/2 - halfHandle, handleSize, handleSize);
-        // Bottom left
-        ctx.fillRect(x - halfHandle, y + height - halfHandle, handleSize, handleSize);
-        // Bottom middle
-        ctx.fillRect(x + width/2 - halfHandle, y + height - halfHandle, handleSize, handleSize);
-        // Bottom right
-        ctx.fillRect(x + width - halfHandle, y + height - halfHandle, handleSize, handleSize);
+        handles.forEach((handle) => {
+            ctx.save();
+            // Larger, more visible handles with shadow effect
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(handle.x + 1, handle.y + 1, handleSize, handleSize);
+            // Blue background
+            ctx.fillStyle = '#3B82F6';
+            ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
+            // White border (thicker for visibility)
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+            // White icon or dots for edge handles
+            ctx.fillStyle = '#ffffff';
+            if (handle.type === 'edge') {
+                // Draw dots for edge handles
+                const dotSize = 3;
+                const centerX = handle.x + handleSize / 2;
+                const centerY = handle.y + handleSize / 2;
+                ctx.beginPath();
+                ctx.arc(centerX - dotSize, centerY, dotSize, 0, Math.PI * 2);
+                ctx.arc(centerX + dotSize, centerY, dotSize, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Corner handles with diagonal lines
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                const margin = handleSize * 0.25;
+                if (handle.corner === 'nw') {
+                    ctx.beginPath();
+                    ctx.moveTo(handle.x + margin, handle.y + margin);
+                    ctx.lineTo(handle.x + margin, handle.y + margin + handleSize * 0.3);
+                    ctx.moveTo(handle.x + margin, handle.y + margin);
+                    ctx.lineTo(handle.x + margin + handleSize * 0.3, handle.y + margin);
+                    ctx.stroke();
+                } else if (handle.corner === 'ne') {
+                    ctx.beginPath();
+                    ctx.moveTo(handle.x + handleSize - margin, handle.y + margin);
+                    ctx.lineTo(handle.x + handleSize - margin, handle.y + margin + handleSize * 0.3);
+                    ctx.moveTo(handle.x + handleSize - margin, handle.y + margin);
+                    ctx.lineTo(handle.x + handleSize - margin - handleSize * 0.3, handle.y + margin);
+                    ctx.stroke();
+                } else if (handle.corner === 'se') {
+                    ctx.beginPath();
+                    ctx.moveTo(handle.x + handleSize - margin, handle.y + handleSize - margin);
+                    ctx.lineTo(handle.x + handleSize - margin, handle.y + handleSize - margin - handleSize * 0.3);
+                    ctx.moveTo(handle.x + handleSize - margin, handle.y + handleSize - margin);
+                    ctx.lineTo(handle.x + handleSize - margin - handleSize * 0.3, handle.y + handleSize - margin);
+                    ctx.stroke();
+                } else if (handle.corner === 'sw') {
+                    ctx.beginPath();
+                    ctx.moveTo(handle.x + margin, handle.y + handleSize - margin);
+                    ctx.lineTo(handle.x + margin, handle.y + handleSize - margin - handleSize * 0.3);
+                    ctx.moveTo(handle.x + margin, handle.y + handleSize - margin);
+                    ctx.lineTo(handle.x + margin + handleSize * 0.3, handle.y + handleSize - margin);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        });
     }
     
     // Helper function to draw a placeholder on canvas
@@ -650,7 +734,7 @@
             // Redraw other elements
             const currentSide = state.product.sides[state.selectedSide];
             
-            // Draw print areas
+            // Draw print areas (single source of truth)
             if (currentSide.printAreas && currentSide.printAreas.length > 0) {
                 currentSide.printAreas.forEach(area => {
                     drawPrintArea(ctx, area);
@@ -1009,6 +1093,10 @@
                     height: height,
                     originalWidth: img.width,
                     originalHeight: img.height,
+                    rotation: 0,
+                    flipH: false,
+                    flipV: false,
+                    lockAspect: true,
                     isSelected: true,
                     printType: state.selectedPrintType
                 };
@@ -1141,6 +1229,115 @@
             const designId = $(this).data('design-id');
             deleteDesign(designId);
         });
+
+        // Image tools panel for selected image
+        const selected = state.designs.find(d => d.isSelected && d.type === 'image' && d.sideIndex === state.selectedSide);
+        if (selected) {
+            const aspect = selected.height > 0 ? (selected.width / selected.height).toFixed(3) : '1.000';
+            const panelHtml = `
+                <div id="image-tools-panel" style="margin-top:12px; padding:10px; border:1px solid #E5E7EB; border-radius:6px;">
+                    <div style="font-weight:600; margin-bottom:8px;">Image size</div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                        <label style=\"font-size:12px; color:#6B7280;\">W</label>
+                        <input id=\"design-width\" type=\"number\" min=\"10\" value=\"${Math.round(selected.width)}\" style=\"width:80px; padding:6px; border:1px solid #E5E7EB; border-radius:4px;\" />
+                        <label style=\"font-size:12px; color:#6B7280;\">H</label>
+                        <input id=\"design-height\" type=\"number\" min=\"10\" value=\"${Math.round(selected.height)}\" style=\"width:80px; padding:6px; border:1px solid #E5E7EB; border-radius:4px;\" />
+                        <label style=\"display:flex; align-items:center; gap:6px; font-size:12px; color:#374151; cursor:pointer;\">
+                            <input id=\"lock-aspect\" type=\"checkbox\" checked style=\"cursor:pointer;\" /> Lock aspect (${aspect})
+                        </label>
+                    </div>
+                    <div style=\"display:flex; gap:8px;\">
+                        <button type=\"button\" id=\"size-minus\" class=\"button\" style=\"padding:6px 10px;\">-</button>
+                        <button type=\"button\" id=\"size-plus\" class=\"button\" style=\"padding:6px 10px;\">+</button>
+                    </div>
+                    <div style=\"font-weight:600; margin:12px 0 6px;\">Rotate</div>
+                    <input id=\"rotate-range\" type=\"range\" min=\"0\" max=\"360\" value=\"${Math.round(selected.rotation || 0)}\" style=\"width:100%; cursor:pointer; accent-color:#3B82F6;\" />
+                    <div style=\"display:flex; gap:8px; margin-top:8px;\">
+                        <button type=\"button\" id=\"rotate-left\" class=\"button\" style=\"padding:6px 10px;\">⟲ 15°</button>
+                        <button type=\"button\" id=\"rotate-right\" class=\"button\" style=\"padding:6px 10px;\">⟳ 15°</button>
+                        <button type=\"button\" id=\"rotate-reset\" class=\"button\" style=\"padding:6px 10px;\">Reset</button>
+                    </div>
+                    <div style=\"font-weight:600; margin:12px 0 6px;\">Flip</div>
+                    <div style=\"display:flex; gap:8px;\">
+                        <button type=\"button\" id=\"flip-h\" class=\"button\" style=\"padding:6px 10px;\">Flip H</button>
+                        <button type=\"button\" id=\"flip-v\" class=\"button\" style=\"padding:6px 10px;\">Flip V</button>
+                    </div>
+                </div>`;
+            designList.append(panelHtml);
+
+            $('#design-width').on('input change', function() {
+                const val = Math.max(10, parseInt(this.value, 10) || 10);
+                const keepCenter = { x: selected.x, y: selected.y };
+                let newW = val;
+                let newH = selected.height;
+                if ($('#lock-aspect').is(':checked') && selected.height > 0) {
+                    const ar = selected.width / selected.height;
+                    newH = Math.max(10, Math.round(newW / ar));
+                    $('#design-height').val(newH);
+                }
+                const constrained = constrainToPrintArea(keepCenter.x, keepCenter.y, newW, newH);
+                selected.x = constrained.x;
+                selected.y = constrained.y;
+                selected.width = newW;
+                selected.height = newH;
+                renderCanvas();
+            });
+
+            $('#design-height').on('input change', function() {
+                const val = Math.max(10, parseInt(this.value, 10) || 10);
+                const keepCenter = { x: selected.x, y: selected.y };
+                let newH = val;
+                let newW = selected.width;
+                if ($('#lock-aspect').is(':checked') && selected.height > 0) {
+                    const ar = selected.width / selected.height;
+                    newW = Math.max(10, Math.round(newH * ar));
+                    $('#design-width').val(newW);
+                }
+                const constrained = constrainToPrintArea(keepCenter.x, keepCenter.y, newW, newH);
+                selected.x = constrained.x;
+                selected.y = constrained.y;
+                selected.width = newW;
+                selected.height = newH;
+                renderCanvas();
+            });
+
+            $('#size-plus').on('click', function() {
+                const inc = Math.round(Math.max(10, selected.width) * 0.1);
+                $('#design-width').val(Math.round(selected.width + inc)).trigger('change');
+            });
+            $('#size-minus').on('click', function() {
+                const dec = Math.round(Math.max(10, selected.width) * 0.1);
+                $('#design-width').val(Math.max(10, Math.round(selected.width - dec))).trigger('change');
+            });
+
+            // Rotation / Flip handlers
+            $('#rotate-range').on('input change', function() {
+                selected.rotation = parseInt(this.value, 10) || 0;
+                renderCanvas();
+            });
+            $('#rotate-left').on('click', function() {
+                selected.rotation = (selected.rotation || 0) - 15;
+                if (selected.rotation < 0) selected.rotation += 360;
+                $('#rotate-range').val(Math.round(selected.rotation)).trigger('input');
+            });
+            $('#rotate-right').on('click', function() {
+                selected.rotation = (selected.rotation || 0) + 15;
+                if (selected.rotation >= 360) selected.rotation -= 360;
+                $('#rotate-range').val(Math.round(selected.rotation)).trigger('input');
+            });
+            $('#rotate-reset').on('click', function() {
+                selected.rotation = 0;
+                $('#rotate-range').val(0).trigger('input');
+            });
+            $('#flip-h').on('click', function() {
+                selected.flipH = !selected.flipH;
+                renderCanvas();
+            });
+            $('#flip-v').on('click', function() {
+                selected.flipV = !selected.flipV;
+                renderCanvas();
+            });
+        }
     }
     
     // Function to select a design
@@ -1187,36 +1384,68 @@
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
-        // Check if clicking on a design
+        // FIRST: Check for resize handles on ANY design (even if not selected)
+        // This makes it much easier to resize without needing to click the design first
         let clickedDesign = null;
-        let clickedOffset = { x: 0, y: 0 };
+        let clickedHandle = null;
         
         // Reverse loop to check top-most designs first
         for (let i = state.designs.length - 1; i >= 0; i--) {
             const design = state.designs[i];
             if (design.sideIndex !== state.selectedSide) continue;
+            if (design.type !== 'image') continue; // Only images have resize handles
             
-            // Calculate design bounds
-            const left = design.x - design.width / 2;
-            const top = design.y - design.height / 2;
-            const right = design.x + design.width / 2;
-            const bottom = design.y + design.height / 2;
-            
-            if (x >= left && x <= right && y >= top && y <= bottom) {
+            const handle = getResizeHandleAtPoint(design, x, y);
+            if (handle) {
                 clickedDesign = design;
-                clickedOffset = { x: x - design.x, y: y - design.y };
-                break;
+                clickedHandle = handle;
+                break; // Found a handle, stop searching
+            }
+        }
+        
+        // SECOND: If no handle clicked, check if clicking on design body
+        if (!clickedDesign) {
+            for (let i = state.designs.length - 1; i >= 0; i--) {
+                const design = state.designs[i];
+                if (design.sideIndex !== state.selectedSide) continue;
+                
+                // Calculate design bounds
+                const left = design.x - design.width / 2;
+                const top = design.y - design.height / 2;
+                const right = design.x + design.width / 2;
+                const bottom = design.y + design.height / 2;
+                
+                // Check if click is in design bounds but NOT in handle area
+                if (x >= left && x <= right && y >= top && y <= bottom) {
+                    // Make sure it's not in a handle area (double check)
+                    const handleCheck = getResizeHandleAtPoint(design, x, y);
+                    if (!handleCheck) {
+                        clickedDesign = design;
+                        break;
+                    }
+                }
             }
         }
         
         if (clickedDesign) {
-            // Start dragging this design
-            state.draggingDesign = clickedDesign;
-            state.draggingOffset = clickedOffset;
-            
-            // Select this design
+            // Select this design first
             state.designs.forEach(d => d.isSelected = false);
             clickedDesign.isSelected = true;
+            
+            if (clickedHandle) {
+                // Start resizing
+                state.resizingDesign = clickedDesign;
+                state.activeHandle = clickedHandle;
+                state.resizeStartSize = { width: clickedDesign.width, height: clickedDesign.height };
+                state.resizeStartPoint = { x, y };
+                state.resizeStartCenter = { x: clickedDesign.x, y: clickedDesign.y };
+            } else {
+                // Start dragging this design
+                const clickedOffset = { x: x - clickedDesign.x, y: y - clickedDesign.y };
+                state.draggingDesign = clickedDesign;
+                state.draggingOffset = clickedOffset;
+                state.activeHandle = null;
+            }
             
             // Update design list
             updateDesignList();
@@ -1343,7 +1572,7 @@
     }
 
     function handleCanvasMouseMove(event) {
-        if (!state.draggingDesign) return;
+        if (!state.draggingDesign && !state.resizingDesign) return;
 
         const canvas = state.canvas;
         if (!canvas) return;
@@ -1353,29 +1582,248 @@
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
 
-        // Calculate new position
-        let newX = x - state.draggingOffset.x;
-        let newY = y - state.draggingOffset.y;
+        if (state.resizingDesign && state.activeHandle) {
+            const design = state.resizingDesign;
+            const handle = state.activeHandle;
+            const corner = handle.corner;
+            
+            // Calculate distance from start point to current mouse position
+            const dx = x - state.resizeStartPoint.x;
+            const dy = y - state.resizeStartPoint.y;
+            
+            // Calculate new width/height based on which handle is being dragged
+            let deltaW = 0, deltaH = 0;
+            
+            // Handle edge cases (only resize one dimension)
+            if (corner === 'n' || corner === 's') {
+                // Top/bottom edge: only change height
+                deltaH = corner === 's' ? dy * 2 : -dy * 2;
+                deltaW = 0;
+            } else if (corner === 'e' || corner === 'w') {
+                // Left/right edge: only change width
+                deltaW = corner === 'e' ? dx * 2 : -dx * 2;
+                deltaH = 0;
+            } else {
+                // Corner handles: change both dimensions
+                if (corner === 'ne' || corner === 'se') {
+                    deltaW = dx * 2;
+                } else {
+                    deltaW = -dx * 2;
+                }
+                if (corner === 'sw' || corner === 'se') {
+                    deltaH = dy * 2;
+                } else {
+                    deltaH = -dy * 2;
+                }
+            }
+            
+            let newWidth = Math.max(10, state.resizeStartSize.width + deltaW);
+            let newHeight = Math.max(10, state.resizeStartSize.height + deltaH);
+            
+            // Keep aspect ratio for images if locked (only for corner handles, not edge handles)
+            if (design.type === 'image' && design.lockAspect !== false && handle.type === 'corner') {
+                const aspect = state.resizeStartSize.height > 0 ? (state.resizeStartSize.width / state.resizeStartSize.height) : 1;
+                // Use the larger change to determine scale
+                const scaleW = Math.abs(deltaW) / state.resizeStartSize.width;
+                const scaleH = Math.abs(deltaH) / state.resizeStartSize.height;
+                const scale = Math.max(scaleW, scaleH);
+                const direction = (Math.abs(deltaW) > Math.abs(deltaH)) ? (deltaW > 0 ? 1 : -1) : (deltaH > 0 ? 1 : -1);
+                newWidth = Math.max(10, state.resizeStartSize.width * (1 + scale * direction));
+                newHeight = Math.max(10, newWidth / aspect);
+            }
+            
+            // Adjust center position based on handle type and position
+            let newCenterX = state.resizeStartCenter.x;
+            let newCenterY = state.resizeStartCenter.y;
+            
+            if (corner === 'nw' || corner === 'sw' || corner === 'w') {
+                // Left side handles: move center right as width decreases
+                newCenterX = state.resizeStartCenter.x + (state.resizeStartSize.width - newWidth) / 2;
+            } else if (corner === 'ne' || corner === 'se' || corner === 'e') {
+                // Right side handles: move center right as width increases
+                newCenterX = state.resizeStartCenter.x + (newWidth - state.resizeStartSize.width) / 2;
+            }
+            
+            if (corner === 'nw' || corner === 'ne' || corner === 'n') {
+                // Top handles: move center down as height decreases
+                newCenterY = state.resizeStartCenter.y + (state.resizeStartSize.height - newHeight) / 2;
+            } else if (corner === 'sw' || corner === 'se' || corner === 's') {
+                // Bottom handles: move center down as height increases
+                newCenterY = state.resizeStartCenter.y + (newHeight - state.resizeStartSize.height) / 2;
+            }
 
-        // Apply print area boundary constraints
-        const constrainedPosition = constrainToPrintArea(
-            newX,
-            newY,
-            state.draggingDesign.width,
-            state.draggingDesign.height
-        );
+            // Constrain size to print area
+            const constrainedCenter = constrainToPrintArea(newCenterX, newCenterY, newWidth, newHeight);
+            design.x = constrainedCenter.x;
+            design.y = constrainedCenter.y;
+            design.width = newWidth;
+            design.height = newHeight;
+        } else if (state.draggingDesign) {
+            // Calculate new position
+            let newX = x - state.draggingOffset.x;
+            let newY = y - state.draggingOffset.y;
 
-        // Update design position with constraints applied
-        state.draggingDesign.x = constrainedPosition.x;
-        state.draggingDesign.y = constrainedPosition.y;
+            // Apply print area boundary constraints
+            const constrainedPosition = constrainToPrintArea(
+                newX,
+                newY,
+                state.draggingDesign.width,
+                state.draggingDesign.height
+            );
+
+            // Update design position with constraints applied
+            state.draggingDesign.x = constrainedPosition.x;
+            state.draggingDesign.y = constrainedPosition.y;
+            state.canvas.style.cursor = 'nwse-resize';
+        } else if (state.draggingDesign) {
+            state.canvas.style.cursor = 'grabbing';
+        } else {
+            // Hover feedback for handles - show resize cursor when hovering over handles
+            let cursor = 'default';
+            // Check all designs, not just selected (handles work on all images)
+            for (let i = state.designs.length - 1; i >= 0; i--) {
+                const design = state.designs[i];
+                if (design.sideIndex !== state.selectedSide) continue;
+                if (design.type !== 'image') continue;
+                
+                const handle = getResizeHandleAtPoint(design, x, y);
+                if (handle) {
+                    // Map handle types to appropriate cursors
+                    const cursorMap = {
+                        'nw': 'nwse-resize', 'ne': 'nesw-resize', 
+                        'sw': 'nesw-resize', 'se': 'nwse-resize',
+                        'n': 'ns-resize', 's': 'ns-resize',
+                        'e': 'ew-resize', 'w': 'ew-resize'
+                    };
+                    cursor = cursorMap[handle.corner] || 'nwse-resize';
+                    break;
+                } else if (design.isSelected) {
+                    // Check if hovering over selected design body
+                    const left = design.x - design.width / 2;
+                    const top = design.y - design.height / 2;
+                    const right = design.x + design.width / 2;
+                    const bottom = design.y + design.height / 2;
+                    if (x >= left && x <= right && y >= top && y <= bottom) {
+                        cursor = 'move';
+                        break;
+                    }
+                }
+            }
+            if (state.canvas) state.canvas.style.cursor = cursor;
+        }
 
         // Re-render canvas
         renderCanvas();
     }
     
     function handleCanvasMouseUp() {
-        // Stop dragging
+        // Stop interactions
         state.draggingDesign = null;
+        state.resizingDesign = null;
+        state.activeHandle = null;
+        if (state.canvas) state.canvas.style.cursor = 'default';
+    }
+
+    // Touch helpers
+    function getCanvasPointFromTouch(touch) {
+        const rect = state.canvas.getBoundingClientRect();
+        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    function distanceBetweenTouches(t1, t2) {
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        return Math.sqrt(dx*dx + dy*dy);
+    }
+
+    function handleCanvasTouchStart(e) {
+        if (!state.canvas) return;
+        if (e.touches.length === 1) {
+            const p = getCanvasPointFromTouch(e.touches[0]);
+            // Simulate mouse down
+            const fakeEvent = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+            handleCanvasMouseDown(fakeEvent);
+        } else if (e.touches.length === 2) {
+            // Pinch gesture for resizing selected image
+            const selected = state.designs.find(d => d.isSelected && d.type === 'image' && d.sideIndex === state.selectedSide);
+            if (selected) {
+                state.pinch.active = true;
+                state.pinch.startDistance = distanceBetweenTouches(e.touches[0], e.touches[1]);
+                state.pinch.baseWidth = selected.width;
+                state.pinch.baseHeight = selected.height;
+            }
+        }
+        e.preventDefault();
+    }
+
+    function handleCanvasTouchMove(e) {
+        if (!state.canvas) return;
+        if (state.pinch.active && e.touches.length === 2) {
+            const selected = state.designs.find(d => d.isSelected && d.type === 'image' && d.sideIndex === state.selectedSide);
+            if (selected) {
+                const dist = distanceBetweenTouches(e.touches[0], e.touches[1]);
+                const scale = Math.max(0.1, dist / (state.pinch.startDistance || dist));
+                let newW = Math.max(10, state.pinch.baseWidth * scale);
+                let newH = Math.max(10, state.pinch.baseHeight * scale);
+                // keep center fixed while constraining
+                const constrained = constrainToPrintArea(selected.x, selected.y, newW, newH);
+                selected.x = constrained.x;
+                selected.y = constrained.y;
+                selected.width = newW;
+                selected.height = newH;
+                renderCanvas();
+            }
+        } else if (e.touches.length === 1) {
+            const fakeEvent = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+            handleCanvasMouseMove(fakeEvent);
+        }
+        e.preventDefault();
+    }
+
+    function handleCanvasTouchEnd(e) {
+        if (e.touches.length < 2) {
+            state.pinch.active = false;
+        }
+        handleCanvasMouseUp();
+        e.preventDefault();
+    }
+
+    // Hit-test resize handles around a design (works even if not selected)
+    // Returns handle info or false
+    function getResizeHandleAtPoint(design, x, y) {
+        const padding = 8;
+        const handleSize = state.isTouchCapable ? 32 : 24;
+        const hitAreaPadding = 6; // Extra invisible padding for easier clicking
+        const left = design.x - design.width / 2 - padding;
+        const top = design.y - design.height / 2 - padding;
+        const w = design.width + padding * 2;
+        const h = design.height + padding * 2;
+        
+        // 8 handles: 4 corners + 4 edges (matching drawResizeHandles)
+        const handles = [
+            { x: left, y: top, corner: 'nw', type: 'corner' },
+            { x: left + w / 2 - handleSize / 2, y: top, corner: 'n', type: 'edge' },
+            { x: left + w - handleSize, y: top, corner: 'ne', type: 'corner' },
+            { x: left + w - handleSize, y: top + h / 2 - handleSize / 2, corner: 'e', type: 'edge' },
+            { x: left + w - handleSize, y: top + h - handleSize, corner: 'se', type: 'corner' },
+            { x: left + w / 2 - handleSize / 2, y: top + h - handleSize, corner: 's', type: 'edge' },
+            { x: left, y: top + h - handleSize, corner: 'sw', type: 'corner' },
+            { x: left, y: top + h / 2 - handleSize / 2, corner: 'w', type: 'edge' }
+        ];
+        
+        for (let i = 0; i < handles.length; i++) {
+            const hd = handles[i];
+            // Check with extra hit area padding for easier clicking
+            const hitX = hd.x - hitAreaPadding;
+            const hitY = hd.y - hitAreaPadding;
+            const hitW = handleSize + hitAreaPadding * 2;
+            const hitH = handleSize + hitAreaPadding * 2;
+            
+            if (x >= hitX && x <= hitX + hitW && y >= hitY && y <= hitY + hitH) {
+                return { index: i, corner: hd.corner, type: hd.type };
+            }
+        }
+        return false;
     }
     
     // Function to add to cart
@@ -1403,6 +1851,9 @@
                 y: design.y,
                 width: design.width,
                 height: design.height,
+                rotation: design.rotation || 0,
+                flipH: !!design.flipH,
+                flipV: !!design.flipV,
                 printType: state.selectedPrintType
             };
             
@@ -1424,6 +1875,47 @@
         formData.append('security', AAKAARI_SETTINGS.nonce);
         formData.append('product_id', state.product.id);
         formData.append('designs', JSON.stringify(designsData));
+        
+        // Capture and append preview image (data URL)
+        try {
+            const previewCanvas = document.getElementById('interactive-canvas');
+            if (previewCanvas && typeof previewCanvas.toDataURL === 'function') {
+                const dataUrl = previewCanvas.toDataURL('image/png');
+                // Only append if not empty and looks like a data URL
+                if (dataUrl && dataUrl.indexOf('data:image/png;base64,') === 0) {
+                    formData.append('preview_image', dataUrl);
+                }
+
+                // Also generate a cropped PNG of just the primary print area
+                if (typeof getPrimaryPrintArea === 'function') {
+                    const area = getPrimaryPrintArea();
+                    if (area) {
+                        const cropCanvas = document.createElement('canvas');
+                        cropCanvas.width = Math.max(1, Math.round(area.width));
+                        cropCanvas.height = Math.max(1, Math.round(area.height));
+                        const cropCtx = cropCanvas.getContext('2d');
+                        // Draw the selected region from the main canvas onto the crop canvas
+                        cropCtx.drawImage(
+                            previewCanvas,
+                            Math.round(area.x),
+                            Math.round(area.y),
+                            Math.round(area.width),
+                            Math.round(area.height),
+                            0,
+                            0,
+                            Math.round(area.width),
+                            Math.round(area.height)
+                        );
+                        const cropDataUrl = cropCanvas.toDataURL('image/png');
+                        if (cropDataUrl && cropDataUrl.indexOf('data:image/png;base64,') === 0) {
+                            formData.append('print_area_image', cropDataUrl);
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('Preview capture failed:', err);
+        }
         
         // Add any image files from designs
         state.designs.forEach(design => {

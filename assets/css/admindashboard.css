@@ -1301,22 +1301,9 @@ h3 {
     z-index: 9998; 
 }
 
-.aakaari-modal { 
-    position: fixed; 
-    left: 50%; 
-    top: 50%; 
-    transform: translate(-50%,-50%); 
-    z-index: 9999; 
-    background: var(--bg-white); 
-    border: 1px solid var(--border-color); 
-    padding: 16px; 
-    box-shadow: var(--shadow-lg); 
-    width: 92%; 
-    max-width: 1000px; 
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 8px; 
-}
+/* Removed duplicate centered .aakaari-modal to prevent conflicts.
+   The modal uses the full-screen flex container defined above with
+   .aakaari-modal-overlay and .aakaari-modal-container for proper layering. */
 
 .aakaari-canvas-wrap { 
     border: 1px solid var(--border-color); 

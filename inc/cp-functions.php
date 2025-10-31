@@ -644,6 +644,34 @@ function aakaari_ajax_add_to_cart() {
     }
     error_log('AJAX: Processed file uploads (if any). Attached IDs: ' . print_r($attached_image_ids, true));
 
+    // Handle preview image (data URL base64) -> save to media and store URL
+    $preview_image_url = '';
+    if ( ! empty( $_REQUEST['preview_image'] ) ) {
+        $data_url = $_REQUEST['preview_image'];
+        if ( is_string( $data_url ) && strpos( $data_url, 'data:image/png;base64,' ) === 0 ) {
+            $preview_image_url = aakaari_store_data_url_image( $data_url, 'aakaari-custom-preview-' . time() . '.png' );
+            if ( $preview_image_url ) {
+                error_log('AJAX: Preview image saved at URL: ' . $preview_image_url);
+            } else {
+                error_log('AJAX Warning: Failed to store preview image from data URL');
+            }
+        }
+    }
+
+    // Handle separated print area image (data URL)
+    $print_area_image_url = '';
+    if ( ! empty( $_REQUEST['print_area_image'] ) ) {
+        $data_url = $_REQUEST['print_area_image'];
+        if ( is_string( $data_url ) && strpos( $data_url, 'data:image/png;base64,' ) === 0 ) {
+            $print_area_image_url = aakaari_store_data_url_image( $data_url, 'aakaari-print-area-' . time() . '.png' );
+            if ( $print_area_image_url ) {
+                error_log('AJAX: Print area image saved at URL: ' . $print_area_image_url);
+            } else {
+                error_log('AJAX Warning: Failed to store print area image from data URL');
+            }
+        }
+    }
+
 
     // Now add to cart and include $designs + $attached_image_ids as cart item meta
     $cart_item_data = array(
@@ -653,6 +681,12 @@ function aakaari_ajax_add_to_cart() {
     // Only add attachments if they exist
     if (!empty($attached_image_ids)) {
         $cart_item_data['aakaari_attachments'] = $attached_image_ids;
+    }
+    if ( ! empty( $preview_image_url ) ) {
+        $cart_item_data['aakaari_preview_image'] = $preview_image_url;
+    }
+    if ( ! empty( $print_area_image_url ) ) {
+        $cart_item_data['aakaari_print_area_image'] = $print_area_image_url;
     }
     error_log('AJAX: Cart Item Data prepared: ' . print_r($cart_item_data, true));
 
@@ -720,6 +754,77 @@ function aakaari_handle_upload_and_attach( $file ) {
     }
 
     return false;
+}
+
+/**
+ * Store a base64 data URL image into uploads and return its URL.
+ * Returns empty string on failure.
+ */
+function aakaari_store_data_url_image( $data_url, $filename = 'aakaari-preview.png' ) {
+    // Validate data URL
+    if ( ! is_string( $data_url ) ) {
+        return '';
+    }
+    if ( strpos( $data_url, 'data:image/' ) !== 0 ) {
+        return '';
+    }
+
+    // Split header and data
+    if ( strpos( $data_url, ',' ) === false ) {
+        return '';
+    }
+    list( $meta, $base64 ) = explode( ',', $data_url, 2 );
+
+    // Determine mime and extension
+    $mime = 'image/png';
+    if ( preg_match( '/data:(image\/[a-zA-Z0-9+.-]+);base64/', $meta, $m ) ) {
+        $mime = $m[1];
+    }
+    $ext = 'png';
+    if ( $mime === 'image/jpeg' ) { $ext = 'jpg'; }
+    elseif ( $mime === 'image/webp' ) { $ext = 'webp'; }
+
+    // Decode base64
+    $binary = base64_decode( $base64 );
+    if ( $binary === false ) {
+        return '';
+    }
+
+    // Prepare uploads path
+    $uploads = wp_upload_dir();
+    if ( ! empty( $uploads['error'] ) ) {
+        return '';
+    }
+
+    // Ensure unique filename
+    $safe_name = wp_unique_filename( $uploads['path'], preg_replace('/\.[^.]+$/', '', $filename) . '.' . $ext );
+    $file_path = trailingslashit( $uploads['path'] ) . $safe_name;
+
+    // Write file
+    $bytes = file_put_contents( $file_path, $binary );
+    if ( $bytes === false ) {
+        return '';
+    }
+
+    // Create attachment in media library
+    $filetype = wp_check_filetype( $safe_name, null );
+    $attachment = array(
+        'post_mime_type' => $filetype['type'] ?: $mime,
+        'post_title'     => sanitize_file_name( preg_replace('/\.[^.]+$/', '', $safe_name) ),
+        'post_content'   => '',
+        'post_status'    => 'inherit',
+    );
+
+    $attach_id = wp_insert_attachment( $attachment, $file_path );
+    if ( is_wp_error( $attach_id ) ) {
+        return '';
+    }
+
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    $attach_data = wp_generate_attachment_metadata( $attach_id, $file_path );
+    wp_update_attachment_metadata( $attach_id, $attach_data );
+
+    return wp_get_attachment_url( $attach_id ) ?: '';
 }
 
 // ADDED: Display customization data in cart and order
@@ -797,6 +902,9 @@ function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $o
     if ( isset( $values['aakaari_preview_image'] ) ) {
         $item->add_meta_data( '_aakaari_preview_image', $values['aakaari_preview_image'], true );
     }
+    if ( isset( $values['aakaari_print_area_image'] ) ) {
+        $item->add_meta_data( '_aakaari_print_area_image', $values['aakaari_print_area_image'], true );
+    }
 }
 
 // Display customization in order admin
@@ -810,6 +918,9 @@ function aakaari_order_item_meta_key_display( $display_key, $meta, $item ) {
     }
     if ( $meta->key === '_aakaari_attachments' ) {
         return __( 'Uploaded Design Files', 'aakaari' );
+    }
+    if ( $meta->key === '_aakaari_print_area_image' ) {
+        return __( 'Print Area PNG', 'aakaari' );
     }
     return $display_key;
 }
@@ -844,6 +955,15 @@ function aakaari_order_item_meta_value_display( $display_value, $meta, $item ) {
         $image_html .= '<img src="' . esc_url($meta->value) . '" style="max-width:150px; height:auto; border:1px solid #ddd; border-radius:4px;" alt="Custom Design" />';
         $image_html .= '</a>';
         $image_html .= '<p><a href="' . esc_url($meta->value) . '" download class="button" style="margin-top:10px;">Download Design</a></p>';
+        $image_html .= '</div>';
+        return $image_html;
+    }
+    if ( $meta->key === '_aakaari_print_area_image' ) {
+        $image_html = '<div class="aakaari-print-area-image">';
+        $image_html .= '<a href="' . esc_url($meta->value) . '" target="_blank">';
+        $image_html .= '<img src="' . esc_url($meta->value) . '" style="max-width:150px; height:auto; border:1px solid #ddd; border-radius:4px;" alt="Print Area" />';
+        $image_html .= '</a>';
+        $image_html .= '<p><a href="' . esc_url($meta->value) . '" download class="button" style="margin-top:10px;">Download PNG</a></p>';
         $image_html .= '</div>';
         return $image_html;
     }
