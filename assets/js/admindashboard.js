@@ -624,6 +624,448 @@
             }
         }
 
+        // ============================================
+        // ORDER MANAGEMENT HANDLERS
+        // ============================================
+        console.log('Aakaari Admin Dashboard: Initializing order handlers...');
+
+        /**
+         * Show toast notification
+         */
+        function showOrderToast(message, type = 'info') {
+            // Create toast element if it doesn't exist
+            if ($('#aakaari-order-toast').length === 0) {
+                $('body').append(`
+                    <div id="aakaari-order-toast" class="aakaari-toast">
+                        <div class="aakaari-toast-message"></div>
+                    </div>
+                `);
+
+                // Add toast styles
+                if ($('#aakaari-toast-styles').length === 0) {
+                    $('<style id="aakaari-toast-styles">')
+                        .prop('type', 'text/css')
+                        .html(`
+                            .aakaari-toast {
+                                position: fixed;
+                                bottom: 1rem;
+                                right: 1rem;
+                                background-color: white;
+                                border-radius: 0.375rem;
+                                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                                padding: 1rem 1.5rem;
+                                min-width: 20rem;
+                                transform: translateY(10px);
+                                opacity: 0;
+                                transition: all 0.2s ease;
+                                z-index: 10000;
+                                border-left: 4px solid #2563eb;
+                            }
+                            .aakaari-toast.show {
+                                transform: translateY(0);
+                                opacity: 1;
+                            }
+                            .aakaari-toast.success {
+                                border-left-color: #10b981;
+                            }
+                            .aakaari-toast.error {
+                                border-left-color: #ef4444;
+                            }
+                            .aakaari-toast.warning {
+                                border-left-color: #f59e0b;
+                            }
+                            .aakaari-modal {
+                                display: none;
+                                position: fixed;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                z-index: 9999;
+                            }
+                            .aakaari-modal.active {
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            .aakaari-modal-overlay {
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                background-color: rgba(0, 0, 0, 0.5);
+                            }
+                            .aakaari-modal-content {
+                                position: relative;
+                                background-color: white;
+                                border-radius: 0.5rem;
+                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                                max-width: 800px;
+                                width: 90%;
+                                max-height: 90vh;
+                                overflow-y: auto;
+                                z-index: 10000;
+                            }
+                            .aakaari-modal-header {
+                                padding: 1.5rem;
+                                border-bottom: 1px solid #e5e7eb;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                            }
+                            .aakaari-modal-header h3 {
+                                margin: 0;
+                                font-size: 1.25rem;
+                                font-weight: 600;
+                            }
+                            .aakaari-modal-close {
+                                background: none;
+                                border: none;
+                                font-size: 1.5rem;
+                                cursor: pointer;
+                                color: #6b7280;
+                                padding: 0;
+                                width: 2rem;
+                                height: 2rem;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            .aakaari-modal-close:hover {
+                                color: #111827;
+                            }
+                            .aakaari-modal-body {
+                                padding: 1.5rem;
+                            }
+                            .aakaari-modal-footer {
+                                padding: 1.5rem;
+                                border-top: 1px solid #e5e7eb;
+                                display: flex;
+                                justify-content: flex-end;
+                                gap: 0.75rem;
+                            }
+                        `)
+                        .appendTo('head');
+                }
+            }
+
+            const toast = $('#aakaari-order-toast');
+            const toastMessage = toast.find('.aakaari-toast-message');
+
+            // Set message and type
+            toastMessage.text(message);
+            toast.removeClass('success error warning').addClass(type);
+
+            // Show toast
+            toast.addClass('show');
+
+            // Hide after delay
+            clearTimeout(window.orderToastTimeout);
+            window.orderToastTimeout = setTimeout(() => {
+                toast.removeClass('show');
+            }, 3000);
+        }
+
+        // Handle view order details
+        $(document).on('click', '[data-action="view-order"]', function(e) {
+            e.preventDefault();
+            console.log('View order details clicked');
+
+            const orderId = $(this).data('id');
+            console.log('Order ID:', orderId);
+
+            if (!orderId) {
+                showOrderToast('Invalid order ID', 'error');
+                return;
+            }
+
+            // Show loading
+            showOrderToast('Loading order details...', 'info');
+
+            // Get order details via AJAX
+            $.ajax({
+                url: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.ajax_url : '/wp-admin/admin-ajax.php',
+                type: 'POST',
+                data: {
+                    action: 'aakaari_get_order_details',
+                    order_id: orderId,
+                    nonce: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.nonce : ''
+                },
+                success: function(response) {
+                    console.log('AJAX Response:', response);
+                    if (response.success && response.data) {
+                        showOrderDetailsModal(response.data);
+                    } else {
+                        showOrderToast(response.data?.message || 'Failed to load order details', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', status, error);
+                    showOrderToast('Error loading order details', 'error');
+                }
+            });
+        });
+
+        // Handle update order status
+        $(document).on('click', '[data-action="update-status"]', function(e) {
+            e.preventDefault();
+            const orderId = $(this).data('id');
+
+            if (!orderId) {
+                showOrderToast('Invalid order ID', 'error');
+                return;
+            }
+
+            // Show status selection modal
+            showStatusUpdateModal(orderId);
+        });
+
+        // Handle download invoice
+        $(document).on('click', '[data-action="download-invoice"]', function(e) {
+            e.preventDefault();
+            const orderId = $(this).data('id');
+
+            if (!orderId) {
+                showOrderToast('Invalid order ID', 'error');
+                return;
+            }
+
+            // Open invoice in new window
+            const invoiceUrl = `${window.location.origin}/wp-admin/post.php?post=${orderId}&action=edit`;
+            window.open(invoiceUrl, '_blank');
+
+            showOrderToast('Opening invoice...', 'info');
+        });
+
+        /**
+         * Show order details modal
+         */
+        function showOrderDetailsModal(orderData) {
+            console.log('Showing modal with data:', orderData);
+
+            // Create modal HTML if it doesn't exist
+            let modal = $('#orderDetailsModal');
+            if (modal.length === 0) {
+                $('body').append(`
+                    <div id="orderDetailsModal" class="aakaari-modal">
+                        <div class="aakaari-modal-overlay"></div>
+                        <div class="aakaari-modal-content">
+                            <div class="aakaari-modal-header">
+                                <h3>Order Details</h3>
+                                <button class="aakaari-modal-close" id="closeOrderModalBtn">&times;</button>
+                            </div>
+                            <div class="aakaari-modal-body" id="orderDetailsContent"></div>
+                            <div class="aakaari-modal-footer">
+                                <button class="aakaari-button aakaari-button-outline" id="closeOrderModalBtn2">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                modal = $('#orderDetailsModal');
+
+                // Close button handlers
+                $(document).on('click', '#closeOrderModalBtn, #closeOrderModalBtn2', function() {
+                    modal.removeClass('active');
+                });
+
+                modal.find('.aakaari-modal-overlay').on('click', function() {
+                    modal.removeClass('active');
+                });
+            }
+
+            // Populate modal content
+            const content = $('#orderDetailsContent');
+            let html = `
+                <div class="order-details-grid" style="display: grid; gap: 1.5rem;">
+                    <div class="order-info-section">
+                        <h4 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">Order Information</h4>
+                        <table class="aakaari-info-table" style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Order ID:</strong></td><td style="padding: 0.75rem 0;">#${orderData.id}</td></tr>
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Order Number:</strong></td><td style="padding: 0.75rem 0;">${orderData.order_number}</td></tr>
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Date:</strong></td><td style="padding: 0.75rem 0;">${orderData.date}</td></tr>
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Status:</strong></td><td style="padding: 0.75rem 0;"><span class="status-badge status-${orderData.status}">${orderData.status}</span></td></tr>
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Total:</strong></td><td style="padding: 0.75rem 0;">${orderData.total}</td></tr>
+                            <tr><td style="padding: 0.75rem 0;"><strong>Payment Status:</strong></td><td style="padding: 0.75rem 0;">${orderData.payment_status}</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="customer-info-section">
+                        <h4 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">Customer Information</h4>
+                        <table class="aakaari-info-table" style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Name:</strong></td><td style="padding: 0.75rem 0;">${orderData.customer_name}</td></tr>
+                            <tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 0.75rem 0;"><strong>Email:</strong></td><td style="padding: 0.75rem 0;">${orderData.customer_email}</td></tr>
+                            ${orderData.customer_phone ? `<tr><td style="padding: 0.75rem 0;"><strong>Phone:</strong></td><td style="padding: 0.75rem 0;">${orderData.customer_phone}</td></tr>` : ''}
+                        </table>
+                    </div>
+
+                    ${orderData.billing_address ? `
+                    <div class="address-section">
+                        <h4 style="margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 600;">Billing Address</h4>
+                        <p style="margin: 0; line-height: 1.6;">${orderData.billing_address}</p>
+                    </div>
+                    ` : ''}
+
+                    ${orderData.shipping_address ? `
+                    <div class="address-section">
+                        <h4 style="margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 600;">Shipping Address</h4>
+                        <p style="margin: 0; line-height: 1.6;">${orderData.shipping_address}</p>
+                    </div>
+                    ` : ''}
+
+                    ${orderData.items && orderData.items.length > 0 ? `
+                    <div class="order-items-section">
+                        <h4 style="margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">Order Items</h4>
+                        <table class="aakaari-table" style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+                            <thead>
+                                <tr style="background-color: #f9fafb;">
+                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb;">Product</th>
+                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb;">Quantity</th>
+                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb;">Price</th>
+                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${orderData.items.map(item => `
+                                    <tr ${item.is_customized ? 'style="background-color: #f0f7ff;"' : ''}>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                                            ${item.is_customized ? '<span style="display: inline-block; background: #2271b1; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-right: 6px; font-weight: bold;">CUSTOM</span>' : ''}
+                                            <strong>${item.name}</strong>
+                                            ${item.meta_display ? `<div style="margin-top: 10px;">${item.meta_display}</div>` : ''}
+                                        </td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid #e5e7eb;">${item.quantity}</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid #e5e7eb;">${item.price}</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid #e5e7eb;">${item.total}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ` : ''}
+
+                    ${orderData.notes ? `
+                    <div class="order-notes-section">
+                        <h4 style="margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 600;">Order Notes</h4>
+                        <p style="margin: 0; line-height: 1.6;">${orderData.notes}</p>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            content.html(html);
+            modal.addClass('active');
+            console.log('Modal should now be visible');
+        }
+
+        /**
+         * Show status update modal
+         */
+        function showStatusUpdateModal(orderId) {
+            // Create status update modal if it doesn't exist
+            let modal = $('#statusUpdateModal');
+            if (modal.length === 0) {
+                $('body').append(`
+                    <div id="statusUpdateModal" class="aakaari-modal">
+                        <div class="aakaari-modal-overlay"></div>
+                        <div class="aakaari-modal-content" style="max-width: 500px;">
+                            <div class="aakaari-modal-header">
+                                <h3>Update Order Status</h3>
+                                <button class="aakaari-modal-close" id="closeStatusModalBtn">&times;</button>
+                            </div>
+                            <div class="aakaari-modal-body">
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="orderStatusSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select New Status:</label>
+                                    <select id="orderStatusSelect" class="aakaari-select" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                                        <option value="pending">Pending Payment</option>
+                                        <option value="processing">Processing</option>
+                                        <option value="on-hold">On Hold</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                        <option value="refunded">Refunded</option>
+                                        <option value="failed">Failed</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="statusUpdateNote" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Note (optional):</label>
+                                    <textarea id="statusUpdateNote" class="aakaari-textarea" rows="3" placeholder="Add a note about this status change..." style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; resize: vertical;"></textarea>
+                                </div>
+                            </div>
+                            <div class="aakaari-modal-footer">
+                                <button class="aakaari-button aakaari-button-outline" id="cancelStatusUpdateBtn" style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: pointer;">Cancel</button>
+                                <button class="aakaari-button" id="confirmStatusUpdateBtn" style="padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; background: #2271b1; color: white; cursor: pointer;">Update Status</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                modal = $('#statusUpdateModal');
+
+                // Close button handlers
+                $(document).on('click', '#closeStatusModalBtn, #cancelStatusUpdateBtn', function() {
+                    modal.removeClass('active');
+                });
+
+                modal.find('.aakaari-modal-overlay').on('click', function() {
+                    modal.removeClass('active');
+                });
+            }
+
+            // Store order ID for later use
+            modal.data('orderId', orderId);
+
+            // Show modal
+            modal.addClass('active');
+
+            // Confirm button handler
+            $('#confirmStatusUpdateBtn').off('click').on('click', function() {
+                const newStatus = $('#orderStatusSelect').val();
+                const note = $('#statusUpdateNote').val();
+
+                updateOrderStatus(orderId, newStatus, note);
+            });
+        }
+
+        /**
+         * Update order status
+         */
+        function updateOrderStatus(orderId, newStatus, note) {
+            // Show loading
+            showOrderToast('Updating order status...', 'info');
+
+            $.ajax({
+                url: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.ajax_url : '/wp-admin/admin-ajax.php',
+                type: 'POST',
+                data: {
+                    action: 'aakaari_update_order_status',
+                    order_id: orderId,
+                    status: newStatus,
+                    note: note,
+                    nonce: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.nonce : ''
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showOrderToast('Order status updated successfully', 'success');
+                        $('#statusUpdateModal').removeClass('active');
+
+                        // Reload the page to show updated status
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showOrderToast(response.data?.message || 'Failed to update order status', 'error');
+                    }
+                },
+                error: function() {
+                    showOrderToast('Error updating order status', 'error');
+                }
+            });
+        }
+
+        console.log('Order handlers initialized successfully!');
+
+        // ============================================
+        // END ORDER MANAGEMENT HANDLERS
+        // ============================================
+
         // Initialize Custom Products Admin if we're on the products tab
         if ($('#aakaari-cp-app').length > 0) {
             initializeCustomProductsAdmin();
