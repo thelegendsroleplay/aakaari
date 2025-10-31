@@ -1056,16 +1056,14 @@
     }
 
     // Function to handle image upload
-    // IMPORTANT: Stores the ORIGINAL file without any compression or modification
-    // Only the canvas preview is scaled for display, the actual uploaded file remains unchanged
+    // STORES EXACT ORIGINAL FILE - No compression, no format change, no size reduction
     function handleImageUpload(file) {
         if (!file) return;
 
-        // Log original file info - this exact file will be saved
-        console.log('Uploading ORIGINAL file (no modifications):', {
+        // Log original file info - this EXACT file will be saved
+        console.log('Uploading EXACT ORIGINAL file:', {
             name: file.name,
             size: (file.size / 1024 / 1024).toFixed(2) + 'MB',
-            dimensions: 'Will be determined',
             type: file.type
         });
         
@@ -1076,11 +1074,11 @@
             const img = new Image();
             
             img.onload = function() {
-                // Log actual image dimensions from the original file
-                console.log('Original image dimensions:', img.width + 'x' + img.height + 'px');
+                // Log actual image dimensions
+                console.log('Image dimensions:', img.width + 'x' + img.height + 'px');
 
-                // Calculate size based on image dimensions FOR CANVAS DISPLAY ONLY
-                // This scaling is ONLY for the canvas preview, the original file remains unchanged
+                // Calculate size for CANVAS DISPLAY ONLY
+                // This scaling is ONLY for the canvas preview, not for the saved file
                 const maxDimension = 200;
                 let width = img.width;
                 let height = img.height;
@@ -1093,7 +1091,7 @@
                     height = maxDimension;
                 }
 
-                console.log('Canvas preview dimensions (scaled):', Math.round(width) + 'x' + Math.round(height) + 'px');
+                console.log('Canvas preview dimensions:', Math.round(width) + 'x' + Math.round(height) + 'px');
 
                 // Create new design
                 const design = {
@@ -1101,7 +1099,7 @@
                     type: 'image',
                     image: img,
                     src: event.target.result,
-                    file: file, // CRITICAL: Store the ORIGINAL File object (unmodified) for upload to server
+                    file: file, // EXACT ORIGINAL FILE - no modifications
                     sideIndex: state.selectedSide,
                     x: state.canvas.width / 2,
                     y: state.canvas.height / 2,
