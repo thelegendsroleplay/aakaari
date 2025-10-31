@@ -1056,29 +1056,86 @@
     }
 
     // Function to handle image upload
-    // STORES EXACT ORIGINAL FILE - No compression, no format change, no size reduction
+    // Uploads image IMMEDIATELY to server and stores the attachment ID/URL
+    // This avoids sending large files when adding to cart
     function handleImageUpload(file) {
         if (!file) return;
 
-        // Log original file info - this EXACT file will be saved
-        console.log('Uploading EXACT ORIGINAL file:', {
+        // Log original file info
+        console.log('Uploading original file to server:', {
             name: file.name,
             size: (file.size / 1024 / 1024).toFixed(2) + 'MB',
             type: file.type
         });
-        
-        // Create reader to load image
+
+        // Show uploading indicator
+        const originalText = $('#add-image-btn').text();
+        $('#add-image-btn').text('Uploading...').prop('disabled', true);
+
+        // Upload file immediately to WordPress media library
+        const formData = new FormData();
+        formData.append('action', 'aakaari_upload_design_image');
+        formData.append('security', AAKAARI_SETTINGS.nonce || '');
+        formData.append('file', file);
+
+        $.ajax({
+            url: AAKAARI_SETTINGS.ajax_url,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            timeout: 120000, // 2 minutes for large uploads
+            success: function(response) {
+                if (response.success && response.data) {
+                    console.log('Image uploaded successfully:', response.data);
+
+                    // Now process the uploaded image
+                    processUploadedImage(file, response.data.attachment_id, response.data.url);
+
+                    // Reset button
+                    $('#add-image-btn').text(originalText).prop('disabled', false);
+                } else {
+                    alert('Failed to upload image: ' + (response.data ? response.data.message : 'Unknown error'));
+                    $('#add-image-btn').text(originalText).prop('disabled', false);
+                }
+            },
+            error: function(xhr, status, error) {
+                let errorMsg = 'Failed to upload image. ';
+
+                if (status === 'timeout') {
+                    errorMsg += 'Upload timed out. Please try a smaller image or check your connection.';
+                } else if (xhr.status === 413) {
+                    errorMsg += 'Image file is too large for server.';
+                } else if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                    errorMsg += xhr.responseJSON.data.message;
+                } else {
+                    errorMsg += 'Please try again.';
+                }
+
+                console.error('Upload failed:', xhr, status, error);
+                alert(errorMsg);
+
+                // Reset button
+                $('#add-image-btn').text(originalText).prop('disabled', false);
+            }
+        });
+    }
+
+    // Process uploaded image after server upload completes
+    function processUploadedImage(file, attachmentId, attachmentUrl) {
+        // Create reader to load image for canvas display
         const reader = new FileReader();
-        
+
         reader.onload = function(event) {
             const img = new Image();
-            
+
             img.onload = function() {
                 // Log actual image dimensions
                 console.log('Image dimensions:', img.width + 'x' + img.height + 'px');
+                console.log('Attachment ID:', attachmentId);
+                console.log('Attachment URL:', attachmentUrl);
 
                 // Calculate size for CANVAS DISPLAY ONLY
-                // This scaling is ONLY for the canvas preview, not for the saved file
                 const maxDimension = 200;
                 let width = img.width;
                 let height = img.height;
@@ -1093,13 +1150,14 @@
 
                 console.log('Canvas preview dimensions:', Math.round(width) + 'x' + Math.round(height) + 'px');
 
-                // Create new design
+                // Create new design with attachment reference
                 const design = {
                     id: Date.now().toString(),
                     type: 'image',
                     image: img,
-                    src: event.target.result,
-                    file: file, // EXACT ORIGINAL FILE - no modifications
+                    src: event.target.result, // Data URL for canvas display
+                    attachmentId: attachmentId, // WordPress attachment ID (original file)
+                    attachmentUrl: attachmentUrl, // URL to original file
                     sideIndex: state.selectedSide,
                     x: state.canvas.width / 2,
                     y: state.canvas.height / 2,
@@ -1959,29 +2017,25 @@
         } catch (err) {
             console.warn('Preview capture failed:', err);
         }
-        
-        // Add any image files from designs
-        let totalFileSize = 0;
-        state.designs.forEach(design => {
-            if (design.type === 'image' && design.file) {
-                formData.append('files[]', design.file);
-                totalFileSize += design.file.size;
-            }
-        });
 
-        // Log file sizes for debugging
-        if (totalFileSize > 0) {
-            console.log('Total upload size:', (totalFileSize / 1024 / 1024).toFixed(2) + 'MB');
-        }
+        // NOTE: Images are already uploaded to server when user selects them
+        // We only send attachment IDs in the designs JSON (not files again)
+        console.log('Image designs with attachment IDs:',
+            state.designs.filter(d => d.type === 'image').map(d => ({
+                id: d.id,
+                attachmentId: d.attachmentId,
+                attachmentUrl: d.attachmentUrl
+            }))
+        );
 
-        // Send AJAX request with timeout
+        // Send AJAX request
         $.ajax({
             url: AAKAARI_SETTINGS.ajax_url,
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
-            timeout: 120000, // 120 seconds timeout for large file uploads
+            timeout: 30000, // 30 seconds timeout (no large files now)
             success: function(response) {
                 if (response.success) {
                     // Redirect to cart

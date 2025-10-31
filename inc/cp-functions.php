@@ -770,67 +770,17 @@ function aakaari_ajax_add_to_cart() {
         error_log('AJAX: No designs to validate - proceeding with plain product add to cart');
     }
 
-    // Handle file uploads - Original uploaded design images
+    // Extract attachment IDs from designs array
+    // Images are uploaded immediately when user selects them, so attachment IDs are already available
     $attached_image_ids = array();
-    if ( ! empty( $_FILES['files'] ) ) {
-        $files = $_FILES['files'];
-        // Re-format the $_FILES array for easier processing
-        $files_reformatted = array();
-        foreach ($files['name'] as $key => $name) {
-            $files_reformatted[$key] = array(
-                'name'     => $name,
-                'type'     => $files['type'][$key],
-                'tmp_name' => $files['tmp_name'][$key],
-                'error'    => $files['error'][$key],
-                'size'     => $files['size'][$key],
-            );
-        }
-
-        foreach ( $files_reformatted as $file ) {
-            $attach_id = aakaari_handle_upload_and_attach( $file );
-            if ( $attach_id ) {
-                $attached_image_ids[] = $attach_id;
-            }
-        }
-    }
-    
-    // PRIORITY: Extract original image attachment IDs from designs array FIRST
-    // This is critical - images uploaded earlier are only referenced by URL in designs
     if (!empty($designs) && is_array($designs)) {
         foreach ($designs as $design) {
-            // Check if this is an image design with a src pointing to a WordPress upload
-            if (isset($design['type']) && $design['type'] === 'image' && !empty($design['src'])) {
-                $src = $design['src'];
-                
-                // Check if src is a WordPress upload URL (original uploaded file)
-                if (strpos($src, 'wp-content/uploads') !== false && 
-                    strpos($src, 'data:image') === false) { // Not a data URL
-                    
-                    // Try to get attachment ID from URL
-                    $attachment_id = attachment_url_to_postid($src);
-                    
-                    if ($attachment_id) {
-                        // Check if already in our array (avoid duplicates)
-                        if (!in_array($attachment_id, $attached_image_ids)) {
-                            $attached_image_ids[] = $attachment_id;
-                            error_log('AJAX: Found original uploaded image in design, added attachment ID: ' . $attachment_id . ' from URL: ' . $src);
-                        }
-                    } else {
-                        // URL exists but attachment not found - try alternate methods
-                        // Sometimes attachment_url_to_postid fails, try direct database lookup
-                        global $wpdb;
-                        $attachment_id = $wpdb->get_var($wpdb->prepare(
-                            "SELECT ID FROM {$wpdb->posts} WHERE guid = %s AND post_type = 'attachment' LIMIT 1",
-                            $src
-                        ));
-                        
-                        if ($attachment_id && !in_array($attachment_id, $attached_image_ids)) {
-                            $attached_image_ids[] = intval($attachment_id);
-                            error_log('AJAX: Found original image via DB lookup, added attachment ID: ' . $attachment_id . ' from URL: ' . $src);
-                        } else {
-                            error_log('AJAX Warning: Design image URL found but attachment ID not found: ' . $src);
-                        }
-                    }
+            // Check if this is an image design with attachmentId
+            if (isset($design['type']) && $design['type'] === 'image' && !empty($design['attachmentId'])) {
+                $attachment_id = intval($design['attachmentId']);
+                if ($attachment_id > 0 && !in_array($attachment_id, $attached_image_ids)) {
+                    $attached_image_ids[] = $attachment_id;
+                    error_log('AJAX: Found image design with attachment ID: ' . $attachment_id);
                 }
             }
         }
@@ -966,6 +916,69 @@ function aakaari_ajax_add_to_cart() {
 add_action( 'wp_ajax_aakaari_add_to_cart', 'aakaari_ajax_add_to_cart' );
 add_action( 'wp_ajax_nopriv_aakaari_add_to_cart', 'aakaari_ajax_add_to_cart' );
 
+/**
+ * AJAX handler for immediate image upload
+ * Uploads design image to media library as soon as user selects it
+ * Returns attachment ID and URL to store with design
+ */
+function aakaari_ajax_upload_design_image() {
+    error_log('AJAX: aakaari_upload_design_image triggered');
+
+    // Validate nonce
+    $nonce = '';
+    if (isset($_POST['security'])) {
+        $nonce = sanitize_text_field(wp_unslash($_POST['security']));
+    } elseif (isset($_REQUEST['security'])) {
+        $nonce = sanitize_text_field(wp_unslash($_REQUEST['security']));
+    }
+
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'aakaari_customizer')) {
+        error_log('AJAX Error: Nonce verification failed for image upload');
+        wp_send_json_error(array('message' => 'Invalid security token'), 403);
+    }
+
+    // Check if file was uploaded
+    if (empty($_FILES['file'])) {
+        error_log('AJAX Error: No file uploaded');
+        wp_send_json_error(array('message' => 'No file provided'), 400);
+    }
+
+    $file = $_FILES['file'];
+
+    // Validate file type
+    $allowed_types = array('image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp');
+    if (!in_array($file['type'], $allowed_types)) {
+        error_log('AJAX Error: Invalid file type: ' . $file['type']);
+        wp_send_json_error(array('message' => 'Invalid file type. Only images are allowed.'), 400);
+    }
+
+    // Upload file to media library
+    $attachment_id = aakaari_handle_upload_and_attach($file);
+
+    if (!$attachment_id) {
+        error_log('AJAX Error: Failed to upload file to media library');
+        wp_send_json_error(array('message' => 'Failed to upload image'), 500);
+    }
+
+    // Get attachment URL
+    $attachment_url = wp_get_attachment_url($attachment_id);
+
+    if (!$attachment_url) {
+        error_log('AJAX Error: Failed to get attachment URL for ID: ' . $attachment_id);
+        wp_send_json_error(array('message' => 'Failed to get image URL'), 500);
+    }
+
+    error_log('AJAX Success: Image uploaded - Attachment ID: ' . $attachment_id . ', URL: ' . $attachment_url);
+
+    // Return success with attachment data
+    wp_send_json_success(array(
+        'attachment_id' => $attachment_id,
+        'url' => $attachment_url,
+        'message' => 'Image uploaded successfully'
+    ));
+}
+add_action('wp_ajax_aakaari_upload_design_image', 'aakaari_ajax_upload_design_image');
+add_action('wp_ajax_nopriv_aakaari_upload_design_image', 'aakaari_ajax_upload_design_image');
 
 /**
  * Handle uploaded file and insert into Media Library.
