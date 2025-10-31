@@ -679,71 +679,193 @@
                                 position: fixed;
                                 top: 0;
                                 left: 0;
-                                width: 100%;
-                                height: 100%;
-                                z-index: 9999;
-                            }
-                            .aakaari-modal.active {
-                                display: flex;
+                                right: 0;
+                                bottom: 0;
+                                width: 100vw;
+                                height: 100vh;
+                                z-index: 999999;
                                 align-items: center;
                                 justify-content: center;
+                                padding: 20px;
+                            }
+                            .aakaari-modal.active {
+                                display: flex !important;
                             }
                             .aakaari-modal-overlay {
-                                position: absolute;
+                                position: fixed;
                                 top: 0;
                                 left: 0;
-                                width: 100%;
-                                height: 100%;
-                                background-color: rgba(0, 0, 0, 0.5);
+                                right: 0;
+                                bottom: 0;
+                                width: 100vw;
+                                height: 100vh;
+                                background-color: rgba(0, 0, 0, 0.75);
+                                z-index: 999998;
                             }
                             .aakaari-modal-content {
                                 position: relative;
                                 background-color: white;
-                                border-radius: 0.5rem;
-                                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-                                max-width: 800px;
-                                width: 90%;
+                                border-radius: 12px;
+                                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                                max-width: 1000px;
+                                width: 100%;
                                 max-height: 90vh;
-                                overflow-y: auto;
-                                z-index: 10000;
+                                overflow: hidden;
+                                z-index: 999999;
+                                display: flex;
+                                flex-direction: column;
                             }
                             .aakaari-modal-header {
-                                padding: 1.5rem;
-                                border-bottom: 1px solid #e5e7eb;
+                                padding: 24px 32px;
+                                border-bottom: 2px solid #e5e7eb;
                                 display: flex;
                                 justify-content: space-between;
                                 align-items: center;
+                                background-color: #f9fafb;
+                                flex-shrink: 0;
                             }
                             .aakaari-modal-header h3 {
                                 margin: 0;
-                                font-size: 1.25rem;
-                                font-weight: 600;
+                                font-size: 24px;
+                                font-weight: 700;
+                                color: #111827;
                             }
                             .aakaari-modal-close {
-                                background: none;
+                                background: #ef4444;
                                 border: none;
-                                font-size: 1.5rem;
+                                font-size: 24px;
+                                line-height: 1;
                                 cursor: pointer;
-                                color: #6b7280;
+                                color: white;
                                 padding: 0;
-                                width: 2rem;
-                                height: 2rem;
+                                width: 40px;
+                                height: 40px;
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
+                                border-radius: 6px;
+                                transition: background-color 0.2s;
+                                flex-shrink: 0;
                             }
                             .aakaari-modal-close:hover {
-                                color: #111827;
+                                background-color: #dc2626;
                             }
                             .aakaari-modal-body {
-                                padding: 1.5rem;
+                                padding: 32px;
+                                overflow-y: auto;
+                                flex-grow: 1;
+                                background-color: white;
                             }
                             .aakaari-modal-footer {
-                                padding: 1.5rem;
-                                border-top: 1px solid #e5e7eb;
+                                padding: 20px 32px;
+                                border-top: 2px solid #e5e7eb;
                                 display: flex;
                                 justify-content: flex-end;
-                                gap: 0.75rem;
+                                gap: 12px;
+                                background-color: #f9fafb;
+                                flex-shrink: 0;
+                            }
+                            .aakaari-button {
+                                padding: 12px 24px;
+                                border-radius: 6px;
+                                font-weight: 600;
+                                font-size: 14px;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                                border: none;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            .aakaari-button-outline {
+                                background-color: white;
+                                color: #374151;
+                                border: 2px solid #d1d5db;
+                            }
+                            .aakaari-button-outline:hover {
+                                background-color: #f9fafb;
+                                border-color: #9ca3af;
+                            }
+                            .aakaari-button-primary {
+                                background-color: #2271b1;
+                                color: white;
+                                border: 2px solid #2271b1;
+                            }
+                            .aakaari-button-primary:hover {
+                                background-color: #135e96;
+                                border-color: #135e96;
+                            }
+                            .status-badge {
+                                display: inline-block;
+                                padding: 6px 12px;
+                                border-radius: 9999px;
+                                font-size: 12px;
+                                font-weight: 700;
+                                text-transform: uppercase;
+                                letter-spacing: 0.5px;
+                            }
+                            .status-pending {
+                                background-color: #fef3c7;
+                                color: #92400e;
+                            }
+                            .status-processing {
+                                background-color: #dbeafe;
+                                color: #1e40af;
+                            }
+                            .status-completed {
+                                background-color: #d1fae5;
+                                color: #065f46;
+                            }
+                            .status-on-hold {
+                                background-color: #fed7aa;
+                                color: #9a3412;
+                            }
+                            .status-cancelled {
+                                background-color: #fee2e2;
+                                color: #991b1b;
+                            }
+                            .status-refunded {
+                                background-color: #e0e7ff;
+                                color: #3730a3;
+                            }
+                            .status-failed {
+                                background-color: #fecaca;
+                                color: #7f1d1d;
+                            }
+                            .status-paid {
+                                background-color: #d1fae5;
+                                color: #065f46;
+                            }
+                            .order-details-grid {
+                                display: grid;
+                                gap: 24px;
+                            }
+                            .order-details-grid h4 {
+                                margin: 0 0 16px 0;
+                                font-size: 18px;
+                                font-weight: 700;
+                                color: #111827;
+                                border-bottom: 2px solid #e5e7eb;
+                                padding-bottom: 8px;
+                            }
+                            .aakaari-info-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                            }
+                            .aakaari-info-table tr {
+                                border-bottom: 1px solid #f3f4f6;
+                            }
+                            .aakaari-info-table td {
+                                padding: 12px 8px;
+                                vertical-align: top;
+                            }
+                            .aakaari-info-table td:first-child {
+                                font-weight: 600;
+                                color: #6b7280;
+                                width: 40%;
+                            }
+                            .aakaari-info-table td:last-child {
+                                color: #111827;
                             }
                         `)
                         .appendTo('head');
