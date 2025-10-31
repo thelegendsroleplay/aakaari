@@ -1357,212 +1357,127 @@ function aakaari_ajax_get_order_details() {
         $preview_image = "";
         $customization_details = "";
 
-        // Get customization meta data - WooCommerce may serialize arrays
+        // Get customization meta data - NEW: Use structured attachment IDs
         $designs_raw = $item->get_meta("_aakaari_designs");
-        $attachments_raw = $item->get_meta("_aakaari_attachments");
-        $original_image_urls_raw = $item->get_meta("_aakaari_original_image_urls");
-        $preview_img_url = $item->get_meta("_aakaari_preview_image");
-        $print_area_img_url = $item->get_meta("_aakaari_print_area_image");
+        $original_attachment_id = intval($item->get_meta("_aakaari_original_attachment"));
+        $preview_attachment_id = intval($item->get_meta("_aakaari_preview_attachment"));
+        $combined_attachment_id = intval($item->get_meta("_aakaari_combined_attachment"));
         
-        // Unserialize if needed (WooCommerce stores arrays as serialized strings)
+        // Unserialize designs if needed
         $designs = is_string($designs_raw) ? maybe_unserialize($designs_raw) : $designs_raw;
-        $attachments = is_string($attachments_raw) ? maybe_unserialize($attachments_raw) : $attachments_raw;
-        $original_image_urls = is_string($original_image_urls_raw) ? maybe_unserialize($original_image_urls_raw) : $original_image_urls_raw;
+        
+        // Legacy support: Fallback to old meta keys if new ones don't exist
+        if ($original_attachment_id <= 0) {
+            // Try old attachments meta key
+            $attachments_raw = $item->get_meta("_aakaari_attachments");
+            $attachments = is_string($attachments_raw) ? maybe_unserialize($attachments_raw) : $attachments_raw;
+            if (!empty($attachments) && is_array($attachments)) {
+                $original_attachment_id = intval($attachments[0]);
+                error_log('Admin Dashboard - Found original via legacy _aakaari_attachments: ' . $original_attachment_id);
+            }
+            
+            // Also try extracting from designs array if still not found
+            if ($original_attachment_id <= 0 && !empty($designs) && is_array($designs)) {
+                foreach ($designs as $design) {
+                    if (isset($design['type']) && $design['type'] === 'image' && !empty($design['src'])) {
+                        $src = $design['src'];
+                        if (strpos($src, 'wp-content/uploads') !== false && strpos($src, 'data:image') === false) {
+                            $attachment_id = attachment_url_to_postid($src);
+                            if ($attachment_id) {
+                                $original_attachment_id = intval($attachment_id);
+                                error_log('Admin Dashboard - Found original via designs array extraction: ' . $original_attachment_id);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if ($preview_attachment_id <= 0) {
+            $preview_img_url = $item->get_meta("_aakaari_preview_image");
+            if ($preview_img_url) {
+                $preview_attachment_id = attachment_url_to_postid($preview_img_url);
+                if (!$preview_attachment_id) {
+                    // Try direct DB lookup
+                    global $wpdb;
+                    $preview_attachment_id = $wpdb->get_var($wpdb->prepare(
+                        "SELECT ID FROM {$wpdb->posts} WHERE guid = %s AND post_type = 'attachment' LIMIT 1",
+                        $preview_img_url
+                    ));
+                }
+                if ($preview_attachment_id) {
+                    error_log('Admin Dashboard - Found preview via legacy _aakaari_preview_image: ' . $preview_attachment_id);
+                }
+            }
+        }
+        
+        // If combined is same as preview, set it
+        if ($combined_attachment_id <= 0 && $preview_attachment_id > 0) {
+            $combined_attachment_id = $preview_attachment_id;
+        }
 
-        // Debug: Log what we found (remove after testing)
+        // Debug: Log what we found
         error_log('Admin Dashboard - Order Item Meta Debug (Item ID: ' . $item_id . '):');
-        error_log('  - Designs (raw): ' . (empty($designs_raw) ? 'EMPTY' : (is_string($designs_raw) ? 'STRING' : 'ARRAY')));
-        error_log('  - Designs (processed): ' . (empty($designs) ? 'EMPTY' : (is_array($designs) ? 'ARRAY with ' . count($designs) . ' items' : print_r($designs, true))));
-        error_log('  - Attachments (raw): ' . (empty($attachments_raw) ? 'EMPTY' : (is_string($attachments_raw) ? 'STRING' : 'ARRAY')));
-        error_log('  - Attachments (processed): ' . (empty($attachments) ? 'EMPTY' : (is_array($attachments) ? 'ARRAY with ' . count($attachments) . ' items: ' . print_r($attachments, true) : print_r($attachments, true))));
-        error_log('  - Original Image URLs (raw): ' . (empty($original_image_urls_raw) ? 'EMPTY' : (is_string($original_image_urls_raw) ? 'STRING' : 'ARRAY')));
-        error_log('  - Original Image URLs (processed): ' . (empty($original_image_urls) ? 'EMPTY' : (is_array($original_image_urls) ? 'ARRAY with ' . count($original_image_urls) . ' items: ' . print_r($original_image_urls, true) : print_r($original_image_urls, true))));
-        error_log('  - Preview Image URL: ' . ($preview_img_url ?: 'EMPTY'));
-        error_log('  - Print Area Image URL: ' . ($print_area_img_url ?: 'EMPTY'));
+        error_log('  - Original Attachment ID: ' . ($original_attachment_id > 0 ? $original_attachment_id : 'NOT FOUND'));
+        error_log('  - Preview Attachment ID: ' . ($preview_attachment_id > 0 ? $preview_attachment_id : 'NOT FOUND'));
+        error_log('  - Combined Attachment ID: ' . ($combined_attachment_id > 0 ? $combined_attachment_id : 'NOT FOUND'));
 
         // Check if this is a customized product
-        $is_customized = !empty($designs) || !empty($attachments) || !empty($preview_img_url);
+        $is_customized = !empty($designs) || $original_attachment_id > 0 || $preview_attachment_id > 0 || $combined_attachment_id > 0;
 
         if ($is_customized) {
             $meta_display .= "<div class='customization-section'>";
 
-            // Download Options Section - Organized into 3 clear categories
+            // Download Options Section - Three separate files with clear labels
             $meta_display .= "<div style='margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #2271b1;'>";
             $meta_display .= "<strong style='color: #2271b1; font-size: 14px; display: block; margin-bottom: 12px;'>Download Options:</strong>";
             
-            // 1. Combined (Preview/Mockup) - T-shirt with design
-            if (!empty($preview_img_url)) {
-                $meta_display .= "<div class='download-option' style='margin-bottom: 15px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
-                $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>1. Combined (Product Mockup):</strong>";
-                $meta_display .= "<div style='display: flex; align-items: flex-start; gap: 12px;'>";
-                $meta_display .= "<img src='" . esc_url($preview_img_url) . "' alt='Product Mockup' style='max-width: 200px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: contain;' />";
-                $meta_display .= "<div style='flex: 1;'>";
-                $meta_display .= "<p style='margin: 0 0 10px 0; color: #666; font-size: 12px;'>Complete product preview with design applied</p>";
-                $meta_display .= "<a href='" . esc_url($preview_img_url) . "' target='_blank' download class='button button-small' style='background:#2271b1; color:white; padding: 6px 14px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 12px; font-weight: 500;'>Download Combined</a>";
-                $meta_display .= "</div></div></div>";
-            }
-
-            // 2. Print Area PNG - With bounding box
-            if (!empty($print_area_img_url)) {
-                $meta_display .= "<div class='download-option' style='margin-bottom: 15px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
-                $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>2. Print Area (PNG):</strong>";
-                $meta_display .= "<div style='display: flex; align-items: flex-start; gap: 12px;'>";
-                $meta_display .= "<img src='" . esc_url($print_area_img_url) . "' alt='Print Area' style='max-width: 200px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: contain;' />";
-                $meta_display .= "<div style='flex: 1;'>";
-                $meta_display .= "<p style='margin: 0 0 10px 0; color: #666; font-size: 12px;'>Design with print area boundaries marked</p>";
-                $meta_display .= "<a href='" . esc_url($print_area_img_url) . "' target='_blank' download class='button button-small' style='background:#2271b1; color:white; padding: 6px 14px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 12px; font-weight: 500;'>Download Print Area</a>";
-                $meta_display .= "</div></div></div>";
-            }
-
-            // 3. Separate Design Image - Original uploaded files without overlays
-            // Collect all original uploaded images from multiple sources
-            $all_original_images = array();
-            $added_urls = array(); // Track added URLs to avoid duplicates
-            
-            // Priority 1: Use saved original image URLs (direct URLs saved at checkout)
-            if (!empty($original_image_urls)) {
-                // Handle both serialized arrays and direct arrays
-                if (is_string($original_image_urls)) {
-                    $original_image_urls = maybe_unserialize($original_image_urls);
+            // Helper function to render download option
+            $render_download_option = function($attachment_id, $label, $description) use (&$meta_display) {
+                if ($attachment_id <= 0) {
+                    $meta_display .= "<div class='download-option' style='margin-bottom: 15px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
+                    $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>" . esc_html($label) . ":</strong>";
+                    $meta_display .= "<p style='margin: 0; color: #999; font-size: 12px; font-style: italic;'>Not available</p>";
+                    $meta_display .= "</div>";
+                    return;
                 }
-                if (is_array($original_image_urls)) {
-                    foreach ($original_image_urls as $image_url) {
-                        if (!empty($image_url) && !in_array($image_url, $added_urls)) {
-                            // Try to get attachment ID from URL for thumbnail
-                            $attachment_id = attachment_url_to_postid($image_url);
-                            $file_name = basename(parse_url($image_url, PHP_URL_PATH));
-                            
-                            if ($attachment_id) {
-                                $actual_file_name = basename(get_attached_file($attachment_id));
-                                if ($actual_file_name) {
-                                    $file_name = $actual_file_name;
-                                }
-                            }
-                            
-                            $all_original_images[] = array(
-                                'type' => 'url',
-                                'id' => $attachment_id ?: null,
-                                'url' => $image_url,
-                                'name' => $file_name ?: 'original-design.png'
-                            );
-                            $added_urls[] = $image_url;
-                        }
-                    }
+                
+                $file_url = wp_get_attachment_url($attachment_id);
+                $thumb_url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
+                $file_name = basename(get_attached_file($attachment_id));
+                if (!$file_name) {
+                    $file_name = basename(parse_url($file_url, PHP_URL_PATH)) ?: 'file.png';
                 }
-            }
-            
-            // Priority 2: Get from attachment IDs (for orders that don't have URLs saved)
-            // ALWAYS check attachments, not just as fallback - they should always be present for customized products
-            if (!empty($attachments)) {
-                // Handle both serialized arrays and direct arrays
-                if (is_string($attachments)) {
-                    $attachments = maybe_unserialize($attachments);
-                }
-                if (is_array($attachments)) {
-                    foreach ($attachments as $attachment_id) {
-                        $attachment_id = intval($attachment_id);
-                        if ($attachment_id > 0) {
-                            $attachment_url = wp_get_attachment_url($attachment_id);
-                            if ($attachment_url && !in_array($attachment_url, $added_urls)) {
-                                $file_name = basename(get_attached_file($attachment_id));
-                                if (!$file_name) {
-                                    $file_name = basename(parse_url($attachment_url, PHP_URL_PATH));
-                                }
-                                $all_original_images[] = array(
-                                    'type' => 'attachment',
-                                    'id' => $attachment_id,
-                                    'url' => $attachment_url,
-                                    'name' => $file_name ?: 'original-design.png'
-                                );
-                                $added_urls[] = $attachment_url;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Priority 3: Check designs array for image designs with src (additional fallback)
-            if (!empty($designs)) {
-                // Handle both serialized arrays and direct arrays
-                if (is_string($designs)) {
-                    $designs = maybe_unserialize($designs);
-                }
-                if (is_array($designs)) {
-                    foreach ($designs as $design) {
-                        // Check if this is an image design with a src
-                        if (isset($design['type']) && $design['type'] === 'image' && !empty($design['src'])) {
-                            $src = $design['src'];
-                            
-                            // Check if src is a WordPress upload URL (contains wp-content/uploads) and not already added
-                            if (strpos($src, 'wp-content/uploads') !== false && 
-                                strpos($src, 'data:image') === false && 
-                                !in_array($src, $added_urls)) {
-                                
-                                // Try to get attachment ID from URL
-                                $attachment_id = attachment_url_to_postid($src);
-                                $file_name = basename(parse_url($src, PHP_URL_PATH));
-                                
-                                if ($attachment_id) {
-                                    $actual_file_name = basename(get_attached_file($attachment_id));
-                                    if ($actual_file_name) {
-                                        $file_name = $actual_file_name;
-                                    }
-                                }
-                                
-                                $all_original_images[] = array(
-                                    'type' => 'url',
-                                    'id' => $attachment_id ?: null,
-                                    'url' => $src,
-                                    'name' => $file_name ?: 'design-image.png'
-                                );
-                                $added_urls[] = $src;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Debug: Log original images collection
-            error_log('Admin Dashboard - Original Images Collection Debug:');
-            error_log('  - Total original images found: ' . count($all_original_images));
-            error_log('  - All original images: ' . print_r($all_original_images, true));
-            
-            // Display section if we have any original images
-            if (!empty($all_original_images)) {
-                $meta_display .= "<div class='download-option' style='padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
-                $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>3. Separate Design Image (Original):</strong>";
-                $meta_display .= "<p style='margin: 0 0 10px 0; color: #666; font-size: 12px;'>Original uploaded design files without any overlays</p>";
-                $meta_display .= "<div style='display: flex; flex-wrap: wrap; gap: 10px;'>";
-
-                foreach ($all_original_images as $image) {
-                    $image_url = $image['url'];
-                    $file_name = $image['name'];
-                    $thumb_url = null;
+                
+                if ($file_url) {
+                    $meta_display .= "<div class='download-option' style='margin-bottom: 15px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
+                    $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>" . esc_html($label) . ":</strong>";
+                    $meta_display .= "<div style='display: flex; align-items: flex-start; gap: 12px;'>";
                     
-                    // Get thumbnail if we have an attachment ID
-                    if (!empty($image['id'])) {
-                        $thumb_url = wp_get_attachment_image_url($image['id'], 'thumbnail');
+                    // Thumbnail
+                    if ($thumb_url) {
+                        $meta_display .= "<img src='" . esc_url($thumb_url) . "' alt='" . esc_attr($label) . "' style='max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: contain; background: #fff;' />";
+                    } elseif ($file_url) {
+                        $meta_display .= "<img src='" . esc_url($file_url) . "' alt='" . esc_attr($label) . "' style='max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: contain; background: #fff;' />";
                     }
                     
-                    if ($image_url) {
-                        $meta_display .= "<div style='display: flex; align-items: center; gap: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e5e7eb;'>";
-                        
-                        // Show thumbnail if available
-                        if ($thumb_url) {
-                            $meta_display .= "<img src='" . esc_url($thumb_url) . "' style='width: 50px; height: 50px; object-fit: cover; border-radius: 3px; border: 1px solid #ddd;' />";
-                        } elseif (strpos($image_url, 'wp-content/uploads') !== false) {
-                            // Try to show image directly as thumbnail
-                            $meta_display .= "<img src='" . esc_url($image_url) . "' style='width: 50px; height: 50px; object-fit: cover; border-radius: 3px; border: 1px solid #ddd;' />";
-                        }
-
-                        $meta_display .= "<div>";
-                        $meta_display .= "<div style='font-size: 11px; color: #666; margin-bottom: 4px;'>" . esc_html($file_name) . "</div>";
-                        $meta_display .= "<a href=\"" . esc_url($image_url) . "\" target=\"_blank\" download class='button button-small' style='background: #2271b1; color: white; padding: 4px 12px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 11px; font-weight: 500;'>Download</a>";
-                        $meta_display .= "</div></div>";
-                    }
+                    $meta_display .= "<div style='flex: 1;'>";
+                    $meta_display .= "<p style='margin: 0 0 8px 0; color: #666; font-size: 12px;'>" . esc_html($description) . "</p>";
+                    $meta_display .= "<div style='font-size: 11px; color: #999; margin-bottom: 10px;'>" . esc_html($file_name) . "</div>";
+                    $meta_display .= "<a href='" . esc_url($file_url) . "' target='_blank' download='" . esc_attr($file_name) . "' class='button button-small' style='background:#2271b1; color:white; padding: 6px 14px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 12px; font-weight: 500;'>Download " . esc_html($label) . "</a>";
+                    $meta_display .= "</div></div></div>";
                 }
-                $meta_display .= "</div></div>";
-            }
+            };
+            
+            // 1. Original Design - The exact file the user uploaded
+            $render_download_option($original_attachment_id, 'Original Design', 'The exact file the customer uploaded for customization');
+            
+            // 2. Preview Product Image - Small preview/thumbnail used in cart/checkout
+            $render_download_option($preview_attachment_id, 'Preview Product Image', 'Small preview/thumbnail used in cart and checkout');
+            
+            // 3. Combined (Product Mockup) - Generated mockup with design composited onto product
+            $render_download_option($combined_attachment_id, 'Combined (Product Mockup)', 'Complete product preview with design applied');
             
             $meta_display .= "</div>"; // Close download options section
 

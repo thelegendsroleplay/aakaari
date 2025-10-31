@@ -794,8 +794,8 @@ function aakaari_ajax_add_to_cart() {
         }
     }
     
-    // Also extract original image URLs from designs array and save them as attachments
-    // This captures images that were uploaded earlier and are now just referenced by URL
+    // PRIORITY: Extract original image attachment IDs from designs array FIRST
+    // This is critical - images uploaded earlier are only referenced by URL in designs
     if (!empty($designs) && is_array($designs)) {
         foreach ($designs as $design) {
             // Check if this is an image design with a src pointing to a WordPress upload
@@ -813,12 +813,23 @@ function aakaari_ajax_add_to_cart() {
                         // Check if already in our array (avoid duplicates)
                         if (!in_array($attachment_id, $attached_image_ids)) {
                             $attached_image_ids[] = $attachment_id;
-                            error_log('AJAX: Found original uploaded image in design, added attachment ID: ' . $attachment_id);
+                            error_log('AJAX: Found original uploaded image in design, added attachment ID: ' . $attachment_id . ' from URL: ' . $src);
                         }
                     } else {
-                        // URL exists but attachment not found - this shouldn't happen for uploads
-                        // But log it for debugging
-                        error_log('AJAX Warning: Design image URL found but attachment ID not found: ' . $src);
+                        // URL exists but attachment not found - try alternate methods
+                        // Sometimes attachment_url_to_postid fails, try direct database lookup
+                        global $wpdb;
+                        $attachment_id = $wpdb->get_var($wpdb->prepare(
+                            "SELECT ID FROM {$wpdb->posts} WHERE guid = %s AND post_type = 'attachment' LIMIT 1",
+                            $src
+                        ));
+                        
+                        if ($attachment_id && !in_array($attachment_id, $attached_image_ids)) {
+                            $attached_image_ids[] = intval($attachment_id);
+                            error_log('AJAX: Found original image via DB lookup, added attachment ID: ' . $attachment_id . ' from URL: ' . $src);
+                        } else {
+                            error_log('AJAX Warning: Design image URL found but attachment ID not found: ' . $src);
+                        }
                     }
                 }
             }
@@ -827,70 +838,83 @@ function aakaari_ajax_add_to_cart() {
     
     error_log('AJAX: Processed file uploads and extracted original images. Total Attached IDs: ' . print_r($attached_image_ids, true));
 
-    // Save original uploaded image URLs for easy access (same as preview and print area)
-    $original_image_urls = array();
-    if (!empty($attached_image_ids)) {
-        foreach ($attached_image_ids as $attachment_id) {
-            $original_url = wp_get_attachment_url($attachment_id);
-            if ($original_url) {
-                $original_image_urls[] = $original_url;
-                error_log('AJAX: Original image URL saved: ' . $original_url);
-            }
+    // Get original attachment ID (first uploaded file)
+    // IMPORTANT: If no files in $_FILES but we have designs with images, use the attachment ID from designs
+    $original_attachment_id = !empty($attached_image_ids) ? intval($attached_image_ids[0]) : 0;
+    
+    if ($original_attachment_id <= 0) {
+        error_log('AJAX ERROR: No original attachment ID found! This will cause "Not available" in order details.');
+        error_log('AJAX DEBUG - Files array: ' . (empty($_FILES['files']) ? 'EMPTY' : 'HAS FILES'));
+        error_log('AJAX DEBUG - Designs count: ' . (empty($designs) ? '0' : count($designs)));
+        if (!empty($designs)) {
+            error_log('AJAX DEBUG - First design: ' . print_r($designs[0], true));
         }
+    } else {
+        error_log('AJAX SUCCESS: Original attachment ID set to: ' . $original_attachment_id);
     }
 
-    // Handle preview image (data URL base64) -> save to media and store URL
-    $preview_image_url = '';
+    // Handle preview image (data URL base64) -> save as attachment and get ID
+    $preview_attachment_id = 0;
     if ( ! empty( $_REQUEST['preview_image'] ) ) {
         $data_url = $_REQUEST['preview_image'];
         if ( is_string( $data_url ) && strpos( $data_url, 'data:image/png;base64,' ) === 0 ) {
-            $preview_image_url = aakaari_store_data_url_image( $data_url, 'aakaari-custom-preview-' . time() . '.png' );
-            if ( $preview_image_url ) {
-                error_log('AJAX: Preview image saved at URL: ' . $preview_image_url);
+            $preview_attachment_id = aakaari_store_data_url_image( $data_url, 'aakaari-custom-preview-' . time() . '.png' );
+            if ( $preview_attachment_id > 0 ) {
+                error_log('AJAX: Preview image saved as attachment ID: ' . $preview_attachment_id);
             } else {
                 error_log('AJAX Warning: Failed to store preview image from data URL');
             }
         }
     }
 
-    // Handle separated print area image (data URL)
-    $print_area_image_url = '';
+    // Handle combined mockup (preview_image is actually the combined mockup)
+    // This is the product with design composited
+    $combined_attachment_id = $preview_attachment_id; // Same as preview for now
+    
+    // Also handle print area image separately (for reference, but combined is the main one)
+    $print_area_attachment_id = 0;
     if ( ! empty( $_REQUEST['print_area_image'] ) ) {
         $data_url = $_REQUEST['print_area_image'];
         if ( is_string( $data_url ) && strpos( $data_url, 'data:image/png;base64,' ) === 0 ) {
-            $print_area_image_url = aakaari_store_data_url_image( $data_url, 'aakaari-print-area-' . time() . '.png' );
-            if ( $print_area_image_url ) {
-                error_log('AJAX: Print area image saved at URL: ' . $print_area_image_url);
-            } else {
-                error_log('AJAX Warning: Failed to store print area image from data URL');
+            $print_area_attachment_id = aakaari_store_data_url_image( $data_url, 'aakaari-print-area-' . time() . '.png' );
+            if ($print_area_attachment_id > 0) {
+                error_log('AJAX: Print area image saved as attachment ID: ' . $print_area_attachment_id);
             }
         }
     }
 
-
-    // Now add to cart and include $designs + $attached_image_ids as cart item meta
+    // Now add to cart with structured custom_design data containing all three attachment IDs
     $cart_item_data = array(
         'aakaari_designs' => $designs,
         'aakaari_timestamp' => time(),
     );
-    // Save all three types of images:
-    // 1. Original uploaded design images (attachment IDs for reference, URLs for easy access)
+    
+    // Save structured custom_design with three separate attachment IDs
+    $custom_design = array();
+    
+    if ($original_attachment_id > 0) {
+        $custom_design['original'] = $original_attachment_id;
+    }
+    
+    if ($preview_attachment_id > 0) {
+        $custom_design['preview'] = $preview_attachment_id;
+    }
+    
+    if ($combined_attachment_id > 0) {
+        $custom_design['combined'] = $combined_attachment_id;
+    }
+    
+    // Store the structured custom_design data
+    if (!empty($custom_design)) {
+        $cart_item_data['custom_design'] = $custom_design;
+        error_log('AJAX: Custom design data prepared: ' . print_r($custom_design, true));
+    }
+    
+    // Also keep legacy fields for backward compatibility
     if (!empty($attached_image_ids)) {
-        $cart_item_data['aakaari_attachments'] = $attached_image_ids; // Attachment IDs
-    }
-    if (!empty($original_image_urls)) {
-        $cart_item_data['aakaari_original_image_urls'] = $original_image_urls; // Direct URLs for easier access
+        $cart_item_data['aakaari_attachments'] = $attached_image_ids;
     }
     
-    // 2. Combined product preview image
-    if ( ! empty( $preview_image_url ) ) {
-        $cart_item_data['aakaari_preview_image'] = $preview_image_url;
-    }
-    
-    // 3. Print area PNG image
-    if ( ! empty( $print_area_image_url ) ) {
-        $cart_item_data['aakaari_print_area_image'] = $print_area_image_url;
-    }
     error_log('AJAX: Cart Item Data prepared: ' . print_r($cart_item_data, true));
 
 
@@ -986,21 +1010,21 @@ function aakaari_handle_upload_and_attach( $file ) {
 }
 
 /**
- * Store a base64 data URL image into uploads and return its URL.
- * Returns empty string on failure.
+ * Store a base64 data URL image into uploads and return attachment ID.
+ * Returns 0 on failure, attachment ID on success.
  */
 function aakaari_store_data_url_image( $data_url, $filename = 'aakaari-preview.png' ) {
     // Validate data URL
     if ( ! is_string( $data_url ) ) {
-        return '';
+        return 0;
     }
     if ( strpos( $data_url, 'data:image/' ) !== 0 ) {
-        return '';
+        return 0;
     }
 
     // Split header and data
     if ( strpos( $data_url, ',' ) === false ) {
-        return '';
+        return 0;
     }
     list( $meta, $base64 ) = explode( ',', $data_url, 2 );
 
@@ -1016,13 +1040,13 @@ function aakaari_store_data_url_image( $data_url, $filename = 'aakaari-preview.p
     // Decode base64
     $binary = base64_decode( $base64 );
     if ( $binary === false ) {
-        return '';
+        return 0;
     }
 
     // Prepare uploads path
     $uploads = wp_upload_dir();
     if ( ! empty( $uploads['error'] ) ) {
-        return '';
+        return 0;
     }
 
     // Ensure unique filename
@@ -1032,7 +1056,7 @@ function aakaari_store_data_url_image( $data_url, $filename = 'aakaari-preview.p
     // Write file
     $bytes = file_put_contents( $file_path, $binary );
     if ( $bytes === false ) {
-        return '';
+        return 0;
     }
 
     // Create attachment in media library
@@ -1046,14 +1070,15 @@ function aakaari_store_data_url_image( $data_url, $filename = 'aakaari-preview.p
 
     $attach_id = wp_insert_attachment( $attachment, $file_path );
     if ( is_wp_error( $attach_id ) ) {
-        return '';
+        return 0;
     }
 
     require_once ABSPATH . 'wp-admin/includes/image.php';
     $attach_data = wp_generate_attachment_metadata( $attach_id, $file_path );
     wp_update_attachment_metadata( $attach_id, $attach_data );
 
-    return wp_get_attachment_url( $attach_id ) ?: '';
+    // Return attachment ID (not URL)
+    return intval( $attach_id );
 }
 
 // ADDED: Display customization data in cart and order
@@ -1126,31 +1151,57 @@ function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $o
     error_log('Order Save - Received cart item values:');
     error_log('  - Cart Item Key: ' . $cart_item_key);
     error_log('  - Available keys: ' . print_r(array_keys($values), true));
-    error_log('  - Has aakaari_designs: ' . (isset($values['aakaari_designs']) ? 'YES' : 'NO'));
-    error_log('  - Has aakaari_attachments: ' . (isset($values['aakaari_attachments']) ? 'YES' : 'NO'));
-    error_log('  - Has aakaari_original_image_urls: ' . (isset($values['aakaari_original_image_urls']) ? 'YES' : 'NO'));
-    error_log('  - Has aakaari_preview_image: ' . (isset($values['aakaari_preview_image']) ? 'YES' : 'NO'));
-    error_log('  - Has aakaari_print_area_image: ' . (isset($values['aakaari_print_area_image']) ? 'YES' : 'NO'));
     
+    // Save designs data
     if ( isset( $values['aakaari_designs'] ) ) {
         $item->add_meta_data( '_aakaari_designs', $values['aakaari_designs'], true );
         error_log('Order Save - Saved _aakaari_designs');
     }
+    
+    // NEW: Save structured custom_design with three separate attachment IDs
+    if ( ! empty( $values['custom_design'] ) && is_array( $values['custom_design'] ) ) {
+        $design = $values['custom_design'];
+        
+        // Save original attachment ID
+        if ( ! empty( $design['original'] ) ) {
+            $original_id = intval( $design['original'] );
+            if ( $original_id > 0 ) {
+                $item->add_meta_data( '_aakaari_original_attachment', $original_id, true );
+                error_log('Order Save - Saved _aakaari_original_attachment: ' . $original_id);
+            }
+        }
+        
+        // Save preview attachment ID
+        if ( ! empty( $design['preview'] ) ) {
+            $preview_id = intval( $design['preview'] );
+            if ( $preview_id > 0 ) {
+                $item->add_meta_data( '_aakaari_preview_attachment', $preview_id, true );
+                error_log('Order Save - Saved _aakaari_preview_attachment: ' . $preview_id);
+            }
+        }
+        
+        // Save combined mockup attachment ID
+        if ( ! empty( $design['combined'] ) ) {
+            $combined_id = intval( $design['combined'] );
+            if ( $combined_id > 0 ) {
+                $item->add_meta_data( '_aakaari_combined_attachment', $combined_id, true );
+                error_log('Order Save - Saved _aakaari_combined_attachment: ' . $combined_id);
+            }
+        }
+    }
+    
+    // Legacy support: Also save old format for backward compatibility
     if ( isset( $values['aakaari_attachments'] ) ) {
         $item->add_meta_data( '_aakaari_attachments', $values['aakaari_attachments'], true );
-        error_log('Order Save - Saved _aakaari_attachments: ' . print_r($values['aakaari_attachments'], true));
     }
     if ( isset( $values['aakaari_original_image_urls'] ) ) {
         $item->add_meta_data( '_aakaari_original_image_urls', $values['aakaari_original_image_urls'], true );
-        error_log('Order Save - Saved _aakaari_original_image_urls: ' . print_r($values['aakaari_original_image_urls'], true));
     }
     if ( isset( $values['aakaari_preview_image'] ) ) {
         $item->add_meta_data( '_aakaari_preview_image', $values['aakaari_preview_image'], true );
-        error_log('Order Save - Saved _aakaari_preview_image: ' . $values['aakaari_preview_image']);
     }
     if ( isset( $values['aakaari_print_area_image'] ) ) {
         $item->add_meta_data( '_aakaari_print_area_image', $values['aakaari_print_area_image'], true );
-        error_log('Order Save - Saved _aakaari_print_area_image: ' . $values['aakaari_print_area_image']);
     }
 }
 
