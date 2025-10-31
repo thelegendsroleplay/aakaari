@@ -1608,6 +1608,285 @@ function initializeCustomProductsAdmin() {
             }, 3000);
         }
 
+        // --- Order Action Handlers ---
+
+        // Handle view order details
+        $(document).on('click', '[data-action="view-order"]', function(e) {
+            e.preventDefault();
+            const orderId = $(this).data('id');
+
+            if (!orderId) {
+                showToast('Invalid order ID', 'error');
+                return;
+            }
+
+            // Show loading toast
+            showToast('Loading order details...', 'info');
+
+            // Get order details via AJAX
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aakaari_get_order_details',
+                    order_id: orderId,
+                    nonce: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.nonce : ''
+                },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        showOrderDetailsModal(response.data);
+                    } else {
+                        showToast(response.data?.message || 'Failed to load order details', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Error loading order details', 'error');
+                }
+            });
+        });
+
+        // Handle update order status
+        $(document).on('click', '[data-action="update-status"]', function(e) {
+            e.preventDefault();
+            const orderId = $(this).data('id');
+
+            if (!orderId) {
+                showToast('Invalid order ID', 'error');
+                return;
+            }
+
+            // Show status selection modal
+            showStatusUpdateModal(orderId);
+        });
+
+        // Handle download invoice
+        $(document).on('click', '[data-action="download-invoice"]', function(e) {
+            e.preventDefault();
+            const orderId = $(this).data('id');
+
+            if (!orderId) {
+                showToast('Invalid order ID', 'error');
+                return;
+            }
+
+            // Open invoice in new window (assuming WooCommerce invoice URL)
+            const invoiceUrl = `${window.location.origin}/wp-admin/post.php?post=${orderId}&action=edit`;
+            window.open(invoiceUrl, '_blank');
+
+            showToast('Opening invoice...', 'info');
+        });
+
+        // --- Order Modal Functions ---
+
+        function showOrderDetailsModal(orderData) {
+            // Create modal HTML if it doesn't exist
+            let modal = $('#orderDetailsModal');
+            if (modal.length === 0) {
+                $('body').append(`
+                    <div id="orderDetailsModal" class="aakaari-modal">
+                        <div class="aakaari-modal-overlay"></div>
+                        <div class="aakaari-modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+                            <div class="aakaari-modal-header">
+                                <h3>Order Details</h3>
+                                <button class="aakaari-modal-close" id="closeOrderModalBtn">&times;</button>
+                            </div>
+                            <div class="aakaari-modal-body" id="orderDetailsContent"></div>
+                            <div class="aakaari-modal-footer">
+                                <button class="aakaari-button aakaari-button-outline" id="closeOrderModalBtn2">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                modal = $('#orderDetailsModal');
+
+                // Close button handlers
+                $('#closeOrderModalBtn, #closeOrderModalBtn2').on('click', function() {
+                    modal.removeClass('active');
+                });
+
+                modal.find('.aakaari-modal-overlay').on('click', function() {
+                    modal.removeClass('active');
+                });
+            }
+
+            // Populate modal content
+            const content = $('#orderDetailsContent');
+            let html = `
+                <div class="order-details-grid">
+                    <div class="order-info-section">
+                        <h4>Order Information</h4>
+                        <table class="aakaari-info-table">
+                            <tr><td><strong>Order ID:</strong></td><td>#${orderData.id}</td></tr>
+                            <tr><td><strong>Order Number:</strong></td><td>${orderData.order_number}</td></tr>
+                            <tr><td><strong>Date:</strong></td><td>${orderData.date}</td></tr>
+                            <tr><td><strong>Status:</strong></td><td><span class="status-badge status-${orderData.status}">${orderData.status}</span></td></tr>
+                            <tr><td><strong>Total:</strong></td><td>${orderData.total}</td></tr>
+                            <tr><td><strong>Payment Status:</strong></td><td>${orderData.payment_status}</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="customer-info-section">
+                        <h4>Customer Information</h4>
+                        <table class="aakaari-info-table">
+                            <tr><td><strong>Name:</strong></td><td>${orderData.customer_name}</td></tr>
+                            <tr><td><strong>Email:</strong></td><td>${orderData.customer_email}</td></tr>
+                            ${orderData.customer_phone ? `<tr><td><strong>Phone:</strong></td><td>${orderData.customer_phone}</td></tr>` : ''}
+                        </table>
+                    </div>
+
+                    ${orderData.billing_address ? `
+                    <div class="address-section">
+                        <h4>Billing Address</h4>
+                        <p>${orderData.billing_address}</p>
+                    </div>
+                    ` : ''}
+
+                    ${orderData.shipping_address ? `
+                    <div class="address-section">
+                        <h4>Shipping Address</h4>
+                        <p>${orderData.shipping_address}</p>
+                    </div>
+                    ` : ''}
+
+                    ${orderData.items && orderData.items.length > 0 ? `
+                    <div class="order-items-section">
+                        <h4>Order Items</h4>
+                        <table class="aakaari-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${orderData.items.map(item => `
+                                    <tr>
+                                        <td>
+                                            ${item.name}
+                                            ${item.meta_display ? `<br><small>${item.meta_display}</small>` : ''}
+                                        </td>
+                                        <td>${item.quantity}</td>
+                                        <td>${item.price}</td>
+                                        <td>${item.total}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ` : ''}
+
+                    ${orderData.notes ? `
+                    <div class="order-notes-section">
+                        <h4>Order Notes</h4>
+                        <p>${orderData.notes}</p>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            content.html(html);
+            modal.addClass('active');
+        }
+
+        function showStatusUpdateModal(orderId) {
+            // Create status update modal if it doesn't exist
+            let modal = $('#statusUpdateModal');
+            if (modal.length === 0) {
+                $('body').append(`
+                    <div id="statusUpdateModal" class="aakaari-modal">
+                        <div class="aakaari-modal-overlay"></div>
+                        <div class="aakaari-modal-content" style="max-width: 500px;">
+                            <div class="aakaari-modal-header">
+                                <h3>Update Order Status</h3>
+                                <button class="aakaari-modal-close" id="closeStatusModalBtn">&times;</button>
+                            </div>
+                            <div class="aakaari-modal-body">
+                                <div class="form-group">
+                                    <label for="orderStatusSelect">Select New Status:</label>
+                                    <select id="orderStatusSelect" class="aakaari-select" style="width: 100%;">
+                                        <option value="pending">Pending Payment</option>
+                                        <option value="processing">Processing</option>
+                                        <option value="on-hold">On Hold</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                        <option value="refunded">Refunded</option>
+                                        <option value="failed">Failed</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="statusUpdateNote">Note (optional):</label>
+                                    <textarea id="statusUpdateNote" class="aakaari-textarea" rows="3" placeholder="Add a note about this status change..."></textarea>
+                                </div>
+                            </div>
+                            <div class="aakaari-modal-footer">
+                                <button class="aakaari-button aakaari-button-outline" id="cancelStatusUpdateBtn">Cancel</button>
+                                <button class="aakaari-button" id="confirmStatusUpdateBtn">Update Status</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                modal = $('#statusUpdateModal');
+
+                // Close button handlers
+                $('#closeStatusModalBtn, #cancelStatusUpdateBtn').on('click', function() {
+                    modal.removeClass('active');
+                });
+
+                modal.find('.aakaari-modal-overlay').on('click', function() {
+                    modal.removeClass('active');
+                });
+            }
+
+            // Store order ID for later use
+            modal.data('orderId', orderId);
+
+            // Show modal
+            modal.addClass('active');
+
+            // Confirm button handler
+            $('#confirmStatusUpdateBtn').off('click').on('click', function() {
+                const newStatus = $('#orderStatusSelect').val();
+                const note = $('#statusUpdateNote').val();
+
+                updateOrderStatus(orderId, newStatus, note);
+            });
+        }
+
+        function updateOrderStatus(orderId, newStatus, note) {
+            // Show loading
+            showToast('Updating order status...', 'info');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aakaari_update_order_status',
+                    order_id: orderId,
+                    status: newStatus,
+                    note: note,
+                    nonce: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.nonce : ''
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Order status updated successfully', 'success');
+                        $('#statusUpdateModal').removeClass('active');
+
+                        // Reload the page to show updated status
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(response.data?.message || 'Failed to update order status', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Error updating order status', 'error');
+                }
+            });
+        }
+
         // Start the fetch data process
         fetchData();
     }

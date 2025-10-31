@@ -778,6 +778,7 @@ function aakaari_get_orders($args = array()) {
             'orderId' => $order->get_order_number(),
             'reseller' => $is_reseller ? $customer->display_name : 'Direct Customer',
             'reseller_id' => $is_reseller ? $customer_id : 0,
+            'reseller_email' => $is_reseller && $customer ? $customer->user_email : '',
             'customer' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
             'customer_email' => $order->get_billing_email(),
             'products' => $products_count,
@@ -1291,3 +1292,143 @@ function aakaari_register_payout_post_type() {
     register_post_type('reseller_payout', $args);
 }
 add_action('init', 'aakaari_register_payout_post_type');
+
+/**
+ * AJAX Handler: Get order details
+ */
+add_action("wp_ajax_aakaari_get_order_details", "aakaari_ajax_get_order_details");
+function aakaari_ajax_get_order_details() {
+    // Verify nonce if you have one
+    check_ajax_referer("aakaari_ajax_nonce", "nonce");
+
+    if (!current_user_can("manage_options")) {
+        wp_send_json_error(["message" => "Unauthorized"], 403);
+    }
+
+    $order_id = isset($_POST["order_id"]) ? absint($_POST["order_id"]) : 0;
+
+    if (!$order_id) {
+        wp_send_json_error(["message" => "Invalid order ID"], 400);
+    }
+
+    $order = wc_get_order($order_id);
+
+    if (!$order) {
+        wp_send_json_error(["message" => "Order not found"], 404);
+    }
+
+    // Format billing address
+    $billing_address = sprintf(
+        "%s\n%s\n%s, %s %s\n%s",
+        $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+        $order->get_billing_address_1() . ($order->get_billing_address_2() ? " " . $order->get_billing_address_2() : ""),
+        $order->get_billing_city(),
+        $order->get_billing_state(),
+        $order->get_billing_postcode(),
+        $order->get_billing_country()
+    );
+
+    // Format shipping address
+    $shipping_address = sprintf(
+        "%s\n%s\n%s, %s %s\n%s",
+        $order->get_shipping_first_name() . " " . $order->get_shipping_last_name(),
+        $order->get_shipping_address_1() . ($order->get_shipping_address_2() ? " " . $order->get_shipping_address_2() : ""),
+        $order->get_shipping_city(),
+        $order->get_shipping_state(),
+        $order->get_shipping_postcode(),
+        $order->get_shipping_country()
+    );
+
+    // Get order items with meta data
+    $items = [];
+    foreach ($order->get_items() as $item_id => $item) {
+        $product = $item->get_product();
+        $meta_display = "";
+
+        // Get customization meta data
+        $designs = $item->get_meta("_aakaari_designs");
+        $attachments = $item->get_meta("_aakaari_attachments");
+
+        if (!empty($designs)) {
+            $meta_display .= "<strong>Customized Design</strong><br>";
+            if (is_array($designs) && !empty($designs[0]["printType"])) {
+                $meta_display .= "Print Type: " . esc_html(ucfirst(str_replace("_", " ", $designs[0]["printType"]))) . "<br>";
+            }
+            if (is_array($designs) && !empty($designs[0]["color"])) {
+                $meta_display .= "Color: " . esc_html($designs[0]["color"]) . "<br>";
+            }
+        }
+
+        if (!empty($attachments) && is_array($attachments)) {
+            $meta_display .= "<strong>Uploaded Files:</strong> " . count($attachments) . "<br>";
+            foreach ($attachments as $attachment_id) {
+                $attachment_url = wp_get_attachment_url($attachment_id);
+                if ($attachment_url) {
+                    $meta_display .= "<a href=\"" . esc_url($attachment_url) . "\" target=\"_blank\" download>Download Design</a><br>";
+                }
+            }
+        }
+
+        $items[] = [
+            "name" => $item->get_name(),
+            "quantity" => $item->get_quantity(),
+            "price" => wc_price($item->get_subtotal() / $item->get_quantity()),
+            "total" => wc_price($item->get_total()),
+            "meta_display" => $meta_display
+        ];
+    }
+
+    $order_data = [
+        "id" => $order->get_id(),
+        "order_number" => $order->get_order_number(),
+        "date" => $order->get_date_created()->date("Y-m-d H:i:s"),
+        "status" => $order->get_status(),
+        "total" => wc_price($order->get_total()),
+        "payment_status" => $order->is_paid() ? "Paid" : "Pending",
+        "customer_name" => $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+        "customer_email" => $order->get_billing_email(),
+        "customer_phone" => $order->get_billing_phone(),
+        "billing_address" => nl2br($billing_address),
+        "shipping_address" => nl2br($shipping_address),
+        "items" => $items,
+        "notes" => $order->get_customer_note()
+    ];
+
+    wp_send_json_success($order_data);
+}
+
+/**
+ * AJAX Handler: Update order status
+ */
+add_action("wp_ajax_aakaari_update_order_status", "aakaari_ajax_update_order_status");
+function aakaari_ajax_update_order_status() {
+    // Verify nonce if you have one
+    check_ajax_referer("aakaari_ajax_nonce", "nonce");
+
+    if (!current_user_can("manage_options")) {
+        wp_send_json_error(["message" => "Unauthorized"], 403);
+    }
+
+    $order_id = isset($_POST["order_id"]) ? absint($_POST["order_id"]) : 0;
+    $new_status = isset($_POST["status"]) ? sanitize_text_field($_POST["status"]) : "";
+    $note = isset($_POST["note"]) ? sanitize_textarea_field($_POST["note"]) : "";
+
+    if (!$order_id || !$new_status) {
+        wp_send_json_error(["message" => "Invalid parameters"], 400);
+    }
+
+    $order = wc_get_order($order_id);
+
+    if (!$order) {
+        wp_send_json_error(["message" => "Order not found"], 404);
+    }
+
+    // Update order status
+    $order->update_status($new_status, $note, true);
+
+    wp_send_json_success([
+        "message" => "Order status updated successfully",
+        "new_status" => $new_status
+    ]);
+}
+

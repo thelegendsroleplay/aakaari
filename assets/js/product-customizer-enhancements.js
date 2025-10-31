@@ -167,6 +167,7 @@
 
             // Add helper text
             const helperText = document.createElement('div');
+            helperText.id = 'print-area-helper-text';
             helperText.style.cssText = `
                 position: absolute;
                 top: 10px;
@@ -182,6 +183,34 @@
             helperText.textContent = 'Design area - Place your designs within this area';
             canvasContainer.appendChild(helperText);
         }
+    }
+
+    /**
+     * Update print area overlay (when switching colors)
+     */
+    function updatePrintAreaOverlay() {
+        if (!printAreaBounds) return;
+
+        const canvas = document.getElementById('interactive-canvas');
+        if (!canvas) return;
+
+        const overlay = document.getElementById('print-area-overlay');
+        if (!overlay) {
+            // If overlay doesn't exist, create it
+            showPrintAreaOverlay();
+            return;
+        }
+
+        // Update overlay position and size
+        const canvasRect = canvas.getBoundingClientRect();
+        const scale = canvasRect.width / canvas.width;
+
+        overlay.style.left = (printAreaBounds.x * scale) + 'px';
+        overlay.style.top = (printAreaBounds.y * scale) + 'px';
+        overlay.style.width = (printAreaBounds.width * scale) + 'px';
+        overlay.style.height = (printAreaBounds.height * scale) + 'px';
+
+        console.log('Print area overlay updated');
     }
 
     /**
@@ -214,6 +243,35 @@
      * Update preview image based on selected color
      */
     function updatePreviewImage(colorData) {
+        // Check if there's a color-specific mockup with print area
+        if (typeof AAKAARI_COLOR_MOCKUPS !== 'undefined' && colorData.color) {
+            const colorMockup = AAKAARI_COLOR_MOCKUPS[colorData.color];
+
+            if (colorMockup && colorMockup.url) {
+                // Update canvas with color-specific mockup
+                updateCanvasBackground(colorMockup.url);
+
+                // Update print area bounds for this color
+                if (colorMockup.print_area) {
+                    printAreaBounds = {
+                        x: colorMockup.print_area.x,
+                        y: colorMockup.print_area.y,
+                        width: colorMockup.print_area.width,
+                        height: colorMockup.print_area.height
+                    };
+
+                    // Update the print area overlay
+                    updatePrintAreaOverlay();
+
+                    // Re-enforce boundaries with new print area
+                    enforceDesignBoundaries();
+
+                    console.log('Updated to color-specific mockup with print area:', printAreaBounds);
+                }
+                return;
+            }
+        }
+
         // If color has a specific image, use it
         if (colorData.image && colorData.image !== '') {
             updateCanvasBackground(colorData.image);
