@@ -184,6 +184,25 @@ function aakaari_ps_load_data() {
             }
         }
 
+        // --- Get Sizes ---
+        $size_terms = get_terms([
+            'taxonomy'   => 'pa_size',
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC'
+        ]);
+        
+        $sizes = [];
+        if (!is_wp_error($size_terms) && !empty($size_terms)) {
+            foreach ($size_terms as $term) {
+                $sizes[] = [
+                    'id' => 'size_' . $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                ];
+            }
+        }
+
         // --- Get Existing Print Studio Products ---
         $product_query = new WP_Query([
             'post_type'      => 'product',
@@ -224,7 +243,9 @@ function aakaari_ps_load_data() {
                     'category'            => $first_category,
                     'isActive'            => $wc_product->get_status() === 'publish',
                     'colors'              => $studio_data['colors'] ?? [],
+                    'fabrics'             => $studio_data['fabrics'] ?? [],
                     'availablePrintTypes' => $studio_data['printTypes'] ?? [],
+                    'sizes'               => $studio_data['sizes'] ?? [],
                     'sides'               => $studio_data['sides'] ?? [],
                 ];
             }
@@ -237,6 +258,7 @@ function aakaari_ps_load_data() {
             'colors'      => $colors,
             'fabrics'     => $fabrics,
             'printTypes'  => $print_types,
+            'sizes'       => $sizes,
         ]);
 
     } catch (Exception $e) {
@@ -415,6 +437,7 @@ function aakaari_ps_save_product() {
             'colors'     => isset($product_data['colors']) ? array_map('sanitize_text_field', $product_data['colors']) : [],
             'fabrics'    => isset($product_data['fabrics']) ? array_map('sanitize_text_field', $product_data['fabrics']) : [],
             'printTypes' => isset($product_data['availablePrintTypes']) ? array_map('sanitize_text_field', $product_data['availablePrintTypes']) : [],
+            'sizes'      => isset($product_data['sizes']) ? array_map('sanitize_text_field', $product_data['sizes']) : [],
             'sides'      => $sanitized_sides, // Use sanitized sides
         ];
 
@@ -429,6 +452,9 @@ function aakaari_ps_save_product() {
         }
         if (!empty($studio_data['printTypes']) && is_array($studio_data['printTypes'])) {
             aakaari_ps_sync_print_types_to_attribute($product, $studio_data['printTypes']);
+        }
+        if (!empty($studio_data['sizes']) && is_array($studio_data['sizes'])) {
+            aakaari_ps_sync_sizes_to_attribute($product, $studio_data['sizes']);
         }
 
         $new_product_id = $product->save();
@@ -472,6 +498,7 @@ function aakaari_ps_save_product() {
             'colors'              => is_array($final_studio_data) && isset($final_studio_data['colors']) ? $final_studio_data['colors'] : [],
             'fabrics'             => is_array($final_studio_data) && isset($final_studio_data['fabrics']) ? $final_studio_data['fabrics'] : [],
             'availablePrintTypes' => is_array($final_studio_data) && isset($final_studio_data['printTypes']) ? $final_studio_data['printTypes'] : [],
+            'sizes'               => is_array($final_studio_data) && isset($final_studio_data['sizes']) ? $final_studio_data['sizes'] : [],
             'sides'               => is_array($final_studio_data) && isset($final_studio_data['sides']) ? $final_studio_data['sides'] : [],
         ];
 
@@ -879,6 +906,57 @@ function aakaari_ps_sync_print_types_to_attribute($product, $print_type_ids) {
         $product->set_attributes($attributes);
         
         error_log('Synced ' . count($term_ids) . ' print types to product attribute pa_print_type');
+    }
+}
+
+/**
+ * Sync Print Studio sizes (IDs) to WooCommerce product attribute (pa_size)
+ * This updates the product's size attribute with the selected sizes
+ * 
+ * @param WC_Product $product The product object
+ * @param array $size_ids Array of size IDs like ['size_123', 'size_456']
+ */
+function aakaari_ps_sync_sizes_to_attribute($product, $size_ids) {
+    if (empty($size_ids) || !is_array($size_ids)) {
+        return;
+    }
+    
+    $attribute_taxonomy = 'pa_size';
+    
+    if (!taxonomy_exists($attribute_taxonomy)) {
+        error_log('Warning: pa_size taxonomy does not exist. Sizes not synced to product attribute.');
+        return;
+    }
+    
+    $term_ids = array();
+    
+    foreach ($size_ids as $size_id) {
+        // Extract term ID from 'size_123' format
+        $term_id = intval(str_replace('size_', '', $size_id));
+        
+        if ($term_id > 0 && term_exists($term_id, $attribute_taxonomy)) {
+            $term_ids[] = $term_id;
+        } else {
+            error_log("Size term ID $term_id not found in pa_size taxonomy");
+        }
+    }
+    
+    if (!empty($term_ids)) {
+        wp_set_object_terms($product->get_id(), $term_ids, $attribute_taxonomy);
+        
+        $attributes = $product->get_attributes();
+        
+        $size_attribute = new WC_Product_Attribute();
+        $size_attribute->set_id(wc_attribute_taxonomy_id_by_name($attribute_taxonomy));
+        $size_attribute->set_name($attribute_taxonomy);
+        $size_attribute->set_options($term_ids);
+        $size_attribute->set_visible(true);
+        $size_attribute->set_variation(false);
+        
+        $attributes[$attribute_taxonomy] = $size_attribute;
+        $product->set_attributes($attributes);
+        
+        error_log('Synced ' . count($term_ids) . ' sizes to product attribute pa_size');
     }
 }
 

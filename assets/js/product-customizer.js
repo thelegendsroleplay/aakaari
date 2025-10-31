@@ -19,6 +19,8 @@
         printTypes: AAKAARI_PRINT_TYPES || [],
         selectedSide: 0,
         selectedColor: null,
+        selectedFabric: null,
+        selectedSize: null,
         selectedPrintType: null,
         designs: [],
 
@@ -79,6 +81,7 @@
         setupSideSelector();
         setupColorSelector();
         setupFabricSelector();
+        setupSizeSelector();
         setupPrintTypeSelector();
         setupEventListeners();
         
@@ -100,15 +103,15 @@
         
         // Set initial pricing
         state.basePrice = state.product.salePrice !== null ? state.product.salePrice : state.product.basePrice;
-        $('#product-base-price').text(`$${state.basePrice.toFixed(2)}`);
+        $('#product-base-price').text(`₹${state.basePrice.toFixed(2)}`);
         
         // Show strikethrough original price if on sale
         if (state.product.salePrice !== null) {
-            $('#product-base-price-strikethrough').text(`$${state.product.basePrice.toFixed(2)}`).removeClass('hidden');
+            $('#product-base-price-strikethrough').text(`₹${state.product.basePrice.toFixed(2)}`).removeClass('hidden');
         }
         
         // Set initial total price
-        $('#total-price').text(`$${state.basePrice.toFixed(2)}`);
+        $('#total-price').text(`₹${state.basePrice.toFixed(2)}`);
     }
     
     function setupCanvas() {
@@ -262,7 +265,7 @@
         // Add fabric options
         fabrics.forEach((fabric, index) => {
             const isSelected = index === 0; // Select first fabric by default
-            const fabricPrice = fabric.price ? ` (+$${parseFloat(fabric.price).toFixed(2)})` : '';
+            const fabricPrice = fabric.price ? ` (+₹${parseFloat(fabric.price).toFixed(2)})` : '';
             const fabricDesc = fabric.description ? `<div style="color:#6B7280; font-size:12px; margin-top:2px;">${fabric.description}</div>` : '';
             
             console.log(`Adding fabric option: ${fabric.name} - Price: ${fabric.price}`);
@@ -287,6 +290,51 @@
         console.log('Fabric selector setup complete with', fabrics.length, 'fabrics');
     }
     
+    function setupSizeSelector() {
+        // Get sizes for this product
+        const sizes = state.product.sizes || [];
+        const sizeContainer = $('#size-selector-container');
+        
+        console.log('Setting up size selector with sizes:', sizes);
+        
+        // Hide selector if no sizes
+        if (sizes.length === 0) {
+            $('#size-selector-card').addClass('hidden');
+            console.log('Size selector hidden - no sizes available');
+            return;
+        }
+        
+        // Show the size selector card
+        $('#size-selector-card').removeClass('hidden');
+        
+        // Clear size container
+        sizeContainer.empty();
+        
+        // Add size options
+        sizes.forEach((size, index) => {
+            const isSelected = index === 0; // Select first size by default
+            
+            console.log(`Adding size option: ${size.name}`);
+            
+            const sizeHtml = `
+                <div class="design-item ${isSelected ? 'selected' : ''}" data-size="${index}" style="cursor:pointer; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:600;">${size.name}</div>
+                    </div>
+                    <div style="width:20px; height:20px; border:2px solid ${isSelected ? 'var(--primary)' : '#E5E7EB'}; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                        ${isSelected ? '<div style="width:10px; height:10px; background:var(--primary); border-radius:50%;"></div>' : ''}
+                    </div>
+                </div>
+            `;
+            
+            sizeContainer.append(sizeHtml);
+        });
+        
+        // Set initial selected size
+        state.selectedSize = 0;
+        console.log('Size selector setup complete with', sizes.length, 'sizes');
+    }
+    
     function setupPrintTypeSelector() {
         // Get print types for this product
         const printTypes = state.printTypes || [];
@@ -305,7 +353,7 @@
                         <div style="font-weight:600;">${type.name}</div>
                         <div style="color:#6B7280; font-size:12px;">${type.description}</div>
                     </div>
-                    <div style="font-weight:600;">$${type.price.toFixed(2)}</div>
+                    <div style="font-weight:600;">₹${type.price.toFixed(2)}</div>
                 </div>
             `;
             
@@ -335,6 +383,12 @@
         $('#fabric-selector-container').on('click', '.design-item', function() {
             const fabricIndex = parseInt($(this).data('fabric'));
             selectFabric(fabricIndex);
+        });
+        
+        // Size selector
+        $('#size-selector-container').on('click', '.design-item', function() {
+            const sizeIndex = parseInt($(this).data('size'));
+            selectSize(sizeIndex);
         });
         
         // Print type selector
@@ -854,6 +908,39 @@
         console.log('Selected fabric:', state.product.fabrics[index].name);
     }
     
+    // Function to select a size
+    function selectSize(index) {
+        // Validate size index
+        if (!state.product.sizes || index >= state.product.sizes.length || index < 0) {
+            console.error('Invalid size index:', index);
+            return;
+        }
+        
+        // Update selected size
+        state.selectedSize = index;
+        
+        // Update UI
+        $('#size-selector-container .design-item').removeClass('selected');
+        const selectedItem = $(`#size-selector-container .design-item[data-size="${index}"]`);
+        selectedItem.addClass('selected');
+        
+        // Update radio button style
+        $('#size-selector-container .design-item').each(function() {
+            const isSelected = $(this).hasClass('selected');
+            $(this).find('> div:last-child').css('border-color', isSelected ? 'var(--primary)' : '#E5E7EB');
+            if (isSelected) {
+                $(this).find('> div:last-child').html('<div style="width:10px; height:10px; background:var(--primary); border-radius:50%;"></div>');
+            } else {
+                $(this).find('> div:last-child').html('');
+            }
+        });
+        
+        // Update product state to trigger price recalculation
+        updateProductState();
+        
+        console.log('Selected size:', state.product.sizes[index].name);
+    }
+    
     // Function to select a print type
     function selectPrintType(typeId) {
         // Find print type in available types
@@ -959,21 +1046,21 @@
         state.totalPrice = state.basePrice + printCost + fabricPrice;
         
         // Update UI
-        $('#print-cost-value').text(`+$${printCost.toFixed(2)}`);
+        $('#print-cost-value').text(`+₹${printCost.toFixed(2)}`);
         $('#print-cost-label').text(`Print Cost (${state.designs.length} designs):`);
         $('#print-cost-summary').removeClass('hidden');
-        $('#total-price').text(`$${state.totalPrice.toFixed(2)}`);
+        $('#total-price').text(`₹${state.totalPrice.toFixed(2)}`);
         
         // Update pricing calculation
         let calculationHtml = '';
         
         if (printType && state.designs.length > 0) {
-            calculationHtml += `<div>Base Price: $${state.basePrice.toFixed(2)}</div>`;
+            calculationHtml += `<div>Base Price: ₹${state.basePrice.toFixed(2)}</div>`;
             
             // Add fabric price if selected
             if (fabricPrice > 0) {
                 const selectedFabric = state.product.fabrics[state.selectedFabric];
-                calculationHtml += `<div>Fabric (${selectedFabric.name}): +$${fabricPrice.toFixed(2)}</div>`;
+                calculationHtml += `<div>Fabric (${selectedFabric.name}): +₹${fabricPrice.toFixed(2)}</div>`;
             }
             
             if (printType.pricingModel === 'per-inch') {
@@ -985,14 +1072,14 @@
                 });
                 
                 calculationHtml += `<div>Total Design Area: ${totalArea.toFixed(2)} sq in</div>`;
-                calculationHtml += `<div>Rate: $${printType.price.toFixed(2)} per sq in</div>`;
+                calculationHtml += `<div>Rate: ₹${printType.price.toFixed(2)} per sq in</div>`;
             } else if (printType.pricingModel === 'fixed') {
                 // Show per-design calculation
-                calculationHtml += `<div>${state.designs.length} designs × $${printType.price.toFixed(2)} each</div>`;
+                calculationHtml += `<div>${state.designs.length} designs × ₹${printType.price.toFixed(2)} each</div>`;
             }
             
-            calculationHtml += `<div>Print Cost: $${printCost.toFixed(2)}</div>`;
-            calculationHtml += `<div style="font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid #E5E7EB;">Total: $${state.totalPrice.toFixed(2)}</div>`;
+            calculationHtml += `<div>Print Cost: ₹${printCost.toFixed(2)}</div>`;
+            calculationHtml += `<div style="font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid #E5E7EB;">Total: ₹${state.totalPrice.toFixed(2)}</div>`;
         }
         
         $('#pricing-calculation-content').html(calculationHtml);
@@ -1948,12 +2035,13 @@
                 designData.fontFamily = design.fontFamily;
                 designData.color = design.color;
             } else if (design.type === 'image') {
-                designData.src = design.src;
-                // CRITICAL: Include attachment ID and URL for original uploaded image
+                // CRITICAL: Do NOT include src (base64) as it's too large for database storage
+                // The image is already uploaded to server with attachmentId - we can retrieve it later
+                // Only include attachment ID and URL for original uploaded image
                 designData.attachmentId = design.attachmentId;
                 designData.attachmentUrl = design.attachmentUrl;
 
-                console.log('Image design data prepared:', {
+                console.log('Image design data prepared (src excluded for size):', {
                     id: designData.id,
                     attachmentId: designData.attachmentId,
                     attachmentUrl: designData.attachmentUrl
@@ -1995,6 +2083,17 @@
         formData.append('security', AAKAARI_SETTINGS.nonce || '');
         formData.append('product_id', productId);
         formData.append('designs', JSON.stringify(designsData));
+        
+        // Add selected fabric, size, and color
+        if (state.selectedFabric !== null && state.product.fabrics && state.product.fabrics[state.selectedFabric]) {
+            formData.append('selected_fabric', state.product.fabrics[state.selectedFabric].id);
+        }
+        if (state.selectedSize !== null && state.product.sizes && state.product.sizes[state.selectedSize]) {
+            formData.append('selected_size', state.product.sizes[state.selectedSize].id);
+        }
+        if (state.selectedColor !== null && state.product.colors && state.product.colors[state.selectedColor]) {
+            formData.append('selected_color', state.product.colors[state.selectedColor].hex || state.product.colors[state.selectedColor].color);
+        }
         
         // Debug logging
         console.log('Add to cart - Product ID:', productId);

@@ -274,6 +274,30 @@ function aakaari_cp_enqueue_assets_and_localize() {
     
     error_log('Final print types for customizer: ' . print_r($print_types_for_customizer, true));
 
+    // IMPROVED: Transform Print Studio sizes format
+    $sizes_for_customizer = array();
+    if (!empty($studio_data['sizes']) && is_array($studio_data['sizes'])) {
+        // Print Studio saves sizes as array of IDs: ['size_123', 'size_456']
+        // Get full size data from pa_size taxonomy
+        error_log('Converting ' . count($studio_data['sizes']) . ' sizes from Print Studio');
+        foreach ($studio_data['sizes'] as $size_id) {
+            // Extract term ID from 'size_123' format
+            $term_id = intval(str_replace('size_', '', $size_id));
+            $term = get_term($term_id, 'pa_size');
+            
+            if ($term && !is_wp_error($term)) {
+                $sizes_for_customizer[] = array(
+                    'id' => $size_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                );
+                error_log("  - Converted size: $size_id => {$term->name}");
+            }
+        }
+    }
+    
+    error_log('Final sizes for customizer: ' . print_r($sizes_for_customizer, true));
+
     // Build the product data array
     $product_data = array(
         'id' => $product_id,
@@ -290,6 +314,7 @@ function aakaari_cp_enqueue_assets_and_localize() {
         'availablePrintTypes' => !empty($studio_data['printTypes']) ? $studio_data['printTypes'] : array( 'pt_dtg', 'pt_vinyl' ),
         'colors' => $colors_for_customizer, // FIXED: Now uses properly formatted color objects
         'fabrics' => $fabrics_for_customizer, // NEW: Fabric options
+        'sizes' => $sizes_for_customizer, // NEW: Size options
         'sides' => !empty($studio_data['sides']) ? $studio_data['sides'] : aakaari_get_product_sides($product),
     );
 
@@ -772,38 +797,21 @@ function aakaari_ajax_add_to_cart() {
 
     // Extract attachment IDs from designs array
     // Images are uploaded immediately when user selects them, so attachment IDs are already available
-    error_log('=== EXTRACTING ATTACHMENT IDs FROM DESIGNS ===');
-    error_log('Total designs received: ' . count($designs));
-
     $attached_image_ids = array();
     if (!empty($designs) && is_array($designs)) {
-        foreach ($designs as $index => $design) {
-            error_log('Processing design ' . $index . ': ' . print_r($design, true));
-
+        foreach ($designs as $design) {
             // Check if this is an image design with attachmentId
-            if (isset($design['type']) && $design['type'] === 'image') {
-                error_log('Found image design, checking for attachmentId...');
-
-                if (!empty($design['attachmentId'])) {
-                    $attachment_id = intval($design['attachmentId']);
-                    error_log('attachmentId found: ' . $attachment_id);
-
-                    if ($attachment_id > 0 && !in_array($attachment_id, $attached_image_ids)) {
-                        $attached_image_ids[] = $attachment_id;
-                        error_log('SUCCESS: Added attachment ID: ' . $attachment_id);
-                    } else {
-                        error_log('WARNING: Attachment ID invalid or duplicate: ' . $attachment_id);
-                    }
-                } else {
-                    error_log('ERROR: Image design missing attachmentId! Design keys: ' . implode(', ', array_keys($design)));
+            if (isset($design['type']) && $design['type'] === 'image' && !empty($design['attachmentId'])) {
+                $attachment_id = intval($design['attachmentId']);
+                if ($attachment_id > 0 && !in_array($attachment_id, $attached_image_ids)) {
+                    $attached_image_ids[] = $attachment_id;
+                    error_log('AJAX: Found image design with attachment ID: ' . $attachment_id);
                 }
             }
         }
     }
-
-    error_log('=== FINAL RESULT ===');
-    error_log('Total Attached IDs extracted: ' . count($attached_image_ids));
-    error_log('Attached IDs: ' . print_r($attached_image_ids, true));
+    
+    error_log('AJAX: Processed file uploads and extracted original images. Total Attached IDs: ' . print_r($attached_image_ids, true));
 
     // Get original attachment ID (first uploaded file)
     // IMPORTANT: If no files in $_FILES but we have designs with images, use the attachment ID from designs
@@ -850,11 +858,54 @@ function aakaari_ajax_add_to_cart() {
         }
     }
 
+    // Get selected customization options (fabric, size, color, print type)
+    $selected_fabric = '';
+    $selected_size = '';
+    $selected_color = '';
+    $selected_print_type = '';
+    
+    if (isset($_POST['selected_fabric'])) {
+        $selected_fabric = sanitize_text_field(wp_unslash($_POST['selected_fabric']));
+    } elseif (isset($_REQUEST['selected_fabric'])) {
+        $selected_fabric = sanitize_text_field(wp_unslash($_REQUEST['selected_fabric']));
+    }
+    
+    if (isset($_POST['selected_size'])) {
+        $selected_size = sanitize_text_field(wp_unslash($_POST['selected_size']));
+    } elseif (isset($_REQUEST['selected_size'])) {
+        $selected_size = sanitize_text_field(wp_unslash($_REQUEST['selected_size']));
+    }
+    
+    if (isset($_POST['selected_color'])) {
+        $selected_color = sanitize_text_field(wp_unslash($_POST['selected_color']));
+    } elseif (isset($_REQUEST['selected_color'])) {
+        $selected_color = sanitize_text_field(wp_unslash($_REQUEST['selected_color']));
+    }
+    
+    // Also check for print type in designs if not sent separately
+    if (!empty($designs) && is_array($designs) && !empty($designs[0]['printType'])) {
+        $selected_print_type = sanitize_text_field($designs[0]['printType']);
+    }
+
     // Now add to cart with structured custom_design data containing all three attachment IDs
     $cart_item_data = array(
         'aakaari_designs' => $designs,
         'aakaari_timestamp' => time(),
     );
+    
+    // Save selected customization options
+    if (!empty($selected_fabric)) {
+        $cart_item_data['aakaari_selected_fabric'] = $selected_fabric;
+    }
+    if (!empty($selected_size)) {
+        $cart_item_data['aakaari_selected_size'] = $selected_size;
+    }
+    if (!empty($selected_color)) {
+        $cart_item_data['aakaari_selected_color'] = $selected_color;
+    }
+    if (!empty($selected_print_type)) {
+        $cart_item_data['aakaari_selected_print_type'] = $selected_print_type;
+    }
     
     // Save structured custom_design with three separate attachment IDs
     $custom_design = array();
@@ -1186,6 +1237,27 @@ function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $o
     if ( isset( $values['aakaari_designs'] ) ) {
         $item->add_meta_data( '_aakaari_designs', $values['aakaari_designs'], true );
         error_log('Order Save - Saved _aakaari_designs');
+    }
+    
+    // Save selected customization options
+    if ( ! empty( $values['aakaari_selected_fabric'] ) ) {
+        $item->add_meta_data( '_aakaari_selected_fabric', $values['aakaari_selected_fabric'], true );
+        error_log('Order Save - Saved _aakaari_selected_fabric: ' . $values['aakaari_selected_fabric']);
+    }
+    
+    if ( ! empty( $values['aakaari_selected_size'] ) ) {
+        $item->add_meta_data( '_aakaari_selected_size', $values['aakaari_selected_size'], true );
+        error_log('Order Save - Saved _aakaari_selected_size: ' . $values['aakaari_selected_size']);
+    }
+    
+    if ( ! empty( $values['aakaari_selected_color'] ) ) {
+        $item->add_meta_data( '_aakaari_selected_color', $values['aakaari_selected_color'], true );
+        error_log('Order Save - Saved _aakaari_selected_color: ' . $values['aakaari_selected_color']);
+    }
+    
+    if ( ! empty( $values['aakaari_selected_print_type'] ) ) {
+        $item->add_meta_data( '_aakaari_selected_print_type', $values['aakaari_selected_print_type'], true );
+        error_log('Order Save - Saved _aakaari_selected_print_type: ' . $values['aakaari_selected_print_type']);
     }
     
     // NEW: Save structured custom_design with three separate attachment IDs

@@ -119,9 +119,9 @@
                     </div>
                     <div class="product-card-price">
                         ${hasDiscount ? 
-                            `<span class="product-card-sale-price">$${formattedSalePrice}</span>
-                             <span class="product-card-regular-price">$${formattedRegularPrice}</span>` : 
-                            `<span class="product-card-regular-price-no-sale">$${formattedRegularPrice}</span>`}
+                            `<span class="product-card-sale-price">₹${formattedSalePrice}</span>
+                             <span class="product-card-regular-price">₹${formattedRegularPrice}</span>` : 
+                            `<span class="product-card-regular-price-no-sale">₹${formattedRegularPrice}</span>`}
                     </div>
                 </div>
                 <div class="product-card-button-section">

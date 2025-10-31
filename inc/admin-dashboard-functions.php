@@ -1481,31 +1481,139 @@ function aakaari_ajax_get_order_details() {
             
             $meta_display .= "</div>"; // Close download options section
 
+            // Get selected customization options from order item meta
+            $selected_fabric_id = $item->get_meta("_aakaari_selected_fabric");
+            $selected_size_id = $item->get_meta("_aakaari_selected_size");
+            $selected_color_hex = $item->get_meta("_aakaari_selected_color");
+            $selected_print_type_id = $item->get_meta("_aakaari_selected_print_type");
+            
+            // Helper function to get fabric name from ID
+            $get_fabric_name = function($fabric_id) {
+                if (empty($fabric_id)) return '';
+                $term_id = intval(str_replace('fab_', '', $fabric_id));
+                if ($term_id > 0) {
+                    $term = get_term($term_id, 'pa_fabric');
+                    if ($term && !is_wp_error($term)) {
+                        return $term->name;
+                    }
+                }
+                return $fabric_id;
+            };
+            
+            // Helper function to get size name from ID
+            $get_size_name = function($size_id) {
+                if (empty($size_id)) return '';
+                $term_id = intval(str_replace('size_', '', $size_id));
+                if ($term_id > 0) {
+                    $term = get_term($term_id, 'pa_size');
+                    if ($term && !is_wp_error($term)) {
+                        return $term->name;
+                    }
+                }
+                return $size_id;
+            };
+            
+            // Helper function to get print type name from ID
+            $get_print_type_name = function($print_type_id) {
+                if (empty($print_type_id)) return '';
+                $term_id = intval(str_replace('pt_', '', $print_type_id));
+                if ($term_id > 0) {
+                    $term = get_term($term_id, 'pa_print_type');
+                    if ($term && !is_wp_error($term)) {
+                        return $term->name;
+                    }
+                }
+                return str_replace('_', ' ', $print_type_id);
+            };
+            
+            // Helper function to get color name from hex
+            $get_color_name = function($color_hex) {
+                if (empty($color_hex)) return '';
+                // Try to find color term by hex
+                $terms = get_terms([
+                    'taxonomy' => 'pa_color',
+                    'hide_empty' => false,
+                    'meta_query' => [
+                        'relation' => 'OR',
+                        [
+                            'key' => 'hex_code',
+                            'value' => ltrim($color_hex, '#'),
+                            'compare' => '='
+                        ],
+                        [
+                            'key' => 'product_attribute_color',
+                            'value' => $color_hex,
+                            'compare' => '='
+                        ]
+                    ]
+                ]);
+                
+                if (!empty($terms) && !is_wp_error($terms)) {
+                    return $terms[0]->name;
+                }
+                
+                // Fallback to hex code
+                return $color_hex;
+            };
+            
             // Show customization details
+            $meta_display .= "<div class='customization-details' style='margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 6px;'>";
+            $meta_display .= "<strong style='color: #2271b1;'>Customization Details:</strong><br>";
+            
+            $has_details = false;
+            
+            // Show selected color
+            if (!empty($selected_color_hex)) {
+                $color_name = $get_color_name($selected_color_hex);
+                $meta_display .= "• <strong>Color:</strong> " . esc_html($color_name) . "<br>";
+                $has_details = true;
+            }
+            
+            // Show selected fabric
+            if (!empty($selected_fabric_id)) {
+                $fabric_name = $get_fabric_name($selected_fabric_id);
+                $meta_display .= "• <strong>Fabric:</strong> " . esc_html($fabric_name) . "<br>";
+                $has_details = true;
+            }
+            
+            // Show selected size
+            if (!empty($selected_size_id)) {
+                $size_name = $get_size_name($selected_size_id);
+                $meta_display .= "• <strong>Size:</strong> " . esc_html($size_name) . "<br>";
+                $has_details = true;
+            }
+            
+            // Show selected print type (from meta or from designs)
+            if (!empty($selected_print_type_id)) {
+                $print_type_name = $get_print_type_name($selected_print_type_id);
+                $meta_display .= "• <strong>Print Method:</strong> " . esc_html($print_type_name) . "<br>";
+                $has_details = true;
+            } elseif (!empty($designs) && is_array($designs) && !empty($designs[0]["printType"])) {
+                $print_type_name = $get_print_type_name($designs[0]["printType"]);
+                if (!empty($print_type_name)) {
+                    $meta_display .= "• <strong>Print Method:</strong> " . esc_html($print_type_name) . "<br>";
+                    $has_details = true;
+                }
+            }
+            
+            // Show design-specific details if available
             if (!empty($designs) && is_array($designs)) {
-                $meta_display .= "<div class='customization-details' style='margin-top: 10px;'>";
-                $meta_display .= "<strong style='color: #2271b1;'>Customization Details:</strong><br>";
-
                 foreach ($designs as $index => $design) {
                     if (count($designs) > 1) {
                         $meta_display .= "<div style='margin-top: 8px;'><em>Design " . ($index + 1) . ":</em></div>";
                     }
-
-                    if (!empty($design["printType"])) {
-                        $meta_display .= "• <strong>Print Method:</strong> " . esc_html(ucfirst(str_replace("_", " ", $design["printType"]))) . "<br>";
-                    }
-                    if (!empty($design["color"])) {
-                        $meta_display .= "• <strong>Color:</strong> " . esc_html(ucfirst($design["color"])) . "<br>";
-                    }
                     if (!empty($design["side"])) {
                         $meta_display .= "• <strong>Side:</strong> " . esc_html(ucfirst($design["side"])) . "<br>";
-                    }
-                    if (!empty($design["fabricType"])) {
-                        $meta_display .= "• <strong>Fabric:</strong> " . esc_html(ucfirst(str_replace("_", " ", $design["fabricType"]))) . "<br>";
+                        $has_details = true;
                     }
                 }
-                $meta_display .= "</div>";
             }
+            
+            if (!$has_details) {
+                $meta_display .= "<em style='color: #999;'>No customization details available</em>";
+            }
+            
+            $meta_display .= "</div>";
 
             $meta_display .= "</div>";
         }
