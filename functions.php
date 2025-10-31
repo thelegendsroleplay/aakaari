@@ -172,3 +172,13 @@ add_action('wp_enqueue_scripts', function () {
 if (is_admin() || current_user_can('manage_options')) {
     require_once get_stylesheet_directory() . '/woocommerce-shipping-debug.php';
 }
+/**
+ * Load Product Customizer System v2.0
+ * 
+ * Comprehensive product customization system with:
+ * - Color-specific mockups
+ * - Print area enforcement
+ * - WooCommerce cart/order integration
+ * - Fabric.js canvas editor
+ */
+require_once get_stylesheet_directory() . '/inc/customizer/init.php';
