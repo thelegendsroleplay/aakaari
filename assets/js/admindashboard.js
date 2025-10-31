@@ -1625,7 +1625,7 @@ function initializeCustomProductsAdmin() {
 
             // Get order details via AJAX
             $.ajax({
-                url: ajaxurl,
+                url: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.ajax_url : '/wp-admin/admin-ajax.php',
                 type: 'POST',
                 data: {
                     action: 'aakaari_get_order_details',
@@ -1860,7 +1860,7 @@ function initializeCustomProductsAdmin() {
             showToast('Updating order status...', 'info');
 
             $.ajax({
-                url: ajaxurl,
+                url: typeof aakaari_admin_ajax !== 'undefined' ? aakaari_admin_ajax.ajax_url : '/wp-admin/admin-ajax.php',
                 type: 'POST',
                 data: {
                     action: 'aakaari_update_order_status',

@@ -75,6 +75,12 @@ $current_date = date('F j, Y');
 wp_enqueue_style('aakaari-admin-dashboard-style', get_template_directory_uri() . '/assets/css/admindashboard.css', array(), '1.0.0');
 wp_enqueue_script('aakaari-admin-dashboard-script', get_template_directory_uri() . '/assets/js/admindashboard.js', array('jquery'), '1.0.0', true);
 
+// Localize script with AJAX URL and nonce
+wp_localize_script('aakaari-admin-dashboard-script', 'aakaari_admin_ajax', array(
+    'ajax_url' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('aakaari_ajax_nonce')
+));
+
 get_header('minimal'); // Use a minimal header or create one
 ?>
 
