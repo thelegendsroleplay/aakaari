@@ -1055,113 +1055,19 @@
         // TODO: Reset canvas transform
     }
 
-    // Function to compress and optimize image before upload
-    function compressImage(file, maxWidth = 3000, maxHeight = 3000, quality = 0.9) {
-        return new Promise((resolve, reject) => {
-            if (!file || !file.type.startsWith('image/')) {
-                reject(new Error('Invalid file type'));
-                return;
-            }
-
-            // For small files (< 500KB), don't compress
-            if (file.size < 500 * 1024) {
-                console.log('File is small enough, skipping compression:', (file.size / 1024).toFixed(2) + 'KB');
-                resolve(file);
-                return;
-            }
-
-            const reader = new FileReader();
-
-            reader.onerror = () => reject(new Error('Failed to read file'));
-
-            reader.onload = function(e) {
-                const img = new Image();
-
-                img.onerror = () => reject(new Error('Failed to load image'));
-
-                img.onload = function() {
-                    // Calculate new dimensions while maintaining aspect ratio
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxWidth || height > maxHeight) {
-                        const aspectRatio = width / height;
-
-                        if (width > height) {
-                            width = maxWidth;
-                            height = maxWidth / aspectRatio;
-                        } else {
-                            height = maxHeight;
-                            width = maxHeight * aspectRatio;
-                        }
-                    }
-
-                    // Create canvas for compression
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width;
-                    canvas.height = height;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // Convert to blob
-                    canvas.toBlob(function(blob) {
-                        if (!blob) {
-                            reject(new Error('Failed to compress image'));
-                            return;
-                        }
-
-                        // Create a new File object from the compressed blob
-                        const compressedFile = new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-
-                        console.log('Image compressed:', {
-                            original: (file.size / 1024).toFixed(2) + 'KB',
-                            compressed: (compressedFile.size / 1024).toFixed(2) + 'KB',
-                            reduction: ((1 - compressedFile.size / file.size) * 100).toFixed(1) + '%',
-                            dimensions: width + 'x' + height
-                        });
-
-                        resolve(compressedFile);
-                    }, 'image/jpeg', quality);
-                };
-
-                img.src = e.target.result;
-            };
-
-            reader.readAsDataURL(file);
-        });
-    }
-
     // Function to handle image upload
+    // IMPORTANT: Stores the ORIGINAL file without any compression or modification
+    // Only the canvas preview is scaled for display, the actual uploaded file remains unchanged
     function handleImageUpload(file) {
         if (!file) return;
 
-        // Show loading indicator
-        const originalText = $('#add-image-btn').text();
-        $('#add-image-btn').text('Processing...').prop('disabled', true);
-
-        // Compress the image first
-        compressImage(file).then(compressedFile => {
-            // Use the compressed file
-            processImageFile(compressedFile);
-
-            // Reset button
-            $('#add-image-btn').text(originalText).prop('disabled', false);
-        }).catch(error => {
-            console.error('Image compression failed:', error);
-            alert('Failed to process image: ' + error.message);
-
-            // Reset button
-            $('#add-image-btn').text(originalText).prop('disabled', false);
+        // Log original file info - this exact file will be saved
+        console.log('Uploading ORIGINAL file (no modifications):', {
+            name: file.name,
+            size: (file.size / 1024 / 1024).toFixed(2) + 'MB',
+            dimensions: 'Will be determined',
+            type: file.type
         });
-    }
-
-    // Function to process the image file (after compression)
-    function processImageFile(file) {
-        if (!file) return;
         
         // Create reader to load image
         const reader = new FileReader();
@@ -1170,12 +1076,15 @@
             const img = new Image();
             
             img.onload = function() {
-                // Calculate size based on image dimensions
-                // Scale to reasonable dimensions for the canvas
+                // Log actual image dimensions from the original file
+                console.log('Original image dimensions:', img.width + 'x' + img.height + 'px');
+
+                // Calculate size based on image dimensions FOR CANVAS DISPLAY ONLY
+                // This scaling is ONLY for the canvas preview, the original file remains unchanged
                 const maxDimension = 200;
                 let width = img.width;
                 let height = img.height;
-                
+
                 if (width > height && width > maxDimension) {
                     height = height * (maxDimension / width);
                     width = maxDimension;
@@ -1183,21 +1092,23 @@
                     width = width * (maxDimension / height);
                     height = maxDimension;
                 }
-                
+
+                console.log('Canvas preview dimensions (scaled):', Math.round(width) + 'x' + Math.round(height) + 'px');
+
                 // Create new design
                 const design = {
                     id: Date.now().toString(),
                     type: 'image',
                     image: img,
                     src: event.target.result,
-                    file: file, // Store the original File object for upload
+                    file: file, // CRITICAL: Store the ORIGINAL File object (unmodified) for upload to server
                     sideIndex: state.selectedSide,
                     x: state.canvas.width / 2,
                     y: state.canvas.height / 2,
-                    width: width,
-                    height: height,
-                    originalWidth: img.width,
-                    originalHeight: img.height,
+                    width: width, // Canvas display width (scaled for UI)
+                    height: height, // Canvas display height (scaled for UI)
+                    originalWidth: img.width, // Original image width (preserved)
+                    originalHeight: img.height, // Original image height (preserved)
                     rotation: 0,
                     flipH: false,
                     flipV: false,
