@@ -1086,6 +1086,7 @@
                     type: 'image',
                     image: img,
                     src: event.target.result,
+                    file: file, // Store the original File object for upload
                     sideIndex: state.selectedSide,
                     x: state.canvas.width / 2,
                     y: state.canvas.height / 2,
