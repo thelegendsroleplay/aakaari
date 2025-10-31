@@ -1948,7 +1948,8 @@
                 designData.fontFamily = design.fontFamily;
                 designData.color = design.color;
             } else if (design.type === 'image') {
-                designData.src = design.src;
+                // Don't send massive base64 src to database (2.5MB+) - only needed for canvas display
+                // Server can reference the original uploaded image via attachmentId
                 // CRITICAL: Include attachment ID and URL for original uploaded image
                 designData.attachmentId = design.attachmentId;
                 designData.attachmentUrl = design.attachmentUrl;
