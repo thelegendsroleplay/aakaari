@@ -765,14 +765,23 @@ function aakaari_get_orders($args = array()) {
     foreach ($wc_orders as $order) {
         $customer_id = $order->get_customer_id();
         $customer = $customer_id ? get_userdata($customer_id) : null;
-        
+
         // Get if the order is by a reseller
         $is_reseller = $customer && in_array('reseller', (array) $customer->roles);
-        
+
         // Process line items
         $items = $order->get_items();
         $products_count = count($items);
-        
+
+        // Check if order has customized products
+        $has_customization = false;
+        foreach ($items as $item) {
+            if ($item->get_meta('_aakaari_designs') || $item->get_meta('_aakaari_attachments') || $item->get_meta('_aakaari_preview_image')) {
+                $has_customization = true;
+                break;
+            }
+        }
+
         $orders[] = array(
             'id' => $order->get_id(),
             'orderId' => $order->get_order_number(),
@@ -786,7 +795,8 @@ function aakaari_get_orders($args = array()) {
             'status' => $order->get_status(),
             'date' => $order->get_date_created()->date('Y-m-d'),
             'paymentStatus' => $order->is_paid() ? 'paid' : 'pending',
-            'commission' => $is_reseller ? aakaari_calculate_order_commission($order, $customer_id) : 0
+            'commission' => $is_reseller ? aakaari_calculate_order_commission($order, $customer_id) : 0,
+            'has_customization' => $has_customization
         );
     }
     
@@ -1344,29 +1354,85 @@ function aakaari_ajax_get_order_details() {
     foreach ($order->get_items() as $item_id => $item) {
         $product = $item->get_product();
         $meta_display = "";
+        $preview_image = "";
+        $customization_details = "";
 
         // Get customization meta data
         $designs = $item->get_meta("_aakaari_designs");
         $attachments = $item->get_meta("_aakaari_attachments");
+        $preview_img_url = $item->get_meta("_aakaari_preview_image");
 
-        if (!empty($designs)) {
-            $meta_display .= "<strong>Customized Design</strong><br>";
-            if (is_array($designs) && !empty($designs[0]["printType"])) {
-                $meta_display .= "Print Type: " . esc_html(ucfirst(str_replace("_", " ", $designs[0]["printType"]))) . "<br>";
-            }
-            if (is_array($designs) && !empty($designs[0]["color"])) {
-                $meta_display .= "Color: " . esc_html($designs[0]["color"]) . "<br>";
-            }
-        }
+        // Check if this is a customized product
+        $is_customized = !empty($designs) || !empty($attachments) || !empty($preview_img_url);
 
-        if (!empty($attachments) && is_array($attachments)) {
-            $meta_display .= "<strong>Uploaded Files:</strong> " . count($attachments) . "<br>";
-            foreach ($attachments as $attachment_id) {
-                $attachment_url = wp_get_attachment_url($attachment_id);
-                if ($attachment_url) {
-                    $meta_display .= "<a href=\"" . esc_url($attachment_url) . "\" target=\"_blank\" download>Download Design</a><br>";
+        if ($is_customized) {
+            $meta_display .= "<div class='customization-section'>";
+
+            // Show preview image if available
+            if (!empty($preview_img_url)) {
+                $preview_image = "<div class='design-preview'>";
+                $preview_image .= "<img src='" . esc_url($preview_img_url) . "' alt='Customer Design' style='max-width: 300px; max-height: 300px; border: 1px solid #ddd; border-radius: 4px; padding: 5px;' />";
+                $preview_image .= "</div>";
+                $meta_display .= $preview_image;
+            }
+
+            // Show customization details
+            if (!empty($designs) && is_array($designs)) {
+                $meta_display .= "<div class='customization-details' style='margin-top: 10px;'>";
+                $meta_display .= "<strong style='color: #2271b1;'>✨ Customization Details:</strong><br>";
+
+                foreach ($designs as $index => $design) {
+                    if (count($designs) > 1) {
+                        $meta_display .= "<div style='margin-top: 8px;'><em>Design " . ($index + 1) . ":</em></div>";
+                    }
+
+                    if (!empty($design["printType"])) {
+                        $meta_display .= "• <strong>Print Method:</strong> " . esc_html(ucfirst(str_replace("_", " ", $design["printType"]))) . "<br>";
+                    }
+                    if (!empty($design["color"])) {
+                        $meta_display .= "• <strong>Color:</strong> " . esc_html(ucfirst($design["color"])) . "<br>";
+                    }
+                    if (!empty($design["side"])) {
+                        $meta_display .= "• <strong>Side:</strong> " . esc_html(ucfirst($design["side"])) . "<br>";
+                    }
+                    if (!empty($design["fabricType"])) {
+                        $meta_display .= "• <strong>Fabric:</strong> " . esc_html(ucfirst(str_replace("_", " ", $design["fabricType"]))) . "<br>";
+                    }
                 }
+                $meta_display .= "</div>";
             }
+
+            // Show uploaded files with download links
+            if (!empty($attachments) && is_array($attachments)) {
+                $meta_display .= "<div class='uploaded-files' style='margin-top: 12px;'>";
+                $meta_display .= "<strong style='color: #2271b1;'>📁 Uploaded Design Files (" . count($attachments) . "):</strong><br>";
+                $meta_display .= "<div style='margin-top: 8px;'>";
+
+                foreach ($attachments as $index => $attachment_id) {
+                    $attachment_url = wp_get_attachment_url($attachment_id);
+                    $file_name = basename(get_attached_file($attachment_id));
+
+                    if ($attachment_url) {
+                        $meta_display .= "<div style='margin-bottom: 6px; display: flex; align-items: center; gap: 8px;'>";
+
+                        // Show thumbnail if it's an image
+                        $thumb_url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
+                        if ($thumb_url) {
+                            $meta_display .= "<img src='" . esc_url($thumb_url) . "' style='width: 40px; height: 40px; object-fit: cover; border-radius: 3px; border: 1px solid #ddd;' />";
+                        }
+
+                        $meta_display .= "<div>";
+                        $meta_display .= "<a href=\"" . esc_url($attachment_url) . "\" target=\"_blank\" download class='button button-small' style='background: #2271b1; color: white; padding: 4px 12px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 12px;'>";
+                        $meta_display .= "⬇ Download: " . esc_html($file_name);
+                        $meta_display .= "</a>";
+                        $meta_display .= "</div>";
+                        $meta_display .= "</div>";
+                    }
+                }
+                $meta_display .= "</div></div>";
+            }
+
+            $meta_display .= "</div>";
         }
 
         $items[] = [
@@ -1374,7 +1440,8 @@ function aakaari_ajax_get_order_details() {
             "quantity" => $item->get_quantity(),
             "price" => wc_price($item->get_subtotal() / $item->get_quantity()),
             "total" => wc_price($item->get_total()),
-            "meta_display" => $meta_display
+            "meta_display" => $meta_display,
+            "is_customized" => $is_customized
         ];
     }
 

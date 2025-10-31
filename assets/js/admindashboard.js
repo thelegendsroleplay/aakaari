@@ -1762,10 +1762,11 @@ function initializeCustomProductsAdmin() {
                             </thead>
                             <tbody>
                                 ${orderData.items.map(item => `
-                                    <tr>
+                                    <tr ${item.is_customized ? 'style="background-color: #f0f7ff;"' : ''}>
                                         <td>
-                                            ${item.name}
-                                            ${item.meta_display ? `<br><small>${item.meta_display}</small>` : ''}
+                                            ${item.is_customized ? '<span style="display: inline-block; background: #2271b1; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-right: 6px;">CUSTOM</span>' : ''}
+                                            <strong>${item.name}</strong>
+                                            ${item.meta_display ? `<div style="margin-top: 10px;">${item.meta_display}</div>` : ''}
                                         </td>
                                         <td>${item.quantity}</td>
                                         <td>${item.price}</td>
