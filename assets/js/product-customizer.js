@@ -1051,12 +1051,116 @@
     function resetCanvasZoom() {
         state.canvasScale = 1.0;
         $('#zoom-percentage').text('100');
-        
+
         // TODO: Reset canvas transform
     }
-    
+
+    // Function to compress and optimize image before upload
+    function compressImage(file, maxWidth = 3000, maxHeight = 3000, quality = 0.9) {
+        return new Promise((resolve, reject) => {
+            if (!file || !file.type.startsWith('image/')) {
+                reject(new Error('Invalid file type'));
+                return;
+            }
+
+            // For small files (< 500KB), don't compress
+            if (file.size < 500 * 1024) {
+                console.log('File is small enough, skipping compression:', (file.size / 1024).toFixed(2) + 'KB');
+                resolve(file);
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onerror = () => reject(new Error('Failed to read file'));
+
+            reader.onload = function(e) {
+                const img = new Image();
+
+                img.onerror = () => reject(new Error('Failed to load image'));
+
+                img.onload = function() {
+                    // Calculate new dimensions while maintaining aspect ratio
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        const aspectRatio = width / height;
+
+                        if (width > height) {
+                            width = maxWidth;
+                            height = maxWidth / aspectRatio;
+                        } else {
+                            height = maxHeight;
+                            width = maxHeight * aspectRatio;
+                        }
+                    }
+
+                    // Create canvas for compression
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert to blob
+                    canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            reject(new Error('Failed to compress image'));
+                            return;
+                        }
+
+                        // Create a new File object from the compressed blob
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+
+                        console.log('Image compressed:', {
+                            original: (file.size / 1024).toFixed(2) + 'KB',
+                            compressed: (compressedFile.size / 1024).toFixed(2) + 'KB',
+                            reduction: ((1 - compressedFile.size / file.size) * 100).toFixed(1) + '%',
+                            dimensions: width + 'x' + height
+                        });
+
+                        resolve(compressedFile);
+                    }, 'image/jpeg', quality);
+                };
+
+                img.src = e.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
     // Function to handle image upload
     function handleImageUpload(file) {
+        if (!file) return;
+
+        // Show loading indicator
+        const originalText = $('#add-image-btn').text();
+        $('#add-image-btn').text('Processing...').prop('disabled', true);
+
+        // Compress the image first
+        compressImage(file).then(compressedFile => {
+            // Use the compressed file
+            processImageFile(compressedFile);
+
+            // Reset button
+            $('#add-image-btn').text(originalText).prop('disabled', false);
+        }).catch(error => {
+            console.error('Image compression failed:', error);
+            alert('Failed to process image: ' + error.message);
+
+            // Reset button
+            $('#add-image-btn').text(originalText).prop('disabled', false);
+        });
+    }
+
+    // Function to process the image file (after compression)
+    function processImageFile(file) {
         if (!file) return;
         
         // Create reader to load image
@@ -1948,19 +2052,27 @@
         }
         
         // Add any image files from designs
+        let totalFileSize = 0;
         state.designs.forEach(design => {
             if (design.type === 'image' && design.file) {
                 formData.append('files[]', design.file);
+                totalFileSize += design.file.size;
             }
         });
-        
-        // Send AJAX request
+
+        // Log file sizes for debugging
+        if (totalFileSize > 0) {
+            console.log('Total upload size:', (totalFileSize / 1024 / 1024).toFixed(2) + 'MB');
+        }
+
+        // Send AJAX request with timeout
         $.ajax({
             url: AAKAARI_SETTINGS.ajax_url,
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
+            timeout: 120000, // 120 seconds timeout for large file uploads
             success: function(response) {
                 if (response.success) {
                     // Redirect to cart
@@ -1981,7 +2093,21 @@
             error: function(xhr, status, error) {
                 // Show detailed error for debugging
                 let errorMsg = 'Error adding to cart. Please try again.';
-                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+
+                // Check for timeout
+                if (status === 'timeout') {
+                    errorMsg = 'Upload timed out. Your image file may be too large. Please try with a smaller image or check your internet connection.';
+                }
+                // Check for file size errors
+                else if (xhr.status === 413) {
+                    errorMsg = 'Image file is too large. Please use a smaller image (recommended: under 5MB).';
+                }
+                // Check for server errors
+                else if (xhr.status === 500) {
+                    errorMsg = 'Server error occurred. This may be due to image size limits. Please try with a smaller image.';
+                }
+                // Parse other error messages
+                else if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
                     errorMsg = xhr.responseJSON.data.message;
                 } else if (xhr.responseText) {
                     // Try to parse response text
@@ -1994,13 +2120,15 @@
                         console.error('AJAX Error Response:', xhr.responseText);
                     }
                 }
+
                 console.error('Add to cart failed:', {
                     status: xhr.status,
                     statusText: xhr.statusText,
                     response: xhr.responseJSON || xhr.responseText,
-                    error: error
+                    error: error,
+                    ajaxStatus: status
                 });
-                
+
                 alert(errorMsg);
                 
                 // Reset button
