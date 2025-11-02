@@ -1,5 +1,5 @@
 /* ===============================================
-   Mobile Menu - Exact Design Implementation
+   Mobile Menu Design with Desktop Navigation
    =============================================== */
 
 :root {
@@ -40,6 +40,7 @@
   min-height: 60px;
 }
 
+/* Logo */
 .aakaari-header .site-branding {
   flex-shrink: 0;
   z-index: 101;
@@ -76,6 +77,105 @@
   margin: 0 0 0 -10px;
   padding: 0;
   transition: all 0.3s ease;
+}
+
+/* Desktop Navigation */
+.aakaari-header .main-navigation {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  flex: 1;
+  margin: 0 20px;
+}
+
+.aakaari-header .nav-menu {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  flex: 1;
+}
+
+.aakaari-header .nav-menu li {
+  list-style: none;
+  margin: 0;
+}
+
+.aakaari-header .nav-menu a {
+  display: block;
+  color: var(--section-title-color);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 16px;
+  transition: color 0.2s ease;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.aakaari-header .nav-menu a:hover,
+.aakaari-header .nav-menu .current-menu-item a {
+  color: var(--primary-blue);
+  border-bottom-color: var(--primary-blue);
+}
+
+/* Desktop Auth Buttons */
+.aakaari-header .auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.aakaari-header .login-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--section-title-color);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.aakaari-header .login-btn:hover {
+  color: var(--primary-blue);
+}
+
+.aakaari-header .login-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.aakaari-header .btn-reseller-header {
+  background-color: var(--primary-blue);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.aakaari-header .btn-reseller-header:hover {
+  background-color: #0056b3;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.aakaari-header .btn-logout {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.aakaari-header .btn-logout:hover {
+  background-color: #dc2626;
 }
 
 /* Mobile Menu Toggle */
@@ -144,7 +244,7 @@
   border: 0;
 }
 
-/* Hide mobile menu elements on desktop */
+/* Hide mobile menu sidebar on desktop */
 .sidebar-container {
   display: none;
 }
@@ -181,7 +281,13 @@
     order: -1;
   }
 
-  /* Mobile Navigation */
+  /* Hide desktop navigation on mobile */
+  .aakaari-header .nav-menu,
+  .aakaari-header .auth-buttons {
+    display: none;
+  }
+
+  /* Mobile Navigation Container */
   .aakaari-header .main-navigation {
     position: fixed;
     top: 0;
@@ -193,6 +299,10 @@
     transition: transform 0.3s ease;
     background: transparent;
     pointer-events: none;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 0;
+    gap: 0;
   }
 
   .aakaari-header .main-navigation.active {
@@ -517,11 +627,6 @@
     text-align: center;
     margin-left: -28px;
   }
-
-  /* Hide desktop nav elements */
-  .aakaari-header .main-navigation .auth-buttons {
-    display: none;
-  }
 }
 
 /* Small Mobile */
@@ -558,6 +663,23 @@
 
   .sidebar-container {
     padding: 14px;
+  }
+}
+
+/* Large Desktop Optimizations */
+@media (max-width: 1200px) {
+  .aakaari-header .nav-menu a {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .aakaari-header .main-navigation {
+    gap: 30px;
+    margin: 0 15px;
+  }
+
+  .aakaari-header .auth-buttons {
+    gap: 12px;
   }
 }
 
