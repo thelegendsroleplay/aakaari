@@ -88,6 +88,7 @@ function redirect_to_dashboard_after_login($redirect_to, $request, $user) {
     $dashboard_page_id = get_option('dashboard_page_id');
     $dashboard_url     = $dashboard_page_id ? get_permalink($dashboard_page_id) : home_url('/dashboard/');
     $reseller_page_id  = get_option('reseller_page_id');
+    $application_pending_url = home_url('/application-pending/');
     $reseller_url      = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
     $register_url      = home_url('/register/');
 
@@ -135,8 +136,13 @@ function redirect_to_dashboard_after_login($redirect_to, $request, $user) {
         return $dashboard_url;
     }
 
-    // Not approved yet → send to become-a-reseller with status
-    return add_query_arg('status', $status, $reseller_url);
+    // Not approved yet, decide where to send them
+    if ($status === 'pending' || $status === 'rejected') {
+        return $application_pending_url;
+    }
+
+    // No application found
+    return $reseller_url;
 }}
 add_filter('login_redirect', 'redirect_to_dashboard_after_login', 10, 3);
 

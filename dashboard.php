@@ -59,7 +59,7 @@ if ($q->have_posts()) {
 
 if (!$approved) {
     // If application exists but not approved, send to pending page
-    if ($status === 'pending' || $status === 'rejected') {
+    if ($status !== 'not-submitted') {
         wp_redirect(site_url('/application-pending/'));
         exit;
     } else {

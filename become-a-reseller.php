@@ -18,8 +18,15 @@ $user_id = $current_user->ID;
 $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
 
 // If user is already approved, redirect them to their dashboard.
-if ($onboarding_status === 'approved' || $onboarding_status === 'completed') {
-    wp_redirect(aakaari_get_dashboard_url());
+if ($onboarding_status === 'approved' || $onboarding_status === 'completed' || has_term('approved', 'reseller_application_status', get_user_application_post_id($current_user->user_email))) {
+    wp_redirect(site_url('/dashboard/'));
+    exit;
+}
+
+// If application is pending or rejected, redirect to the status page
+$application_info = get_reseller_application_status($current_user->user_email);
+if ($application_info['status'] === 'pending' || $application_info['status'] === 'rejected') {
+    wp_redirect(site_url('/application-pending/'));
     exit;
 }
 
@@ -301,6 +308,26 @@ function get_reseller_application_status($user_email) {
         'application' => $application,
         'status' => $status
     );
+}
+
+// Helper function to get application post ID for a user
+function get_user_application_post_id($user_email) {
+    $q = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'fields'         => 'ids',
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $user_email,
+            ),
+        ),
+    ));
+
+    return $q->have_posts() ? $q->posts[0] : 0;
 }
 
 // Get application status from database
