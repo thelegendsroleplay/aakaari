@@ -491,6 +491,24 @@ h3 {
     border-color: rgba(37, 99, 235, 0.3);
 }
 
+.status-docs-requested {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #2563eb;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.status-on-cooldown {
+    background-color: rgba(217, 119, 6, 0.15);
+    color: #d97706;
+    border-color: rgba(217, 119, 6, 0.3);
+}
+
+.status-resubmission-allowed {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
 /* Button Styles */
 .aakaari-button {
     display: inline-flex;

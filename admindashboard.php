@@ -1077,7 +1077,7 @@ get_header('minimal'); // Use a minimal header or create one
                 <div class="quick-actions-section">
                     <h4 class="section-header">Quick Actions</h4>
                     <div class="quick-actions-grid">
-                        <button class="quick-action-card" id="requestDocCard">
+                        <button class="quick-action-card" id="requestDocCard" title="Opens a dialog to specify which documents are needed. An email will be sent to the applicant with the requirements. Status changes to 'Documents Requested'.">
                             <div class="quick-action-icon" style="background: #dbeafe;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                             </div>
@@ -1086,8 +1086,8 @@ get_header('minimal'); // Use a minimal header or create one
                                 <span class="quick-action-subtitle">Specify needed docs</span>
                             </div>
                         </button>
-                        
-                        <button class="quick-action-card" id="allowResubmitCard">
+
+                        <button class="quick-action-card" id="allowResubmitCard" title="Enables the reseller to re-upload documents or edit information if their application was rejected or incomplete. Status changes to 'Resubmission Allowed'.">
                             <div class="quick-action-icon" style="background: #dcfce7;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </div>
@@ -1096,8 +1096,8 @@ get_header('minimal'); // Use a minimal header or create one
                                 <span class="quick-action-subtitle">Enable document upload</span>
                             </div>
                         </button>
-                        
-                        <button class="quick-action-card" id="setCooldownCard">
+
+                        <button class="quick-action-card" id="setCooldownCard" title="Locks the application for a specific time period (1-720 hours) before admin can take further action. This helps prevent repeated reviews. Status becomes 'On Cooldown'.">
                             <div class="quick-action-icon" style="background: #fef3c7;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             </div>
@@ -1106,8 +1106,8 @@ get_header('minimal'); // Use a minimal header or create one
                                 <span class="quick-action-subtitle">Lock for review</span>
                             </div>
                         </button>
-                        
-                        <button class="quick-action-card" id="resetCooldownCard">
+
+                        <button class="quick-action-card" id="resetCooldownCard" title="Unlocks the application early and marks it active for admin review again. Removes cooldown timer and sets status back to 'Pending'.">
                             <div class="quick-action-icon" style="background: #f0f9ff;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                             </div>

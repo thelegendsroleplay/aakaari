@@ -31,7 +31,7 @@ function aakaari_admin_dashboard_enqueue_assets() {
             'aakaari-admin-dashboard-style',
             get_template_directory_uri() . '/assets/css/admindashboard.css',
             array(),
-            '1.0.0'
+            '1.1.0'
         );
 
         // Enqueue Script
@@ -39,7 +39,7 @@ function aakaari_admin_dashboard_enqueue_assets() {
             'aakaari-admin-dashboard-script',
             get_template_directory_uri() . '/assets/js/admindashboard.js',
             array('jquery'),
-            '1.0.0',
+            '1.1.0',
             true
         );
 
