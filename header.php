@@ -36,97 +36,195 @@
             <!-- Mobile Menu Header -->
             <div class="mobile-menu-header">
                 <div class="mobile-menu-logo">
-                    <?php 
+                    <?php
                     $logo_url = get_template_directory_uri() . '/assets/img/logo.png';
                     $logo_path = get_template_directory() . '/assets/img/logo.png';
                     if (file_exists($logo_path)): ?>
                         <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>">
                     <?php else: ?>
-                        <span style="color: white; font-weight: 700; font-size: 20px;"><?php bloginfo('name'); ?></span>
+                        <span class="mobile-menu-site-name"><?php bloginfo('name'); ?></span>
                     <?php endif; ?>
                 </div>
                 <button class="mobile-menu-close" aria-label="Close menu" onclick="document.getElementById('mobile-menu-toggle').click();">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
-            
-            <?php
-            wp_nav_menu(array(
-                'theme_location' => 'primary',
-                'menu_id' => 'primary-menu',
-                'container' => false,
-                'menu_class' => 'nav-menu',
-                'fallback_cb' => function() {
-                    echo '<ul class="nav-menu">';
-                    echo '<li><a href="' . esc_url(home_url('/')) . '">Home</a></li>';
-                    echo '<li><a href="' . esc_url(home_url('/products/')) . '">Products</a></li>';
-                    echo '<li><a href="' . esc_url(home_url('/how-it-works/')) . '">How It Works</a></li>';
-                    echo '<li><a href="' . esc_url(home_url('/contact/')) . '">Contact</a></li>';
-                    echo '</ul>';
-                }
-            ));
-            ?>
 
-            <div class="auth-buttons">
+            <!-- Mobile Menu Content Container -->
+            <div class="mobile-menu-content">
+                <!-- Search Bar -->
+                <div class="mobile-menu-search">
+                    <form role="search" method="get" class="search-form" action="<?php echo esc_url(home_url('/')); ?>">
+                        <div class="search-input-wrapper">
+                            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="search" class="search-field" placeholder="Search products..." value="<?php echo get_search_query(); ?>" name="s" autocomplete="off" />
+                        </div>
+                    </form>
+                </div>
 
-                <?php // ?>
-                <?php if ( class_exists( 'WooCommerce' ) ) : ?>
+                <?php if (is_user_logged_in()): ?>
+                    <!-- User Profile Section -->
+                    <div class="mobile-menu-profile">
+                        <div class="profile-avatar">
+                            <?php echo get_avatar(get_current_user_id(), 48); ?>
+                        </div>
+                        <div class="profile-info">
+                            <span class="profile-name"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
+                            <span class="profile-email"><?php echo esc_html(wp_get_current_user()->user_email); ?></span>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Main Navigation Menu -->
+                <div class="mobile-menu-section">
+                    <h3 class="mobile-menu-section-title">Menu</h3>
+                    <?php
+                    wp_nav_menu(array(
+                        'theme_location' => 'primary',
+                        'menu_id' => 'primary-menu',
+                        'container' => false,
+                        'menu_class' => 'nav-menu',
+                        'fallback_cb' => function() {
+                            echo '<ul class="nav-menu">';
+                            echo '<li><a href="' . esc_url(home_url('/')) . '"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span>Home</span></a></li>';
+                            echo '<li><a href="' . esc_url(home_url('/products/')) . '"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span>Products</span></a></li>';
+                            echo '<li><a href="' . esc_url(home_url('/how-it-works/')) . '"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>How It Works</span></a></li>';
+                            echo '<li><a href="' . esc_url(home_url('/contact/')) . '"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Contact</span></a></li>';
+                            echo '</ul>';
+                        }
+                    ));
+                    ?>
+                </div>
+
+                <!-- Quick Actions -->
+                <?php if (is_user_logged_in()): ?>
+                    <div class="mobile-menu-section">
+                        <h3 class="mobile-menu-section-title">Quick Actions</h3>
+                        <ul class="quick-actions-menu">
+                            <li>
+                                <a href="<?php echo esc_url(aakaari_get_dashboard_url()); ?>">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                                        <line x1="9" y1="21" x2="9" y2="9"></line>
+                                    </svg>
+                                    <span><?php echo current_user_can('manage_options') ? 'Admin Dashboard' : 'Dashboard'; ?></span>
+                                </a>
+                            </li>
+                            <?php if (class_exists('WooCommerce')): ?>
+                                <li>
+                                    <a href="<?php echo esc_url(wc_get_account_endpoint_url('orders')); ?>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                        </svg>
+                                        <span>My Orders</span>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Support Section -->
+                <div class="mobile-menu-section">
+                    <h3 class="mobile-menu-section-title">Help & Support</h3>
+                    <ul class="support-menu">
+                        <li>
+                            <a href="<?php echo esc_url(home_url('/faq/')); ?>">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <span>FAQ</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<?php echo esc_url(home_url('/contact/')); ?>">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                <span>Contact Support</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Mobile Menu Footer -->
+            <div class="mobile-menu-footer">
+                <?php if (class_exists('WooCommerce')): ?>
                     <?php
                     $cart_url = wc_get_cart_url();
                     $cart_count = WC()->cart->get_cart_contents_count();
+                    $cart_total = WC()->cart->get_cart_total();
                     ?>
-                    <a href="<?php echo esc_url( $cart_url ); ?>" class="login-btn cart-toggle" title="View your shopping cart">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>
-                        </svg>
-                        <span>Cart</span>
-                        <?php if ( $cart_count > 0 ) : ?>
-                            <span class="ml-1 bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                                <?php echo esc_html( $cart_count ); ?>
-                            </span>
-                        <?php endif; ?>
+                    <a href="<?php echo esc_url($cart_url); ?>" class="mobile-cart-button">
+                        <div class="cart-button-content">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
+                            <div class="cart-info">
+                                <span class="cart-label">Shopping Cart</span>
+                                <span class="cart-total"><?php echo $cart_total; ?></span>
+                            </div>
+                            <?php if ($cart_count > 0): ?>
+                                <span class="cart-count-badge"><?php echo esc_html($cart_count); ?></span>
+                            <?php endif; ?>
+                        </div>
                     </a>
                 <?php endif; ?>
-                <?php // ?>
 
-
-                <?php if (is_user_logged_in()): ?>
-                    <a href="<?php echo esc_url(aakaari_get_dashboard_url()); ?>" class="login-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M8 4a.5.5 0 0 1 .5.5V6H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V7H6a.5.5 0 0 1 0-1h1.5V4.5A.5.5 0 0 1 8 4z"/>
-                            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
-                            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
-                        </svg>
-                        <span><?php echo current_user_can('manage_options') ? 'Admin Dashboard' : 'Dashboard'; ?></span>
-                    </a>
-                    <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="btn-reseller-header btn-logout">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0v-2A1.5 1.5 0 0 1 6.5 2h8A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z"/>
-                            <path fill-rule="evenodd" d="M.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L1.707 7.5H10.5a.5.5 0 0 1 0 1H1.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
-                        </svg>
-                        Logout
-                    </a>
-                <?php else: ?>
-                    <a href="<?php echo esc_url(home_url('/login/')); ?>" class="login-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/>
-                            <path fill-rule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
-                        </svg>
-                        <span>Reseller Login</span>
-                    </a>
-                    <?php
-                    $reseller_page_id = get_option('reseller_page_id');
-                    $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/'); // Fallback
-                    $login_link = home_url('/login/');
-                    
-                    // User is not logged in, send to login with redirect
-                    $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
-                    ?>
-                    <a href="<?php echo esc_url($final_reseller_href); ?>" class="btn-reseller-header">Become a Reseller</a>
-                <?php endif; ?>
+                <div class="mobile-menu-footer-actions">
+                    <?php if (is_user_logged_in()): ?>
+                        <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="mobile-logout-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Logout
+                        </a>
+                    <?php else: ?>
+                        <a href="<?php echo esc_url(home_url('/login/')); ?>" class="mobile-login-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                <polyline points="10 17 15 12 10 7"></polyline>
+                                <line x1="15" y1="12" x2="3" y2="12"></line>
+                            </svg>
+                            Reseller Login
+                        </a>
+                        <?php
+                        $reseller_page_id = get_option('reseller_page_id');
+                        $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
+                        $login_link = home_url('/login/');
+                        $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
+                        ?>
+                        <a href="<?php echo esc_url($final_reseller_href); ?>" class="mobile-reseller-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="8.5" cy="7" r="4"></circle>
+                                <line x1="20" y1="8" x2="20" y2="14"></line>
+                                <line x1="23" y1="11" x2="17" y2="11"></line>
+                            </svg>
+                            Become a Reseller
+                        </a>
+                    <?php endif; ?>
+                </div>
             </div>
         </nav>
 
