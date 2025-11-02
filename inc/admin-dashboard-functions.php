@@ -534,6 +534,47 @@ function aakaari_reset_application_cooldown() {
 add_action('wp_ajax_reset_application_cooldown', 'aakaari_reset_application_cooldown');
 
 /**
+ * Get application documents
+ */
+if (!function_exists('aakaari_get_application_documents')) {
+function aakaari_get_application_documents() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Get all document URLs from post meta
+    $documents = array(
+        'aadhaar_front' => get_post_meta($application_id, 'aadhaar_front_url', true),
+        'aadhaar_back' => get_post_meta($application_id, 'aadhaar_back_url', true),
+        'pan_card' => get_post_meta($application_id, 'pan_card_url', true),
+        'bank_proof' => get_post_meta($application_id, 'bank_proof_url', true),
+        'business_proof' => get_post_meta($application_id, 'business_proof_url', true),
+        // Legacy field for backward compatibility
+        'id_proof' => get_post_meta($application_id, 'reseller_id_proof_url', true),
+    );
+
+    // Remove empty documents
+    $documents = array_filter($documents, function($url) {
+        return !empty($url);
+    });
+
+    wp_send_json_success(array(
+        'documents' => $documents,
+        'message' => 'Documents retrieved successfully'
+    ));
+    exit;
+}}
+add_action('wp_ajax_get_application_documents', 'aakaari_get_application_documents');
+
+/**
  * Request additional documentation
  */
 if (!function_exists('aakaari_request_application_documentation')) {

@@ -1668,3 +1668,273 @@ h3 {
 }
 
 
+
+/* =====================================
+   Documents Section Styles
+   ===================================== */
+
+.documents-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.document-item {
+    background: #f9fafb;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: all 0.2s;
+}
+
+.document-item:hover {
+    background: #f3f4f6;
+    border-color: var(--primary-color);
+}
+
+.document-item.missing {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.document-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-dark);
+}
+
+.document-header svg {
+    flex-shrink: 0;
+}
+
+.document-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.doc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.doc-btn.doc-view {
+    color: #2563eb;
+    border-color: #93c5fd;
+}
+
+.doc-btn.doc-view:hover {
+    background: #dbeafe;
+    border-color: #2563eb;
+}
+
+.doc-btn.doc-download {
+    color: #16a34a;
+    border-color: #86efac;
+}
+
+.doc-btn.doc-download:hover {
+    background: #dcfce7;
+    border-color: #16a34a;
+}
+
+.missing-label {
+    color: #dc2626;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.loading-documents, .no-documents, .error-documents {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-medium);
+}
+
+.error-documents {
+    color: var(--red-color);
+}
+
+/* Document Preview Modal */
+.aakaari-doc-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.doc-preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.doc-preview-container {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.doc-preview-close {
+    position: absolute;
+    top: -2.5rem;
+    right: 0;
+    background: white;
+    border: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-dark);
+    transition: all 0.2s;
+}
+
+.doc-preview-close:hover {
+    background: var(--red-color);
+    color: white;
+    transform: scale(1.1);
+}
+
+.doc-preview-container img {
+    display: block;
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+}
+
+/* File Upload Section Styles */
+.section-description {
+    color: var(--text-medium);
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+}
+
+.file-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    background: #f9fafb;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.file-upload-area:hover,
+.file-upload-area.dragover {
+    border-color: var(--primary-color);
+    background: #f0f7ff;
+}
+
+.file-upload-area .upload-icon {
+    margin-bottom: 0.75rem;
+}
+
+.file-upload-area .upload-icon svg {
+    stroke: var(--primary-color);
+}
+
+.file-upload-area p {
+    margin: 0.25rem 0;
+    color: var(--text-medium);
+}
+
+.file-upload-area .file-types {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.file-input {
+    display: none;
+}
+
+.selected-file {
+    margin-top: 0.75rem;
+    display: none;
+}
+
+.selected-file.active {
+    display: block;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.file-info svg {
+    flex-shrink: 0;
+    stroke: var(--primary-color);
+}
+
+.file-name {
+    flex: 1;
+    font-weight: 500;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-size {
+    font-size: 0.75rem;
+    color: var(--text-medium);
+}
+
+.remove-file {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: all 0.2s;
+}
+
+.remove-file:hover {
+    background: #dc2626;
+    color: white;
+}
