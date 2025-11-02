@@ -389,16 +389,29 @@
         }
         
         /**
-         * Update application status in UI
+         * Update application status in UI (both table and modal)
          */
-        function updateApplicationStatus(applicationId, status) {
+        function updateApplicationStatus(applicationId, status, statusLabel) {
+            // If statusLabel is not provided, use status as label
+            if (!statusLabel) {
+                statusLabel = status;
+            }
+
             // Update application status badge in tables
             const row = $(`[data-application-id="${applicationId}"]`).closest('tr');
             if (row.length > 0) {
                 row.find('.aakaari-status-badge')
-                    .removeClass('status-pending status-approved status-rejected')
+                    .removeClass('status-pending status-approved status-rejected status-docs-requested status-on-cooldown status-resubmission-allowed')
                     .addClass(`status-${status}`)
-                    .text(capitalizeFirstLetter(status));
+                    .text(capitalizeFirstLetter(statusLabel));
+            }
+
+            // Update status badge in modal if it's open
+            if (applicationModal.hasClass('active') && selectedApplicationId === applicationId) {
+                $('#applicationDetails .aakaari-status-badge')
+                    .removeClass('status-pending status-approved status-rejected status-docs-requested status-on-cooldown status-resubmission-allowed')
+                    .addClass(`status-${status}`)
+                    .text(capitalizeFirstLetter(statusLabel));
             }
         }
         
@@ -417,7 +430,7 @@
                 showToast('Invalid application ID', 'error');
                 return;
             }
-            
+
             $.ajax({
                 url: aakaari_admin_ajax.ajax_url,
                 type: 'POST',
@@ -428,9 +441,11 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        showToast('Cooldown reset successfully', 'success');
-                        updateApplicationStatus(applicationId, 'pending');
-                        setTimeout(() => window.location.reload(), 1000);
+                        showToast('Cooldown reset successfully - Application is now active', 'success');
+                        // Update status badge dynamically
+                        updateApplicationStatus(applicationId, 'pending', 'Pending');
+                        // Close modal after 1.5 seconds
+                        setTimeout(() => closeModal(), 1500);
                     } else {
                         showToast(response.data.message || 'Failed to reset cooldown', 'error');
                     }
@@ -449,10 +464,10 @@
                 showToast('Invalid parameters', 'error');
                 return;
             }
-            
+
             const btn = $('#submitDocRequestBtn');
             btn.prop('disabled', true).html('<span>Processing...</span>');
-            
+
             $.ajax({
                 url: aakaari_admin_ajax.ajax_url,
                 type: 'POST',
@@ -465,8 +480,14 @@
                 success: function(response) {
                     if (response.success) {
                         showToast('Documentation request sent successfully', 'success');
-                        closeModal();
-                        setTimeout(() => window.location.reload(), 1000);
+                        // Update status badge dynamically
+                        updateApplicationStatus(applicationId, 'docs-requested', 'Docs Requested');
+                        // Close modal and hide action forms
+                        $('#actionFormsContainer').hide();
+                        $('#documentRequestSection').hide();
+                        $('#documentRequest').val('');
+                        // Optional: close modal after 1.5 seconds or keep it open
+                        setTimeout(() => closeModal(), 1500);
                     } else {
                         showToast(response.data.message || 'Failed to send request', 'error');
                     }
@@ -475,7 +496,7 @@
                     showToast('Server error. Please try again.', 'error');
                 },
                 complete: function() {
-                    btn.prop('disabled', false).html('Send Request');
+                    btn.prop('disabled', false).html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Send Request');
                 }
             });
         }
@@ -488,7 +509,7 @@
                 showToast('Invalid application ID', 'error');
                 return;
             }
-            
+
             $.ajax({
                 url: aakaari_admin_ajax.ajax_url,
                 type: 'POST',
@@ -500,8 +521,10 @@
                 success: function(response) {
                     if (response.success) {
                         showToast('Document resubmission enabled for reseller', 'success');
-                        closeModal();
-                        setTimeout(() => window.location.reload(), 1000);
+                        // Update status badge dynamically
+                        updateApplicationStatus(applicationId, 'resubmission-allowed', 'Resubmission Allowed');
+                        // Close modal after 1.5 seconds
+                        setTimeout(() => closeModal(), 1500);
                     } else {
                         showToast(response.data.message || 'Failed to enable resubmission', 'error');
                     }
@@ -520,10 +543,10 @@
                 showToast('Invalid parameters', 'error');
                 return;
             }
-            
+
             const btn = $('#submitCooldownBtn');
             btn.prop('disabled', true).html('<span>Processing...</span>');
-            
+
             $.ajax({
                 url: aakaari_admin_ajax.ajax_url,
                 type: 'POST',
@@ -535,10 +558,15 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        showToast('Cooldown set successfully', 'success');
-                        updateApplicationStatus(applicationId, 'pending');
-                        closeModal();
-                        setTimeout(() => window.location.reload(), 1000);
+                        showToast(`Cooldown set successfully for ${duration} hours`, 'success');
+                        // Update status badge dynamically
+                        updateApplicationStatus(applicationId, 'on-cooldown', 'On Cooldown');
+                        // Close modal and hide action forms
+                        $('#actionFormsContainer').hide();
+                        $('#cooldownSection').hide();
+                        $('#cooldownDuration').val('24');
+                        // Close modal after 1.5 seconds
+                        setTimeout(() => closeModal(), 1500);
                     } else {
                         showToast(response.data.message || 'Failed to set cooldown', 'error');
                     }
@@ -547,7 +575,7 @@
                     showToast('Server error. Please try again.', 'error');
                 },
                 complete: function() {
-                    btn.prop('disabled', false).html('Set Cooldown');
+                    btn.prop('disabled', false).html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Set Cooldown');
                 }
             });
         }
