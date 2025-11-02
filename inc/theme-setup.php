@@ -156,3 +156,29 @@ function enqueue_aakaari_footer_assets() {
     );
 }
 add_action('wp_enqueue_scripts', 'enqueue_aakaari_footer_assets');
+
+/**
+ * Enqueue How It Works page assets
+ */
+function enqueue_how_it_works_assets() {
+    // Only load on the How It Works page
+    if (is_page_template('how-it-works.php') || is_page('how-it-works')) {
+        // How It Works CSS
+        wp_enqueue_style(
+            'aakaari-how-it-works-styles',
+            get_template_directory_uri() . '/assets/css/how-it-works.css',
+            array(),
+            '1.0.1'
+        );
+
+        // How It Works JavaScript
+        wp_enqueue_script(
+            'aakaari-how-it-works-script',
+            get_template_directory_uri() . '/assets/js/how-it-works.js',
+            array(),
+            '1.0.1',
+            true
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_how_it_works_assets');
