@@ -259,9 +259,22 @@
                         <p><span class="aakaari-status-badge status-${application.status}">${capitalizeFirstLetter(application.status)}</span></p>
                     </div>
                 </div>
+
+                <!-- Documents Section -->
+                <div class="documents-section" style="margin-top: 2rem;">
+                    <h4 class="section-header">Reseller Documents</h4>
+                    <div id="applicationDocuments" class="documents-grid">
+                        <div class="loading-documents">
+                            <span>Loading documents...</span>
+                        </div>
+                    </div>
+                </div>
             `;
 
             applicationDetails.html(detailsHtml);
+
+            // Fetch and display documents
+            loadApplicationDocuments(applicationId);
             rejectionReason.val('');
             
             // Reset all action form sections
@@ -279,7 +292,151 @@
             // Show modal
             applicationModal.addClass('active');
         }
-        
+
+        /**
+         * Load and display application documents
+         */
+        function loadApplicationDocuments(applicationId) {
+            const documentsContainer = $('#applicationDocuments');
+
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'get_application_documents',
+                    application_id: applicationId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data.documents) {
+                        const documents = response.data.documents;
+                        const documentLabels = {
+                            'aadhaar_front': 'Aadhaar Card (Front)',
+                            'aadhaar_back': 'Aadhaar Card (Back)',
+                            'pan_card': 'PAN Card',
+                            'bank_proof': 'Bank Proof',
+                            'business_proof': 'Business Registration / GST',
+                            'id_proof': 'ID Proof (Legacy)'
+                        };
+
+                        let documentsHtml = '';
+
+                        // Check which required documents are missing
+                        const requiredDocs = ['aadhaar_front', 'aadhaar_back', 'pan_card', 'bank_proof'];
+                        const missingDocs = requiredDocs.filter(doc => !documents[doc]);
+
+                        // Display each document
+                        Object.keys(documentLabels).forEach(key => {
+                            if (documents[key]) {
+                                const url = documents[key];
+                                const isImage = /\.(jpg|jpeg|png|gif)$/i.test(url);
+                                const isPdf = /\.pdf$/i.test(url);
+
+                                documentsHtml += `
+                                    <div class="document-item">
+                                        <div class="document-header">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                            </svg>
+                                            <strong>${documentLabels[key]}</strong>
+                                        </div>
+                                        <div class="document-actions">
+                                            ${isImage ? `<button class="doc-btn doc-view" data-url="${url}" data-type="image" title="View Document">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                View
+                                            </button>` : ''}
+                                            ${isPdf ? `<button class="doc-btn doc-view" data-url="${url}" data-type="pdf" title="View PDF">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                View PDF
+                                            </button>` : ''}
+                                            <a href="${url}" class="doc-btn doc-download" download title="Download Document">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                                Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        });
+
+                        // Show missing required documents
+                        if (missingDocs.length > 0) {
+                            missingDocs.forEach(doc => {
+                                documentsHtml += `
+                                    <div class="document-item missing">
+                                        <div class="document-header">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                                            </svg>
+                                            <strong>${documentLabels[doc]}</strong>
+                                        </div>
+                                        <span class="missing-label">Not uploaded</span>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        documentsContainer.html(documentsHtml);
+
+                        // Add click handlers for view buttons
+                        $('.doc-view').on('click', function() {
+                            const url = $(this).data('url');
+                            const type = $(this).data('type');
+                            viewDocument(url, type);
+                        });
+                    } else {
+                        documentsContainer.html('<p class="no-documents">No documents found for this application.</p>');
+                    }
+                },
+                error: function() {
+                    documentsContainer.html('<p class="error-documents">Failed to load documents. Please try again.</p>');
+                }
+            });
+        }
+
+        /**
+         * View document in modal or new tab
+         */
+        function viewDocument(url, type) {
+            if (type === 'image') {
+                // Show image in a modal
+                const modalHtml = `
+                    <div class="aakaari-doc-preview-modal" id="docPreviewModal">
+                        <div class="doc-preview-overlay"></div>
+                        <div class="doc-preview-container">
+                            <button class="doc-preview-close">&times;</button>
+                            <img src="${url}" alt="Document Preview" style="max-width: 100%; max-height: 90vh;">
+                        </div>
+                    </div>
+                `;
+                $('body').append(modalHtml);
+
+                // Close preview modal
+                $(document).on('click', '#docPreviewModal .doc-preview-close, #docPreviewModal .doc-preview-overlay', function() {
+                    $('#docPreviewModal').remove();
+                });
+            } else if (type === 'pdf') {
+                // Open PDF in new tab
+                window.open(url, '_blank');
+            } else {
+                // Fallback: download
+                window.location.href = url;
+            }
+        }
+
         /**
          * Close modal
          */

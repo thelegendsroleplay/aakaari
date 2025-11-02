@@ -51,9 +51,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
         $form_errors['agreed'] = 'You must agree to the Terms & Conditions';
     }
 
-    // If frontend JS already validated file, still double-check server-side
-    if (empty($_FILES['idProof']['name'])) {
-        $form_errors['idProof'] = 'ID proof document is required';
+    // Validate required document uploads (server-side check)
+    $required_docs = ['aadhaarFront', 'aadhaarBack', 'panCard', 'bankProof'];
+    foreach ($required_docs as $doc) {
+        if (empty($_FILES[$doc]['name'])) {
+            $form_errors[$doc] = 'This document is required';
+        } else {
+            // Check file size (5MB = 5242880 bytes)
+            if ($_FILES[$doc]['size'] > 5242880) {
+                $form_errors[$doc] = 'File size must not exceed 5MB';
+            }
+            // Check file type
+            $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!in_array($_FILES[$doc]['type'], $allowed_types)) {
+                $form_errors[$doc] = 'Only JPG, PNG, or PDF files are allowed';
+            }
+        }
+    }
+
+    // Validate optional business proof if uploaded
+    if (!empty($_FILES['businessProof']['name'])) {
+        if ($_FILES['businessProof']['size'] > 5242880) {
+            $form_errors['businessProof'] = 'File size must not exceed 5MB';
+        }
+        $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+        if (!in_array($_FILES['businessProof']['type'], $allowed_types)) {
+            $form_errors['businessProof'] = 'Only JPG, PNG, or PDF files are allowed';
+        }
     }
 
     // If any validation errors, we fall through and show them (don't process)
@@ -89,12 +113,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
             $target_dir = $upload_dir['basedir'] . '/reseller-documents/';
             if ( ! file_exists( $target_dir ) ) wp_mkdir_p( $target_dir );
 
-            $file_ext = pathinfo($_FILES['idProof']['name'], PATHINFO_EXTENSION);
-            $filename = 'id_proof_' . time() . '_' . sanitize_title($_POST['fullName']) . '.' . $file_ext;
-            $target_file = $target_dir . $filename;
-            $file_url = $upload_dir['baseurl'] . '/reseller-documents/' . $filename;
+            // Handle multiple document uploads
+            $uploaded_documents = array();
+            $document_fields = ['aadhaarFront', 'aadhaarBack', 'panCard', 'bankProof', 'businessProof'];
+            $upload_success = true;
 
-            if ( move_uploaded_file($_FILES['idProof']['tmp_name'], $target_file) ) {
+            foreach ($document_fields as $field) {
+                if (!empty($_FILES[$field]['name'])) {
+                    $file_ext = pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION);
+                    $filename = $field . '_' . time() . '_' . sanitize_title($_POST['fullName']) . '.' . $file_ext;
+                    $target_file = $target_dir . $filename;
+                    $file_url = $upload_dir['baseurl'] . '/reseller-documents/' . $filename;
+
+                    if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_file)) {
+                        $uploaded_documents[$field] = $file_url;
+                    } else {
+                        $upload_success = false;
+                        $form_errors[$field] = 'Failed to upload file. Please try again.';
+                    }
+                }
+            }
+
+            if ($upload_success && !empty($uploaded_documents)) {
                 $application_data = array(
                     'post_title'    => sanitize_text_field($_POST['fullName']) . ' - ' . date('Y-m-d'),
                     'post_status'   => 'private',
@@ -116,7 +156,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     update_post_meta( $post_id, 'reseller_bank', sanitize_text_field($_POST['bankName']) );
                     update_post_meta( $post_id, 'reseller_account', sanitize_text_field($_POST['accountNumber']) );
                     update_post_meta( $post_id, 'reseller_ifsc', strtoupper( sanitize_text_field($_POST['ifsc']) ) );
-                    update_post_meta( $post_id, 'reseller_id_proof_url', esc_url_raw( $file_url ) );
+                    // Save all uploaded document URLs
+                    if (isset($uploaded_documents['aadhaarFront'])) {
+                        update_post_meta( $post_id, 'aadhaar_front_url', esc_url_raw($uploaded_documents['aadhaarFront']) );
+                    }
+                    if (isset($uploaded_documents['aadhaarBack'])) {
+                        update_post_meta( $post_id, 'aadhaar_back_url', esc_url_raw($uploaded_documents['aadhaarBack']) );
+                    }
+                    if (isset($uploaded_documents['panCard'])) {
+                        update_post_meta( $post_id, 'pan_card_url', esc_url_raw($uploaded_documents['panCard']) );
+                    }
+                    if (isset($uploaded_documents['bankProof'])) {
+                        update_post_meta( $post_id, 'bank_proof_url', esc_url_raw($uploaded_documents['bankProof']) );
+                    }
+                    if (isset($uploaded_documents['businessProof'])) {
+                        update_post_meta( $post_id, 'business_proof_url', esc_url_raw($uploaded_documents['businessProof']) );
+                    }
+                    // Keep legacy field for backward compatibility
+                    update_post_meta( $post_id, 'reseller_id_proof_url', esc_url_raw($uploaded_documents['aadhaarFront'] ?? '') );
                     update_post_meta( $post_id, 'ipAddress', $_SERVER['REMOTE_ADDR'] ?? '' );
                     update_post_meta( $post_id, 'submitDate', current_time('mysql') );
                     // Add business type for dashboard display
@@ -147,7 +204,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     $form_errors['general'] = 'Error creating application. Please try again.';
                 }
             } else {
-                $form_errors['idProof'] = 'Failed to upload file. Please try again.';
+                if (empty($form_errors)) {
+                    $form_errors['general'] = 'Failed to upload one or more documents. Please try again.';
+                }
             }
         } // end plugin-helper branch
     } // end if no errors
@@ -502,17 +561,32 @@ $benefits = [
                                     </svg>
                                     Business Details
                                 </h3>
-                                
+
                                 <div class="form-group">
                                     <label for="gstin">GSTIN (Optional)</label>
                                     <input type="text" id="gstin" name="gstin" value="<?php echo isset($_POST['gstin']) ? esc_attr($_POST['gstin']) : ''; ?>" placeholder="22AAAAA0000A1Z5">
                                     <small class="help-text">Provide GSTIN if you have GST registration</small>
                                 </div>
-                                
+                            </div>
+
+                            <!-- Document Uploads -->
+                            <div class="form-section">
+                                <h3>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    </svg>
+                                    Document Uploads
+                                </h3>
+                                <p class="section-description">Please upload clear, readable copies of the required documents. Max file size: 5MB per file.</p>
+
+                                <!-- Aadhaar Card Front -->
                                 <div class="form-group">
-                                    <label for="idProof">ID Proof Upload <span class="required">*</span></label>
-                                    <div class="file-upload-area" id="fileUploadArea">
-                                        <input type="file" id="idProof" name="idProof" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <label for="aadhaarFront">Upload Aadhaar Card (Front Side) <span class="required">*</span></label>
+                                    <div class="file-upload-area" data-input-id="aadhaarFront">
+                                        <input type="file" id="aadhaarFront" name="aadhaarFront" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
                                         <div class="upload-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -521,11 +595,95 @@ $benefits = [
                                             </svg>
                                         </div>
                                         <p>Click to upload or drag and drop</p>
-                                        <p class="file-types">Aadhaar / PAN / Driving License (PDF, JPG, PNG)</p>
+                                        <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
                                     </div>
-                                    <div id="selectedFile" class="selected-file"></div>
-                                    <?php if (isset($form_errors['idProof'])): ?>
-                                        <span class="form-error"><?php echo $form_errors['idProof']; ?></span>
+                                    <div class="selected-file" data-for="aadhaarFront"></div>
+                                    <?php if (isset($form_errors['aadhaarFront'])): ?>
+                                        <span class="form-error"><?php echo $form_errors['aadhaarFront']; ?></span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Aadhaar Card Back -->
+                                <div class="form-group">
+                                    <label for="aadhaarBack">Upload Aadhaar Card (Back Side) <span class="required">*</span></label>
+                                    <div class="file-upload-area" data-input-id="aadhaarBack">
+                                        <input type="file" id="aadhaarBack" name="aadhaarBack" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                                        <div class="upload-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="17 8 12 3 7 8"></polyline>
+                                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            </svg>
+                                        </div>
+                                        <p>Click to upload or drag and drop</p>
+                                        <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
+                                    </div>
+                                    <div class="selected-file" data-for="aadhaarBack"></div>
+                                    <?php if (isset($form_errors['aadhaarBack'])): ?>
+                                        <span class="form-error"><?php echo $form_errors['aadhaarBack']; ?></span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- PAN Card -->
+                                <div class="form-group">
+                                    <label for="panCard">Upload PAN Card <span class="required">*</span></label>
+                                    <div class="file-upload-area" data-input-id="panCard">
+                                        <input type="file" id="panCard" name="panCard" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                                        <div class="upload-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="17 8 12 3 7 8"></polyline>
+                                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            </svg>
+                                        </div>
+                                        <p>Click to upload or drag and drop</p>
+                                        <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
+                                    </div>
+                                    <div class="selected-file" data-for="panCard"></div>
+                                    <?php if (isset($form_errors['panCard'])): ?>
+                                        <span class="form-error"><?php echo $form_errors['panCard']; ?></span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Bank Proof -->
+                                <div class="form-group">
+                                    <label for="bankProof">Upload Bank Proof (Cancelled Cheque or Statement) <span class="required">*</span></label>
+                                    <div class="file-upload-area" data-input-id="bankProof">
+                                        <input type="file" id="bankProof" name="bankProof" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                                        <div class="upload-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="17 8 12 3 7 8"></polyline>
+                                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            </svg>
+                                        </div>
+                                        <p>Click to upload or drag and drop</p>
+                                        <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
+                                    </div>
+                                    <div class="selected-file" data-for="bankProof"></div>
+                                    <?php if (isset($form_errors['bankProof'])): ?>
+                                        <span class="form-error"><?php echo $form_errors['bankProof']; ?></span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Business Proof (Optional) -->
+                                <div class="form-group">
+                                    <label for="businessProof">Upload Business Registration Certificate / GST (Optional)</label>
+                                    <div class="file-upload-area" data-input-id="businessProof">
+                                        <input type="file" id="businessProof" name="businessProof" class="file-input" accept=".pdf,.jpg,.jpeg,.png">
+                                        <div class="upload-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="17 8 12 3 7 8"></polyline>
+                                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            </svg>
+                                        </div>
+                                        <p>Click to upload or drag and drop</p>
+                                        <p class="file-types">PDF, JPG, PNG (Max 5MB) - Optional</p>
+                                    </div>
+                                    <div class="selected-file" data-for="businessProof"></div>
+                                    <?php if (isset($form_errors['businessProof'])): ?>
+                                        <span class="form-error"><?php echo $form_errors['businessProof']; ?></span>
                                     <?php endif; ?>
                                 </div>
                             </div>
