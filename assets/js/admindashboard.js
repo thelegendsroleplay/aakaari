@@ -94,15 +94,41 @@
                 resetCooldown(selectedApplicationId);
             }
         });
+
+        $(document).on('click', '#allowResubmissionCard', function() {
+            if (confirm('Allow this user to resubmit their application? This will clear any cooldown and enable resubmission.')) {
+                allowResubmission(selectedApplicationId);
+            }
+        });
+
+        $(document).on('click', '#requestDocumentsCard', function() {
+            $('#actionFormsContainer').show();
+            $('#documentRequestSection').slideDown();
+            $('#rejectionReasonSection').hide();
+            $('#cooldownSection').hide();
+        });
+
+        $(document).on('click', '#deleteApplicationCard', function() {
+            if (confirm('WARNING: This will permanently delete the application and all associated data. This action cannot be undone. Are you sure?')) {
+                deleteApplication(selectedApplicationId);
+            }
+        });
         
         // Submit document request
         $(document).on('click', '#submitDocRequestBtn', function() {
-            const request = $('#documentRequest').val().trim();
-            if (!request) {
-                showToast('Please specify what documentation is required', 'error');
+            const selectedDocs = [];
+            $('input[name="requested_documents[]"]:checked').each(function() {
+                selectedDocs.push($(this).val());
+            });
+
+            const message = $('#documentRequestMessage').val().trim();
+
+            if (selectedDocs.length === 0) {
+                showToast('Please select at least one document to request', 'error');
                 return;
             }
-            requestDocumentation(selectedApplicationId, request);
+
+            requestDocuments(selectedApplicationId, selectedDocs, message);
         });
         
         // Submit cooldown
@@ -598,13 +624,49 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        showToast('Cooldown reset successfully - Application is now active', 'success');
+                        showToast(response.data.message || 'Cooldown reset successfully! User can now reapply.', 'success');
+                        // Close modal and reload to reflect changes
+                        setTimeout(() => {
+                            closeModal();
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(response.data.message || 'Failed to reset cooldown', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Reset cooldown error:', error);
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+
+        /**
+         * Allow resubmission
+         */
+        function allowResubmission(applicationId) {
+            if (!applicationId) {
+                showToast('Invalid application ID', 'error');
+                return;
+            }
+
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'allow_resubmission',
+                    application_id: applicationId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast(response.data.message || 'Resubmission enabled successfully', 'success');
                         // Update status badge dynamically
-                        updateApplicationStatus(applicationId, 'pending', 'Pending');
+                        updateApplicationStatus(applicationId, 'resubmission_allowed', 'Resubmission Allowed');
                         // Close modal after 1.5 seconds
                         setTimeout(() => closeModal(), 1500);
                     } else {
-                        showToast(response.data.message || 'Failed to reset cooldown', 'error');
+                        showToast(response.data.message || 'Failed to enable resubmission', 'error');
                     }
                 },
                 error: function() {
@@ -612,7 +674,42 @@
                 }
             });
         }
-        
+
+        /**
+         * Delete application
+         */
+        function deleteApplication(applicationId) {
+            if (!applicationId) {
+                showToast('Invalid application ID', 'error');
+                return;
+            }
+
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'delete_application',
+                    application_id: applicationId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast(response.data.message || 'Application deleted successfully', 'success');
+                        // Close modal and refresh the page to remove the deleted application
+                        setTimeout(() => {
+                            closeModal();
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(response.data.message || 'Failed to delete application', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+
         /**
          * Request additional documentation
          */

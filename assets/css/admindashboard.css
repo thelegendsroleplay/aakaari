@@ -23,6 +23,34 @@
     --border-radius-full: 9999px;
 }
 
+/* Document Checkboxes */
+.document-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.document-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.document-checkbox:hover {
+    background-color: var(--bg-light);
+}
+
+.document-checkbox input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
 /* Base Styles */
 .aakaari-admin-dashboard {
     min-height: 100vh;

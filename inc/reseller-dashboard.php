@@ -85,8 +85,8 @@ function redirect_to_dashboard_after_login($redirect_to, $request, $user) {
         return $redirect_to;
     }
 
-    $dashboard_page_id = get_option('dashboard_page_id');
-    $dashboard_url     = $dashboard_page_id ? get_permalink($dashboard_page_id) : home_url('/dashboard/');
+    $dashboard_page_id = get_option('aakaari_dashboard_page_id');
+    $dashboard_url     = $dashboard_page_id ? get_permalink($dashboard_page_id) : home_url('/reseller-dashboard/');
     $reseller_page_id  = get_option('reseller_page_id');
     $application_pending_url = home_url('/application-pending/');
     $reseller_url      = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');

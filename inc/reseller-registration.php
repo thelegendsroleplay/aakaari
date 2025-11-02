@@ -92,11 +92,14 @@ function enqueue_reseller_registration_assets() {
         );
 
         // Localize script with data
+        // Get proper dashboard URL
+        $dashboard_url = function_exists('aakaari_get_dashboard_url') ? aakaari_get_dashboard_url() : home_url('/my-account/');
+
         wp_localize_script('reseller-registration-script', 'registration_ajax_object', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('aakaari_ajax_nonce'), // Single nonce for all AJAX
             'login_url' => wc_get_page_permalink('myaccount'),
-            'dashboard_url' => home_url('/dashboard/'),
+            'dashboard_url' => $dashboard_url,
         ));
     }
 }

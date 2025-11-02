@@ -21,9 +21,7 @@ defined('ABSPATH') || exit;
                     <!-- Header with Logo -->
                     <tr>
                         <td align="center" valign="top" style="background: linear-gradient(135deg, #2563EB 0%, #1e40af 100%); padding: 32px 20px;">
-                            <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 1px;">
-                                <?php echo esc_html(get_bloginfo('name')); ?>
-                            </h1>
+                            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php echo esc_attr(get_bloginfo('name')); ?>" style="max-width: 200px; height: auto; display: block; margin: 0 auto;">
                         </td>
                     </tr>
                     <!-- Email Heading -->

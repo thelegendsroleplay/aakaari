@@ -153,6 +153,58 @@ add_action('admin_post_nopriv_submit_reseller_application', 'aar_handle_reseller
 add_action('admin_post_submit_reseller_application', 'aar_handle_reseller_submission');
 
 /**
+ * Get reseller application status for a given email
+ * 
+ * @param string $user_email User's email address
+ * @return array Array with 'status' and 'application' keys
+ */
+function get_reseller_application_status($user_email) {
+    $application = null;
+    $status = 'not-submitted';
+    
+    $q = new WP_Query(array(
+        'post_type'      => 'reseller_application',
+        'post_status'    => array('private', 'publish', 'draft', 'pending'),
+        'posts_per_page' => 1,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => array(
+            array(
+                'key'   => 'reseller_email',
+                'value' => $user_email,
+            ),
+        ),
+    ));
+
+    if ($q->have_posts()) {
+        $q->the_post();
+        $application = get_post();
+        $terms = wp_get_post_terms(get_the_ID(), 'reseller_application_status', array('fields' => 'slugs'));
+        
+        if (!is_wp_error($terms) && !empty($terms)) {
+            if (in_array('approved', $terms, true)) {
+                $status = 'approved';
+            } elseif (in_array('resubmission_allowed', $terms, true)) {
+                $status = 'resubmission_allowed';
+            } elseif (in_array('documents_requested', $terms, true)) {
+                $status = 'documents_requested';
+            } elseif (in_array('pending', $terms, true) || in_array('under_review', $terms, true)) {
+                $status = 'pending';
+            } elseif (in_array('rejected', $terms, true)) {
+                $status = 'rejected';
+            }
+        }
+        
+        wp_reset_postdata();
+    }
+    
+    return array(
+        'status' => $status,
+        'application' => $application,
+    );
+}
+
+/**
  * Register Reseller Application CPT
  * Note: This should be called on init hook
  */

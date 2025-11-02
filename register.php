@@ -8,7 +8,11 @@
 
 // Check if a user is already logged in
 if (is_user_logged_in()) {
-    wp_safe_redirect(home_url('/dashboard/'));
+    if (function_exists('aakaari_get_dashboard_url')) {
+        wp_safe_redirect(aakaari_get_dashboard_url());
+    } else {
+        wp_safe_redirect(home_url('/my-account/'));
+    }
     exit;
 }
 
@@ -65,8 +69,7 @@ get_header(); // Includes your theme's header
         <div id="registration-form-container" <?php echo ($user_verifying_id) ? 'style="display:none;"' : ''; ?>>
             <div class="reseller-card-header">
                 <div class="header-logo">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                    <span class="header-brand-name">Aakaari</span>
+                    <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php bloginfo('name'); ?>" class="header-logo-img">
                 </div>
                 <h1 class="header-title">Create Reseller Account</h1>
                 <p class="header-subtitle">Join our reseller network and start earning today!</p>
@@ -200,8 +203,7 @@ get_header(); // Includes your theme's header
         <div id="otp-verification-container" <?php echo (!$user_verifying_id) ? 'style="display:none;"' : ''; ?>>
             <div class="reseller-card-header">
                 <div class="header-logo">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 8.4c.5.38.8.97.8 1.6v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/></svg>
-                    <span class="header-brand-name">Aakaari</span>
+                    <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php bloginfo('name'); ?>" class="header-logo-img">
                 </div>
                 <h1 class="header-title">Verify Your Email</h1>
                 <p class="header-subtitle">We sent a 6-digit code to <strong id="otp-email-display"><?php echo esc_html($user_verifying_email); ?></strong>. Please enter it below.</p>

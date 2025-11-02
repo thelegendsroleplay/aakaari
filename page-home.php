@@ -25,10 +25,9 @@ get_header(); ?>
     $reseller_page_id = get_option('reseller_page_id');
     $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
     $login_link = home_url('/login/');
-    $dashboard_link = home_url('/dashboard/');
 
     if (is_user_logged_in()) {
-        $final_reseller_href = $dashboard_link;
+        $final_reseller_href = function_exists('aakaari_get_dashboard_url') ? aakaari_get_dashboard_url() : home_url('/my-account/');
     } else {
         $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
     }
@@ -49,9 +48,6 @@ get_header(); ?>
           <?php
           if (has_post_thumbnail()) {
               echo get_the_post_thumbnail(get_queried_object_id(), 'full', array('class' => 'hero-image', 'loading' => 'eager'));
-          } else {
-              $fallback = get_template_directory_uri() . '/assets/images/hero-fallback.jpg';
-              echo '<img class="hero-image" src="' . esc_url($fallback) . '" alt="Aakaari Wholesale Platform" loading="eager">';
           }
           ?>
         </div>
@@ -86,8 +82,8 @@ get_header(); ?>
             </svg>
           </div>
           <div class="step-num">02</div>
-          <h3>Browse & Order</h3>
-          <p>Choose from 1500+ products at wholesale prices with minimum order quantity.</p>
+          <h3>Browse & Order Products</h3>
+          <p>Order any product at wholesale prices. Single units allowed, no MOQ required.</p>
         </div>
 
         <div class="how-step">
@@ -97,8 +93,8 @@ get_header(); ?>
             </svg>
           </div>
           <div class="step-num">03</div>
-          <h3>Sell & Earn</h3>
-          <p>Share product links, sell to customers. We ship directly to them.</p>
+          <h3>Set Your Price & Sell Under Your Brand</h3>
+          <p>Set your own price and collect payments directly. Pay Aakaari the base price when ordering.</p>
         </div>
 
         <div class="how-step">
@@ -109,138 +105,104 @@ get_header(); ?>
             </svg>
           </div>
           <div class="step-num">04</div>
-          <h3>Track & Grow</h3>
-          <p>Real-time tracking. Earn commissions. Withdraw to your bank instantly.</p>
+          <h3>Place Order & Track Delivery</h3>
+          <p>Pay base price upfront. We handle printing, shipping, and provide tracking. (No COD.)</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- FEATURED PRODUCTS SECTION -->
-  <section class="aakaari-featured-products">
+  <!-- CUSTOMER REVIEWS SECTION -->
+  <section class="aakaari-customer-reviews">
     <div class="container">
-      <div class="featured-header">
-        <div class="featured-title">
-          <h2>Featured Products</h2>
-          <p class="muted">High-margin bestsellers</p>
-        </div>
-        <div class="featured-cta">
-          <a class="btn btn-outline" href="<?php echo esc_url(get_post_type_archive_link('product') ?: home_url('/shop')); ?>">
-            View All <span aria-hidden="true">→</span>
-          </a>
+      <div class="reviews-header">
+        <div class="reviews-title">
+          <h2>What Our Resellers Say</h2>
+          <p class="muted">Real feedback from verified resellers</p>
         </div>
       </div>
 
-      <div class="featured-grid">
-      <?php
-      if (class_exists('WooCommerce')) {
-          $args = array(
-              'limit' => 8,
-              'status' => 'publish',
-              'orderby' => 'date',
-              'order' => 'DESC',
-              'featured' => true,
-          );
-          $products = wc_get_products($args);
+      <div class="reviews-grid">
+        <article class="review-card">
+          <div class="review-rating">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+          </div>
+          <p class="review-text">"Aakaari has completely transformed my business. The profit margins are incredible, and the support team is always there when I need them. Highly recommended!"</p>
+          <div class="review-author">
+            <div class="author-info">
+              <strong>Rajesh Kumar</strong>
+              <span>Mumbai, Maharashtra</span>
+            </div>
+          </div>
+        </article>
 
-          if (!empty($products)) {
-              foreach ($products as $product) {
-                  $pid = $product->get_id();
-                  $link = get_permalink($pid);
-                  $image = $product->get_image('woocommerce_thumbnail', array('alt' => esc_attr($product->get_name()), 'loading' => 'lazy'));
-                  $title = $product->get_name();
+        <article class="review-card">
+          <div class="review-rating">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+          </div>
+          <p class="review-text">"The quality of products and fast shipping has helped me build a loyal customer base. My monthly earnings have doubled since joining Aakaari!"</p>
+          <div class="review-author">
+            <div class="author-info">
+              <strong>Priya Sharma</strong>
+              <span>Delhi, NCR</span>
+            </div>
+          </div>
+        </article>
 
-                  // Prices
-                  $regular_price = $product->get_regular_price();
-                  $sale_price = $product->get_sale_price();
-
-                  // Wholesale price
-                  $wholesale_price = get_post_meta($pid, '_wholesale_price', true);
-                  if (!$wholesale_price) {
-                      $wholesale_price = get_post_meta($pid, 'wholesale_price', true);
-                  }
-
-                  // MOQ
-                  $moq = get_post_meta($pid, '_moq', true);
-                  if (!$moq) $moq = get_post_meta($pid, 'moq', true);
-                  if (!$moq) $moq = '—';
-
-                  // Rating
-                  $avg_rating = floatval($product->get_average_rating());
-                  $rating_count = $product->get_rating_count();
-                  $rating_html = wc_get_rating_html($avg_rating, $rating_count);
-
-                  // Margin calculation
-                  $margin_label = 'High Margin';
-                  if ($wholesale_price && is_numeric($wholesale_price) && is_numeric($regular_price) && floatval($wholesale_price) > 0) {
-                      $margin = round(((floatval($regular_price) - floatval($wholesale_price)) / floatval($wholesale_price)) * 100);
-                      $margin_label = $margin . '% Margin';
-                  }
-
-                  echo '<article class="fp-card" itemscope itemtype="https://schema.org/Product">';
-                    echo '<a class="fp-thumb-link" href="' . esc_url($link) . '" aria-label="View ' . esc_attr($title) . '">';
-                      echo '<div class="fp-thumb">';
-                        echo $image;
-                        echo '<span class="fp-badge">' . esc_html($margin_label) . '</span>';
-                      echo '</div>';
-                    echo '</a>';
-
-                    echo '<div class="fp-body">';
-                      echo '<h3 class="fp-title" itemprop="name"><a href="' . esc_url($link) . '">' . esc_html($title) . '</a></h3>';
-
-                      if ($rating_count > 0) {
-                          echo '<div class="fp-rating" itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating">';
-                            echo $rating_html;
-                            echo ' <span class="fp-review-count">(<span itemprop="reviewCount">' . intval($rating_count) . '</span>)</span>';
-                            echo '<meta itemprop="ratingValue" content="' . esc_attr($avg_rating) . '">';
-                          echo '</div>';
-                      }
-
-                      echo '<div class="fp-pricing">';
-                        echo '<div class="fp-col">';
-                          echo '<div class="label">Wholesale</div>';
-                          echo '<div class="value" itemprop="offers" itemscope itemtype="https://schema.org/Offer">';
-                            if ($wholesale_price && is_numeric($wholesale_price)) {
-                                echo wc_price($wholesale_price);
-                                echo '<meta itemprop="price" content="' . esc_attr($wholesale_price) . '">';
-                                echo '<meta itemprop="priceCurrency" content="INR">';
-                            } else {
-                                echo '<span class="muted">—</span>';
-                            }
-                          echo '</div>';
-                        echo '</div>';
-                        echo '<div class="fp-col fp-col-right">';
-                          echo '<div class="label">MRP</div>';
-                          echo '<div class="value retail">' . ($regular_price ? wc_price($regular_price) : '<span class="muted">—</span>') . '</div>';
-                        echo '</div>';
-                      echo '</div>';
-
-                      echo '<div class="fp-meta">MOQ: <span class="moq">' . esc_html($moq) . '</span></div>';
-
-                      echo '<div class="fp-actions">';
-                        if ($product->is_type('simple')) {
-                            $add_url = esc_url(add_query_arg('add-to-cart', $pid, wc_get_cart_url()));
-                            echo '<a href="' . $add_url . '" class="btn btn-primary fp-order-now" data-product-id="' . esc_attr($pid) . '">Order Now</a>';
-                        } else {
-                            echo '<a href="' . esc_url($link) . '" class="btn btn-primary fp-order-now">View Product</a>';
-                        }
-                        echo '<button class="btn btn-outline fp-quickview" data-product-id="' . esc_attr($pid) . '" aria-label="Quick view ' . esc_attr($title) . '">Quick View</button>';
-                      echo '</div>';
-
-                    echo '</div>';
-                  echo '</article>';
-              }
-          } else {
-              echo '<div class="no-products">';
-                echo '<p>No featured products found. Mark products as "Featured" in the product list to display them here.</p>';
-              echo '</div>';
-          }
-      } else {
-          echo '<div class="no-products">';
-            echo '<p>Please install and activate WooCommerce to display featured products.</p>';
-          echo '</div>';
-      }
-      ?>
+        <article class="review-card">
+          <div class="review-rating">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#fbbf24" viewBox="0 0 16 16">
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 0.054z"/>
+            </svg>
+          </div>
+          <p class="review-text">"No inventory management, no storage costs - just pure profit! The dashboard is easy to use and tracking orders is seamless. Best decision I made for my business."</p>
+          <div class="review-author">
+            <div class="author-info">
+              <strong>Amit Patel</strong>
+              <span>Ahmedabad, Gujarat</span>
+            </div>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -256,10 +218,9 @@ get_header(); ?>
     $reseller_page_id = get_option('reseller_page_id');
     $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
     $login_link = home_url('/login/');
-    $dashboard_link = home_url('/dashboard/');
 
     if (is_user_logged_in()) {
-        $final_reseller_href = $dashboard_link;
+        $final_reseller_href = function_exists('aakaari_get_dashboard_url') ? aakaari_get_dashboard_url() : home_url('/my-account/');
     } else {
         $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
     }

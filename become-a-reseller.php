@@ -17,21 +17,30 @@ $current_user = wp_get_current_user();
 $user_id = $current_user->ID;
 $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
 
-// If user is already approved, redirect them to their dashboard.
-if ($onboarding_status === 'approved' || $onboarding_status === 'completed' || has_term('approved', 'reseller_application_status', get_user_application_post_id($current_user->user_email))) {
-    wp_redirect(site_url('/dashboard/'));
-    exit;
-}
-
-// If application is pending or rejected, redirect to the status page
+// Get application status using the proper function
 $application_info = get_reseller_application_status($current_user->user_email);
-if ($application_info['status'] === 'pending' || $application_info['status'] === 'rejected') {
-    wp_redirect(site_url('/application-pending/'));
-    exit;
+$application_status = $application_info['status'];
+$application = $application_info['application'];
+
+// Check if user can reapply (handles cooldown logic)
+$can_reapply = function_exists('can_user_reapply') ? can_user_reapply($user_id) : true;
+
+// Check if this is a successful submission redirect
+// Only show success message if user has a recent application and we're on the submitted page
+$submitted = isset($_GET['submitted']) && $_GET['submitted'] === '1' && $application && in_array($application_status, array('pending', 'under_review'));
+
+// Debugging for admins
+if (current_user_can('administrator') && isset($_POST['submit_application'])) {
+    error_log("Reseller Form Debug - User ID: $user_id | Status: $application_status | Can Reapply: " . ($can_reapply ? 'YES' : 'NO') . " | Blocked: " . ($blocked_submission ? 'YES' : 'NO'));
 }
 
-// CRITICAL FIX: REMOVED THE DASHBOARD REDIRECT COMPLETELY
-// The code that was redirecting to dashboard has been removed to prevent the redirect loop
+// If user is already approved, redirect them to their dashboard
+if ($application_status === 'approved') {
+    $dashboard_page_id = get_option('aakaari_dashboard_page_id');
+    $dashboard_url = $dashboard_page_id ? get_permalink($dashboard_page_id) : home_url('/reseller-dashboard/');
+    wp_redirect($dashboard_url);
+    exit;
+}
 
 // Check if this IP has submitted within the last 7 days - Keep existing check but add exception for logged-in users
 $recent_submission = check_recent_submission_by_ip($user_ip);
@@ -42,7 +51,40 @@ if ($recent_submission && !$onboarding_status) {
     $blocked_submission = false; // Allow submission for users with pending status who are completing their profile
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application']) && ! $blocked_submission) {
+// Check cooldown status for rejected users
+$cooldown_active = false;
+$cooldown_days_remaining = 0;
+$cooldown_hours_remaining = 0;
+$cooldown_minutes_remaining = 0;
+$cooldown_expires = 0;
+
+if ($application_status === 'rejected') {
+    $cooldown_expires = get_user_meta($user_id, 'cooldown_expires_at', true);
+    
+    // Only show cooldown if it's explicitly set AND still active
+    if ($cooldown_expires && time() < intval($cooldown_expires)) {
+        // Cooldown is still active
+        $cooldown_active = true;
+        $remaining_seconds = intval($cooldown_expires) - time();
+        $cooldown_days_remaining = floor($remaining_seconds / DAY_IN_SECONDS);
+        $remaining_seconds %= DAY_IN_SECONDS;
+        $cooldown_hours_remaining = floor($remaining_seconds / HOUR_IN_SECONDS);
+        $remaining_seconds %= HOUR_IN_SECONDS;
+        $cooldown_minutes_remaining = floor($remaining_seconds / MINUTE_IN_SECONDS);
+    }
+    // If cooldown is not set or expired, cooldown_active remains false
+    // This allows the user to see the form
+}
+
+// Get requested documents if status is documents_requested
+$requested_documents = array();
+$document_request_message = '';
+if ($application_status === 'documents_requested' && $application) {
+    $requested_documents = get_post_meta($application->ID, 'requested_documents', true) ?: array();
+    $document_request_message = get_post_meta($application->ID, 'document_request_message', true);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application']) && ! $blocked_submission && $can_reapply) {
 
     // Basic server-side validation (keeps your existing errors array)
     $required_fields = ['fullName', 'email', 'phone', 'address', 'city', 'state', 'pincode', 'bankName', 'accountNumber', 'ifsc'];
@@ -90,20 +132,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
     // If any validation errors, we fall through and show them (don't process)
     if (empty($form_errors)) {
 
+        // Check if this is a resubmission (user has existing application)
+        $is_resubmission = $application && in_array($application_status, array('resubmission_allowed', 'documents_requested'));
+
         // Prefer plugin helper (keeps logic centralized). Make sure plugin is active.
         if ( function_exists('aar_process_reseller_submission') ) {
             // Call the plugin helper which handles uploads, validation and post creation.
             $result = aar_process_reseller_submission( $_POST, $_FILES );
 
             if ( isset($result['success']) && $result['success'] ) {
-                $submitted = true;
-                // Prevent duplicate (plugin already stores submitDate/meta)
-                setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
-
                 // Mark onboarding as submitted (awaiting approval)
                 if ($user_id) {
                     update_user_meta($user_id, 'onboarding_status', 'submitted');
                 }
+
+                // Prevent duplicate submissions
+                setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
+
+                // Redirect to show success message and prevent form resubmission
+                wp_safe_redirect(add_query_arg('submitted', '1', get_permalink()));
+                exit;
             } else {
                 // Map plugin errors back into $form_errors for display
                 if ( isset($result['errors']) && is_array($result['errors']) ) {
@@ -115,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                 }
             }
         } else {
-            // Plugin not active — fallback: create post in the plugin CPT and set taxonomy
+            // Plugin not active — fallback: handle resubmission vs new application
             $upload_dir = wp_upload_dir();
             $target_dir = $upload_dir['basedir'] . '/reseller-documents/';
             if ( ! file_exists( $target_dir ) ) wp_mkdir_p( $target_dir );
@@ -142,15 +190,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
             }
 
             if ($upload_success && !empty($uploaded_documents)) {
-                $application_data = array(
-                    'post_title'    => sanitize_text_field($_POST['fullName']) . ' - ' . date('Y-m-d'),
-                    'post_status'   => 'private',
-                    'post_type'     => 'reseller_application', // plugin CPT
-                );
-                $post_id = wp_insert_post( $application_data );
+                if ($is_resubmission && $application) {
+                    // Update existing application for resubmission
+                    $post_id = $application->ID;
 
-                if ( ! is_wp_error( $post_id ) ) {
-                    // Store meta using plugin-friendly keys
+                    // Update post title and date
+                    wp_update_post(array(
+                        'ID' => $post_id,
+                        'post_title' => sanitize_text_field($_POST['fullName']) . ' - Resubmission - ' . date('Y-m-d'),
+                        'post_modified' => current_time('mysql'),
+                        'post_modified_gmt' => current_time('mysql', true)
+                    ));
+
+                    // Clear old document URLs and update with new ones
+                    $old_docs = array('aadhaar_front_url', 'aadhaar_back_url', 'pan_card_url', 'bank_proof_url', 'business_proof_url', 'reseller_id_proof_url');
+                    foreach ($old_docs as $meta_key) {
+                        delete_post_meta($post_id, $meta_key);
+                    }
+                } else {
+                    // Create new application for fresh submission
+                    $application_data = array(
+                        'post_title'    => sanitize_text_field($_POST['fullName']) . ' - ' . date('Y-m-d'),
+                        'post_status'   => 'private',
+                        'post_type'     => 'reseller_application',
+                    );
+                    $post_id = wp_insert_post( $application_data );
+
+                    if ( is_wp_error( $post_id ) ) {
+                        $form_errors['general'] = 'Error creating application. Please try again.';
+                        $upload_success = false;
+                    }
+                }
+
+                if ($upload_success && !is_wp_error($post_id)) {
+                    // Store/update meta using plugin-friendly keys
                     update_post_meta( $post_id, 'reseller_name', sanitize_text_field($_POST['fullName']) );
                     update_post_meta( $post_id, 'reseller_business', sanitize_text_field($_POST['businessName'] ?? '') );
                     update_post_meta( $post_id, 'reseller_email', sanitize_email($_POST['email']) );
@@ -163,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     update_post_meta( $post_id, 'reseller_bank', sanitize_text_field($_POST['bankName']) );
                     update_post_meta( $post_id, 'reseller_account', sanitize_text_field($_POST['accountNumber']) );
                     update_post_meta( $post_id, 'reseller_ifsc', strtoupper( sanitize_text_field($_POST['ifsc']) ) );
+
                     // Save all uploaded document URLs
                     if (isset($uploaded_documents['aadhaarFront'])) {
                         update_post_meta( $post_id, 'aadhaar_front_url', esc_url_raw($uploaded_documents['aadhaarFront']) );
@@ -186,29 +260,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
                     // Add business type for dashboard display
                     update_post_meta( $post_id, 'reseller_business_type', sanitize_text_field($_POST['businessType'] ?? 'Individual/Freelancer') );
 
-                    // Set taxonomy (status)
+                    // Set taxonomy status to pending/under_review
                     wp_set_object_terms( $post_id, 'pending', 'reseller_application_status' );
                     update_post_meta( $post_id, 'reseller_status', 'pending' );
 
+                    // Add resubmission metadata if applicable
+                    if ($is_resubmission) {
+                        update_post_meta( $post_id, 'resubmitted_at', current_time('mysql') );
+                        update_post_meta( $post_id, 'resubmission_count', intval(get_post_meta($post_id, 'resubmission_count', true)) + 1 );
+                    }
+
                     // Admin notification
+                    $subject_prefix = $is_resubmission ? 'Resubmitted Reseller Application' : 'New Reseller Application';
                     $admin_email = get_option('admin_email');
-                    $subject = 'New Reseller Application: ' . sanitize_text_field($_POST['fullName']);
-                    $message = "New reseller application received from:\n\nName: " . sanitize_text_field($_POST['fullName']) . "\nEmail: " . sanitize_email($_POST['email']) . "\nPhone: " . sanitize_text_field($_POST['phone']) . "\n\nView application: " . admin_url('post.php?post=' . $post_id . '&action=edit');
+                    $subject = $subject_prefix . ': ' . sanitize_text_field($_POST['fullName']);
+                    $message = ($is_resubmission ? "Resubmitted" : "New") . " reseller application received from:\n\nName: " . sanitize_text_field($_POST['fullName']) . "\nEmail: " . sanitize_email($_POST['email']) . "\nPhone: " . sanitize_text_field($_POST['phone']) . "\n\nView application: " . admin_url('post.php?post=' . $post_id . '&action=edit');
                     wp_mail( $admin_email, $subject, $message );
 
-                    // Applicant confirmation email
-                    wp_mail( sanitize_email($_POST['email']), 'Your Aakaari Reseller Application', "Thanks for applying. We'll review and be in touch." );
-
-                    $submitted = true;
-                    setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
+                    // Applicant confirmation email with HTML template
+                    $email_data = array(
+                        'name' => sanitize_text_field($_POST['fullName']),
+                        'application_id' => $post_id,
+                        'submitted_date' => date('F j, Y')
+                    );
                     
-                    // Mark onboarding as submitted (awaiting approval) — NOT completed
+                    $subject = 'Application Received - Thank You for Applying!';
+                    $message = aakaari_email_application_submitted($email_data);
+                    
+                    $headers = array('Content-Type: text/html; charset=UTF-8');
+                    wp_mail( sanitize_email($_POST['email']), $subject, $message, $headers );
+
+                    // Mark onboarding as submitted (awaiting approval)
                     if ($user_id) {
                         update_user_meta($user_id, 'onboarding_status', 'submitted');
                     }
 
+                    // Prevent duplicate submissions
+                    setcookie('reseller_application_submitted', time(), time() + (7 * DAY_IN_SECONDS), '/');
+
+                    // Redirect to show success message and prevent form resubmission
+                    wp_safe_redirect(add_query_arg('submitted', '1', get_permalink()));
+                    exit;
+
                 } else {
-                    $form_errors['general'] = 'Error creating application. Please try again.';
+                    if (empty($form_errors)) {
+                        $form_errors['general'] = 'Error ' . ($is_resubmission ? 'updating' : 'creating') . ' application. Please try again.';
+                    }
                 }
             } else {
                 if (empty($form_errors)) {
@@ -268,71 +365,9 @@ function calculate_days_remaining($submit_date) {
 }
 
 // NEW FUNCTION: Check for application and its status
-function get_reseller_application_status($user_email) {
-    $application = null;
-    $status = 'not-submitted';
-    
-    $q = new WP_Query(array(
-        'post_type'      => 'reseller_application',
-        'post_status'    => array('private', 'publish', 'draft', 'pending'),
-        'posts_per_page' => 1,
-        'orderby'        => 'date',
-        'order'          => 'DESC',
-        'meta_query'     => array(
-            array(
-                'key'   => 'reseller_email',
-                'value' => $user_email,
-            ),
-        ),
-    ));
-
-    if ($q->have_posts()) {
-        $q->the_post();
-        $application = get_post();
-        $terms = wp_get_post_terms(get_the_ID(), 'reseller_application_status', array('fields' => 'slugs'));
-        
-        if (!is_wp_error($terms) && !empty($terms)) {
-            if (in_array('approved', $terms, true)) {
-                $status = 'approved';
-            } elseif (in_array('pending', $terms, true)) {
-                $status = 'pending';
-            } elseif (in_array('rejected', $terms, true)) {
-                $status = 'rejected';
-            }
-        }
-        
-        wp_reset_postdata();
-    }
-    
-    return array(
-        'application' => $application,
-        'status' => $status
-    );
-}
-
-// Helper function to get application post ID for a user
-function get_user_application_post_id($user_email) {
-    $q = new WP_Query(array(
-        'post_type'      => 'reseller_application',
-        'post_status'    => array('private', 'publish', 'draft', 'pending'),
-        'posts_per_page' => 1,
-        'orderby'        => 'date',
-        'order'          => 'DESC',
-        'fields'         => 'ids',
-        'meta_query'     => array(
-            array(
-                'key'   => 'reseller_email',
-                'value' => $user_email,
-            ),
-        ),
-    ));
-
-    return $q->have_posts() ? $q->posts[0] : 0;
-}
-
-// Get application status from database
-$application_info = get_reseller_application_status($current_user->user_email);
-$db_application_status = $application_info['status'];
+// Note: get_reseller_application_status() is now in inc/reseller-application.php
+// Application status already retrieved above
+$db_application_status = $application_status;
 $application = $application_info['application'];
 
 // Use URL parameter status if provided, otherwise use status from database
@@ -414,23 +449,61 @@ $benefits = [
                 </div>
             </div>
             
-        <?php elseif ($display_status === 'rejected'): ?>
-            <!-- Rejected Application Message -->
-            <div class="error-card">
-                <div class="error-icon">
+        <?php elseif ($display_status === 'rejected' && $cooldown_active): ?>
+            <!-- Cooldown Period Warning - Only show when cooldown is ACTIVE -->
+            <div class="warning-card">
+                <div class="warning-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="15" y1="9" x2="9" y2="15"></line>
-                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                 </div>
                 <h2>Application Not Approved</h2>
-                <p>Unfortunately, your reseller application was not approved at this time.</p>
-                <p>Please contact our support team for more information or to discuss reapplying.</p>
+                <p>Unfortunately, we could not approve your reseller application at this time.</p>
+                <?php if ($cooldown_active): ?>
+                <p class="countdown-subtitle">⏳ You can reapply after the cooldown period expires:</p>
+                <div class="cooldown-timer" data-expires="<?php echo esc_attr($cooldown_expires); ?>">
+                    <div class="timer-display timer-days">
+                        <span class="timer-number"><?php echo str_pad($cooldown_days_remaining, 2, '0', STR_PAD_LEFT); ?></span>
+                        <span class="timer-label">days</span>
+                    </div>
+                    <div class="timer-display timer-hours">
+                        <span class="timer-number"><?php echo str_pad($cooldown_hours_remaining, 2, '0', STR_PAD_LEFT); ?></span>
+                        <span class="timer-label">hours</span>
+                    </div>
+                    <div class="timer-display timer-minutes">
+                        <span class="timer-number"><?php echo str_pad($cooldown_minutes_remaining, 2, '0', STR_PAD_LEFT); ?></span>
+                        <span class="timer-label">minutes</span>
+                    </div>
+                    <div class="timer-display timer-seconds">
+                        <span class="timer-number">00</span>
+                        <span class="timer-label">seconds</span>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-radius: 16px; margin: 2rem 0; border: 2px solid #10b981;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">✓</div>
+                    <p style="font-size: 1.25rem; font-weight: 700; color: #065f46; margin: 0 0 0.5rem 0;">Cooldown Period Expired!</p>
+                    <p style="color: #047857; margin: 0;">You can now submit a new reseller application.</p>
+                </div>
+                <?php endif; ?>
 
                 <div class="action-buttons">
-                    <a href="<?php echo esc_url(home_url('/')); ?>" class="btn btn-outline">Back to Home</a>
+                    <?php if (!$cooldown_active): ?>
+                    <a href="#application-form" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Reapply Now
+                    </a>
+                    <?php endif; ?>
                     <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
+                    <a href="<?php echo esc_url(home_url('/')); ?>" class="btn btn-outline">Back to Home</a>
                 </div>
             </div>
 
@@ -447,13 +520,81 @@ $benefits = [
                 <h2>Application Already Submitted</h2>
                 <p>We've detected that you've already submitted a reseller application within the past 7 days.</p>
                 <p>Please wait <?php echo $days_to_wait; ?> more day<?php echo $days_to_wait > 1 ? 's' : ''; ?> before submitting another application.</p>
-                
+
                 <div class="action-buttons">
                     <a href="<?php echo esc_url(home_url('/')); ?>" class="btn btn-outline">Back to Home</a>
                     <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="btn btn-primary">Contact Support</a>
                 </div>
             </div>
-        <?php else: ?>
+        <?php endif; ?>
+
+        <?php 
+        // Show form for: new users, resubmission_allowed, documents_requested, and rejected users (ONLY after cooldown expires)
+        $show_form = !$submitted && 
+                     !in_array($application_status, array('pending', 'under_review', 'approved')) && 
+                     !$blocked_submission && 
+                     !$cooldown_active && // Don't show form if cooldown is active
+                     $can_reapply;
+        ?>
+
+        <?php if ($show_form): ?>
+            <?php if ($application_status === 'resubmission_allowed'): ?>
+                <!-- Resubmission Allowed Notice -->
+                <div class="info-card" style="margin-bottom: 2rem;">
+                    <div class="info-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>
+                    <h2>Resubmission Available</h2>
+                    <p>Your reseller application can now be resubmitted. Please review and update your information below.</p>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($application_status === 'documents_requested'): ?>
+                <!-- Documents Requested Notice -->
+                <div class="info-card" style="margin-bottom: 2rem;">
+                    <div class="info-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <h2>Action Required: Upload Documents</h2>
+                    <p>We need additional documents to continue processing your reseller application.</p>
+
+                    <?php if (!empty($requested_documents)): ?>
+                    <div class="requested-documents">
+                        <h3>Requested Documents:</h3>
+                        <ul>
+                            <?php
+                            $doc_names = array(
+                                'aadhaar_front' => 'Aadhaar Card (Front)',
+                                'aadhaar_back' => 'Aadhaar Card (Back)',
+                                'pan_card' => 'PAN Card',
+                                'bank_proof' => 'Bank Proof (Cancelled Cheque or Statement)',
+                                'business_proof' => 'Business Registration/GST Certificate'
+                            );
+                            foreach ($requested_documents as $doc_key) {
+                                if (isset($doc_names[$doc_key])) {
+                                    echo '<li>' . esc_html($doc_names[$doc_key]) . '</li>';
+                                }
+                            }
+                            ?>
+                        </ul>
+                        <?php if (!empty($document_request_message)): ?>
+                        <p><strong>Additional Information:</strong> <?php echo esc_html($document_request_message); ?></p>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="reseller-content">
                 <!-- Benefits Sidebar -->
                 <div class="benefits-sidebar">
@@ -476,7 +617,7 @@ $benefits = [
                 </div>
 
                 <!-- Application Form -->
-                <div class="application-form">
+                <div class="application-form" id="application-form">
                     <div class="form-card">
                         <h2>Reseller Application Form</h2>
                         
@@ -781,5 +922,529 @@ $benefits = [
         <?php endif; ?>
     </div>
 </div>
+
+<!-- Additional Styles for New Features -->
+<style>
+/* Enhanced Status Card Styles */
+.success-card,
+.warning-card,
+.error-card,
+.info-card {
+    border-radius: 16px;
+    padding: 3rem 2rem;
+    text-align: center;
+    max-width: 700px;
+    margin: 2rem auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success Card (Application Submitted) */
+.success-card {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 2px solid #10b981;
+}
+
+.success-card .success-icon {
+    color: #10b981;
+    margin-bottom: 1.5rem;
+    animation: scaleIn 0.5s ease-out 0.3s both;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
+.success-card h2 {
+    color: #065f46;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.success-card p {
+    color: #047857;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.next-steps {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    text-align: left;
+}
+
+.next-steps h3 {
+    color: #065f46;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.next-steps ol {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.next-steps li {
+    color: #047857;
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+
+/* Warning Card (Pending/Cooldown) */
+.warning-card {
+    background: #ffffff;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+    position: relative;
+    overflow: hidden;
+}
+
+.warning-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%);
+}
+
+.warning-card .warning-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f59e0b;
+}
+
+.warning-card h2 {
+    color: #1f2937;
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+}
+
+.warning-card p {
+    color: #6b7280;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+/* Error Card (Rejected) */
+.error-card {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 2px solid #ef4444;
+}
+
+.error-card .error-icon {
+    color: #ef4444;
+    margin-bottom: 1.5rem;
+}
+
+.error-card h2 {
+    color: #991b1b;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.error-card p {
+    color: #7f1d1d;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+/* Info Card (Resubmission/Documents Requested) */
+.info-card {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border: 2px solid #3b82f6;
+}
+
+.info-card .info-icon {
+    color: #3b82f6;
+    margin-bottom: 1.5rem;
+}
+
+.info-card h2 {
+    color: #1e40af;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.info-card p {
+    color: #1e3a8a;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+/* Cooldown Timer Styles */
+.cooldown-timer {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 2.5rem auto;
+    max-width: 500px;
+    padding: 0 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .cooldown-timer {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        max-width: 100%;
+    }
+}
+
+.timer-display {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 16px;
+    padding: 1.5rem 0.75rem;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.timer-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .timer-display:hover {
+        transform: translateY(-8px) scale(1.05);
+        box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35);
+    }
+}
+
+.timer-number {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    display: block;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.timer-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    display: block;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2.5rem;
+}
+
+.action-buttons .btn {
+    padding: 1rem 2.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-buttons .btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .action-buttons .btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+}
+
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    border: 2px solid transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .action-buttons .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4);
+    }
+}
+
+.action-buttons .btn-outline {
+    background: transparent;
+    color: #3b82f6;
+    border: 2px solid #e5e7eb;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .action-buttons .btn-outline:hover {
+        background: #f9fafb;
+        border-color: #3b82f6;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+    }
+}
+
+/* Touch-friendly tap states for mobile */
+.action-buttons .btn:active {
+    transform: scale(0.97);
+}
+
+.timer-display:active {
+    transform: scale(0.97);
+}
+
+/* Requested Documents Styles */
+.requested-documents {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.requested-documents h3 {
+    margin-top: 0;
+    color: #374151;
+}
+
+.requested-documents ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.requested-documents li {
+    margin-bottom: 0.5rem;
+    color: #4b5563;
+}
+
+/* Countdown Expired Styles */
+.countdown-expired {
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-radius: 16px;
+    border: 2px solid #10b981;
+}
+
+.expired-text {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #065f46;
+    margin: 0 0 0.75rem 0;
+}
+
+.expired-subtext {
+    color: #047857;
+    margin: 0 0 1.5rem 0;
+    font-size: 1.1rem;
+}
+
+/* Countdown Subtitle */
+.countdown-subtitle {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #6b7280;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .reseller-page {
+        padding: 0;
+    }
+    
+    .reseller-header {
+        padding: 2rem 1rem;
+    }
+    
+    .reseller-header h1 {
+        font-size: 1.75rem;
+    }
+    
+    .reseller-header p {
+        font-size: 1rem;
+    }
+    
+    .container {
+        padding: 0 1rem;
+    }
+    
+    .warning-card,
+    .error-card,
+    .success-card,
+    .info-card {
+        padding: 2rem 1.25rem;
+        margin: 1.5rem 0;
+        border-radius: 12px;
+    }
+    
+    .warning-card .warning-icon,
+    .error-card .error-icon,
+    .success-card .success-icon,
+    .info-card .info-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .warning-card h2,
+    .error-card h2,
+    .success-card h2,
+    .info-card h2 {
+        font-size: 1.5rem;
+        line-height: 1.3;
+    }
+    
+    .warning-card p,
+    .error-card p,
+    .success-card p,
+    .info-card p {
+        font-size: 1rem;
+    }
+    
+    .countdown-subtitle {
+        font-size: 0.875rem;
+        padding: 0 0.5rem;
+    }
+    
+    .cooldown-timer {
+        gap: 0.75rem;
+        margin: 2rem 0;
+    }
+    
+    .timer-display {
+        padding: 1rem 0.5rem;
+        border-radius: 12px;
+    }
+    
+    .timer-number {
+        font-size: 2rem;
+    }
+    
+    .timer-label {
+        font-size: 0.65rem;
+        margin-top: 0.25rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0 0.5rem;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 0.875rem 1.5rem;
+        font-size: 0.95rem;
+    }
+    
+    .next-steps {
+        padding: 1.5rem;
+    }
+    
+    .next-steps h3 {
+        font-size: 1.1rem;
+    }
+    
+    .next-steps ol {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .reseller-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .warning-card,
+    .error-card,
+    .success-card,
+    .info-card {
+        padding: 1.5rem 1rem;
+    }
+    
+    .warning-card h2,
+    .error-card h2,
+    .success-card h2,
+    .info-card h2 {
+        font-size: 1.25rem;
+    }
+    
+    .timer-number {
+        font-size: 1.75rem;
+    }
+    
+    .timer-label {
+        font-size: 0.6rem;
+    }
+    
+    .timer-display {
+        padding: 0.875rem 0.375rem;
+    }
+}
+</style>
+
+<script src="<?php echo get_template_directory_uri(); ?>/assets/js/reseller-countdown.js"></script>
 
 <?php get_footer(); ?>

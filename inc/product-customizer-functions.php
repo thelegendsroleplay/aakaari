@@ -47,8 +47,50 @@ function aakaari_enqueue_shop_assets() {
         );
 
         // --- Prepare Data for JS ---
-        // 1. Get All Product Categories
+        
+        // SECURITY: Only load products for approved resellers
+        $can_access_products = false;
+        
+        // Admins always have access
+        if (current_user_can('manage_options')) {
+            $can_access_products = true;
+        } elseif (is_user_logged_in()) {
+            // Check if user is approved reseller
+            $user = wp_get_current_user();
+            $user_email = $user->user_email;
+            
+            if (function_exists('get_reseller_application_status')) {
+                $application_info = get_reseller_application_status($user_email);
+                if ($application_info['status'] === 'approved') {
+                    $can_access_products = true;
+                }
+            }
+        }
+        
+        // Initialize empty arrays
         $categories_data = array();
+        $products_data = array();
+        
+        // Only load data if user has access
+        if (!$can_access_products) {
+            // Pass empty data to JavaScript
+            wp_localize_script(
+                'aakaari-shop-logic',
+                'AakaariShopData',
+                array(
+                    'ajax_url'   => admin_url( 'admin-ajax.php' ),
+                    'nonce'      => wp_create_nonce( 'aakaari_shop_nonce' ),
+                    'products'   => array(),
+                    'categories' => array(),
+                    'defaultImage' => wc_placeholder_img_src(),
+                    'access_denied' => true,
+                    'message' => __('Please apply and get approved as a reseller to access products.', 'aakaari')
+                )
+            );
+            return; // Exit early
+        }
+        
+        // 1. Get All Product Categories
         $product_categories = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => true ) ); // Hide empty cats for filter
         if ( ! is_wp_error( $product_categories ) ) {
             foreach ( $product_categories as $term ) {
@@ -57,7 +99,6 @@ function aakaari_enqueue_shop_assets() {
         }
 
         // 2. Get All Products (relevant data only)
-        $products_data = array();
         $args = array(
             'post_type'      => 'product',
             'posts_per_page' => -1, // Get all products

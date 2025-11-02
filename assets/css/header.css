@@ -28,23 +28,31 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 20px;
+  min-height: 60px;
 }
 
 /* Logo */
 .aakaari-header .site-branding {
   flex-shrink: 0;
   z-index: 101;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  margin-left: -10px;
 }
 
 .aakaari-header .site-branding .logo {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   text-decoration: none;
   color: var(--primary-color);
   font-weight: 700;
   font-size: 20px;
   white-space: nowrap;
   transition: opacity 0.2s ease;
+  line-height: 1.2;
+  height: 100%;
 }
 
 .aakaari-header .site-branding .logo:hover {
@@ -56,6 +64,19 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
+}
+
+.aakaari-header .site-branding .logo-img {
+  height: clamp(44px, 5vw, 56px);
+  width: auto;
+  max-width: min(190px, 28vw);
+  object-fit: contain;
+  display: block;
+  margin: 0 0 0 -10px;
+  padding: 0;
+  line-height: 0;
+  font-size: 0;
+  transition: height 0.3s ease, max-width 0.3s ease;
 }
 
 /* Navigation Container */
@@ -248,95 +269,378 @@
     display: none;
   }
 
+  /* Ensure logo image displays properly on mobile */
+  .aakaari-header .site-branding .logo-img {
+    height: clamp(40px, 9vw, 50px);
+    max-width: min(190px, 40vw);
+  }
+  
+  .aakaari-header .site-branding {
+    margin-left: 0;
+  }
+
   /* Show mobile menu toggle on the left */
   .aakaari-header .mobile-menu-toggle {
     display: flex;
     order: -1;
   }
 
-  /* Mobile Navigation Menu */
+  /* Mobile Navigation Menu - Enhanced Professional Design */
   .aakaari-header .main-navigation {
     position: fixed;
-    top: 60px;
+    top: 0;
     left: -100%;
     width: 100%;
-    height: calc(100vh - 60px);
-    background: white;
+    height: 100vh;
+    background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
     flex-direction: column;
     align-items: stretch;
     padding: 0;
     margin: 0;
-    z-index: 99;
-    transition: left 0.3s ease;
+    z-index: 9999;
+    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
-    box-shadow: var(--shadow-lg);
+    overflow-x: hidden;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.15);
     gap: 0;
+  }
+
+  /* Backdrop overlay */
+  .aakaari-header .main-navigation::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .aakaari-header .main-navigation.active::before {
+    opacity: 1;
+    pointer-events: all;
   }
 
   .aakaari-header .main-navigation.active {
     left: 0;
   }
 
+  /* Mobile Menu Header */
+  .aakaari-header .main-navigation.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    z-index: 1;
+  }
+
+  /* Mobile Menu Logo Section */
+  .mobile-menu-header {
+    position: relative;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    z-index: 2;
+  }
+
+  .mobile-menu-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mobile-menu-logo img {
+    height: 36px;
+    width: auto;
+    filter: brightness(0) invert(1);
+  }
+
+  .mobile-menu-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-menu-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: rotate(90deg) scale(1.1);
+  }
+
+  .mobile-menu-close svg {
+    width: 20px;
+    height: 20px;
+    fill: white;
+    stroke: white;
+  }
+
+  /* Navigation Menu Items */
   .aakaari-header .nav-menu {
     flex-direction: column;
-    gap: 0;
+    gap: 8px;
     width: 100%;
     flex: 0 0 auto;
+    padding: 24px;
+    padding-top: 32px;
+    position: relative;
+    z-index: 2;
   }
 
   .aakaari-header .nav-menu li {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: none;
+    margin: 0;
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideInLeft 0.4s ease forwards;
+  }
+
+  .aakaari-header .main-navigation.active .nav-menu li:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .aakaari-header .main-navigation.active .nav-menu li:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .aakaari-header .main-navigation.active .nav-menu li:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+
+  .aakaari-header .main-navigation.active .nav-menu li:nth-child(4) {
+    animation-delay: 0.25s;
+  }
+
+  @keyframes slideInLeft {
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   .aakaari-header .nav-menu a {
-    padding: 16px 20px;
+    padding: 18px 20px;
     border-bottom: none;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1f2937;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .aakaari-header .nav-menu a::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary-color);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+    border-radius: 0 4px 4px 0;
   }
 
   .aakaari-header .nav-menu a:hover,
   .aakaari-header .nav-menu .current-menu-item a {
-    background-color: #EFF6FF;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
     color: var(--primary-color);
-    border-bottom: none;
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
   }
 
-  /* Auth Buttons in Mobile Menu */
+  .aakaari-header .nav-menu a:hover::before,
+  .aakaari-header .nav-menu .current-menu-item a::before {
+    transform: scaleY(1);
+  }
+
+  /* Auth Buttons Section in Mobile Menu */
   .aakaari-header .auth-buttons {
     flex-direction: column;
     gap: 12px;
-    padding: 20px;
-    border-top: 2px solid var(--border-color);
+    padding: 24px;
+    border-top: 2px solid #e5e7eb;
     margin-top: auto;
     width: 100%;
+    background: #ffffff;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
   }
 
+  .aakaari-header .auth-buttons > * {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: slideUp 0.4s ease forwards;
+  }
+
+  .aakaari-header .main-navigation.active .auth-buttons > *:nth-child(1) {
+    animation-delay: 0.3s;
+  }
+
+  .aakaari-header .main-navigation.active .auth-buttons > *:nth-child(2) {
+    animation-delay: 0.35s;
+  }
+
+  .aakaari-header .main-navigation.active .auth-buttons > *:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes slideUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Enhanced Login/Cart Button Styles */
   .aakaari-header .login-btn {
-    padding: 14px 20px;
+    padding: 16px 24px;
     justify-content: center;
-    border-radius: 6px;
-    background-color: transparent;
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    gap: 8px;
-    font-size: 15px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid #e5e7eb;
+    color: #374151;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .aakaari-header .login-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
+  }
+
+  .aakaari-header .login-btn:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+
+  .aakaari-header .login-btn svg {
+    width: 20px;
+    height: 20px;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease;
   }
 
   .aakaari-header .login-btn span {
     display: inline;
+    position: relative;
+    z-index: 1;
   }
 
   .aakaari-header .login-btn:hover {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
     color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
   }
 
+  .aakaari-header .login-btn:hover svg {
+    transform: scale(1.1);
+  }
+
+  /* Cart Badge */
+  .aakaari-header .login-btn .ml-1 {
+    background: var(--primary-color) !important;
+    color: white !important;
+    border-radius: 12px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    padding: 0 8px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+  }
+
+  /* Reseller/Logout Button Styles */
   .aakaari-header .btn-reseller-header {
     width: 100%;
     text-align: center;
-    padding: 14px 20px;
-    font-size: 15px;
+    padding: 16px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .aakaari-header .btn-reseller-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .aakaari-header .btn-reseller-header:hover::before {
+    left: 100%;
+  }
+
+  .aakaari-header .btn-reseller-header:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+  }
+
+  /* Logout Button Specific Styles */
+  .aakaari-header .btn-logout {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+
+  .aakaari-header .btn-logout:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+  }
+
+  .aakaari-header .btn-logout::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   }
 }
 
@@ -355,6 +659,11 @@
     height: 22px;
   }
 
+  .aakaari-header .site-branding .logo-img {
+    height: clamp(38px, 8vw, 44px);
+    max-width: min(170px, 46vw);
+  }
+
   .aakaari-header .mobile-menu-toggle {
     width: 40px;
     height: 40px;
@@ -369,15 +678,41 @@
   }
 
   .aakaari-header .main-navigation {
-    top: 56px;
-    height: calc(100vh - 56px);
+    top: 0;
+    height: 100vh;
+  }
+
+  .mobile-menu-header {
+    padding: 16px 20px;
+  }
+
+  .mobile-menu-logo img {
+    height: 32px;
+  }
+
+  .mobile-menu-close {
+    width: 40px;
+    height: 40px;
   }
 
   .aakaari-header .auth-buttons {
-    padding: 16px;
+    padding: 20px;
+    gap: 10px;
+  }
+
+  .aakaari-header .nav-menu {
+    padding: 20px;
+    padding-top: 28px;
   }
 
   .aakaari-header .nav-menu a {
+    font-size: 16px;
+    padding: 16px 18px;
+  }
+
+  .aakaari-header .login-btn,
+  .aakaari-header .btn-reseller-header {
+    padding: 14px 20px;
     font-size: 15px;
   }
 }
@@ -516,72 +851,9 @@
    so no extra CSS is needed for it. */
 
 
-/*
- * Mobile Menu Styles
- * (Your JS file's classes)
- * --------------------------------------------------
- */
-
-@media (max-width: 991px) {
-    /* Hide desktop nav menu */
-    .aakaari-header .main-navigation .nav-menu {
-        display: none;
-    }
-
-    /* Position the mobile menu container */
-    .aakaari-header .main-navigation {
-        display: none; /* Hidden by default */
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        background-color: white;
-        z-index: 40;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        gap: 2rem;
-    }
-
-    /* Show menu when active */
-    .aakaari-header .main-navigation.active {
-        display: flex;
-    }
-
-    /* Style mobile nav links */
-    .aakaari-header .main-navigation.active .nav-menu {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1.5rem;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    /* Style auth buttons in mobile */
-    .aakaari-header .main-navigation.active .auth-buttons {
-        flex-direction: column;
-        gap: 1.5rem;
-        margin-left: 0;
-        margin-top: 1.5rem;
-        border-top: 1px solid #e5e7eb; /* Gray-200 */
-        padding-top: 1.5rem;
-        width: 100%;
-        max-width: 200px;
-        align-items: stretch;
-    }
-
-    /* Ensure mobile buttons are full-width */
-    .aakaari-header .main-navigation.active .auth-buttons a {
-        justify-content: center;
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem; /* rounded-md */
-    }
-
-    .aakaari-header .main-navigation.active .btn-reseller-header {
-        text-align: center;
-    }
+/* Hide mobile menu header on desktop */
+@media (min-width: 992px) {
+  .mobile-menu-header {
+    display: none;
+  }
 }

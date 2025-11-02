@@ -68,6 +68,17 @@ body {
   z-index: 1;
 }
 
+.aakaari-hero-right:empty {
+  display: none;
+}
+
+.aakaari-hero-inner:has(.aakaari-hero-right:empty) .aakaari-hero-left {
+  grid-column: 1 / -1;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
 .aakaari-hero-left {
   max-width: 600px;
 }
@@ -330,22 +341,18 @@ body {
   margin: 0;
 }
 
-/* ===== FEATURED PRODUCTS SECTION ===== */
-.aakaari-featured-products {
+/* ===== CUSTOMER REVIEWS SECTION ===== */
+.aakaari-customer-reviews {
   padding: 100px 0;
   background-color: var(--bg-light);
 }
 
-.featured-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 50px;
-  flex-wrap: wrap;
-  gap: 20px;
+.reviews-header {
+  text-align: center;
+  margin-bottom: 60px;
 }
 
-.featured-title h2 {
+.reviews-title h2 {
   font-size: clamp(32px, 4vw, 48px);
   font-weight: 800;
   margin: 0 0 8px;
@@ -360,28 +367,74 @@ body {
   font-weight: 500;
 }
 
-.featured-grid {
+.reviews-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.fp-card {
+.review-card {
   background-color: white;
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: 16px;
+  padding: 32px;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
   display: flex;
   flex-direction: column;
-  height: 100%;
   border: 1px solid var(--border-color);
+  position: relative;
 }
 
-.fp-card:hover {
+.review-card:hover {
   box-shadow: var(--shadow-lg);
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   border-color: var(--primary-light);
+}
+
+.review-rating {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.review-rating svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.review-text {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-dark);
+  margin: 0 0 24px;
+  flex: 1;
+  font-style: italic;
+}
+
+.review-author {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.author-info strong {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.author-info span {
+  font-size: 14px;
+  color: var(--text-medium);
 }
 
 .fp-thumb-link {
@@ -702,12 +755,12 @@ body {
   }
 
   .aakaari-how-it-works,
-  .aakaari-featured-products,
+  .aakaari-customer-reviews,
   .reseller-cta-section {
     padding: 80px 0;
   }
 
-  .featured-grid {
+  .reviews-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
@@ -751,19 +804,17 @@ body {
     gap: 24px;
   }
 
-  .featured-header {
-    flex-direction: column;
-    align-items: center;
+  .reviews-header {
     text-align: center;
   }
 
-  .featured-grid {
+  .reviews-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 24px;
   }
 
   .aakaari-how-it-works,
-  .aakaari-featured-products,
+  .aakaari-customer-reviews,
   .reseller-cta-section {
     padding: 70px 0;
   }
@@ -821,9 +872,17 @@ body {
     font-size: 40px;
   }
 
-  .featured-grid {
+  .reviews-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 24px;
+  }
+  
+  .review-card {
+    padding: 24px;
+  }
+  
+  .review-text {
+    font-size: 15px;
   }
 
   .fp-card {
@@ -858,7 +917,7 @@ body {
   }
 
   .aakaari-how-it-works,
-  .aakaari-featured-products,
+  .aakaari-customer-reviews,
   .reseller-cta-section {
     padding: 60px 0;
   }
@@ -982,7 +1041,7 @@ body {
   }
 
   .aakaari-how-it-works,
-  .aakaari-featured-products,
+  .aakaari-customer-reviews,
   .reseller-cta-section {
     padding: 50px 0;
   }

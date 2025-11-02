@@ -3,6 +3,14 @@
 <head>
     <meta charset="<?php bloginfo('charset'); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php
+    // Set site icon (favicon) to logo.png
+    $favicon_url = get_template_directory_uri() . '/assets/img/logo.png';
+    $favicon_path = get_template_directory() . '/assets/img/logo.png';
+    if (file_exists($favicon_path)): ?>
+        <link rel="icon" type="image/png" href="<?php echo esc_url($favicon_url); ?>">
+        <link rel="apple-touch-icon" href="<?php echo esc_url($favicon_url); ?>">
+    <?php endif; ?>
     <?php wp_head(); ?>
 </head>
 
@@ -13,14 +21,38 @@
     <div class="container">
         <div class="site-branding">
             <a href="<?php echo esc_url(home_url('/')); ?>" class="logo">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#2563EB" viewBox="0 0 16 16">
-                    <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
-                </svg>
-                <span>Aakaari</span>
+                <?php 
+                $logo_url = get_template_directory_uri() . '/assets/img/logo.png';
+                $logo_path = get_template_directory() . '/assets/img/logo.png';
+                if (file_exists($logo_path)): ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" class="logo-img">
+                <?php else: ?>
+                    <span style="color: #2563EB; font-weight: 700; font-size: 20px;"><?php bloginfo('name'); ?></span>
+                <?php endif; ?>
             </a>
         </div>
 
         <nav id="site-navigation" class="main-navigation">
+            <!-- Mobile Menu Header -->
+            <div class="mobile-menu-header">
+                <div class="mobile-menu-logo">
+                    <?php 
+                    $logo_url = get_template_directory_uri() . '/assets/img/logo.png';
+                    $logo_path = get_template_directory() . '/assets/img/logo.png';
+                    if (file_exists($logo_path)): ?>
+                        <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>">
+                    <?php else: ?>
+                        <span style="color: white; font-weight: 700; font-size: 20px;"><?php bloginfo('name'); ?></span>
+                    <?php endif; ?>
+                </div>
+                <button class="mobile-menu-close" aria-label="Close menu" onclick="document.getElementById('mobile-menu-toggle').click();">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
             <?php
             wp_nav_menu(array(
                 'theme_location' => 'primary',
@@ -32,7 +64,6 @@
                     echo '<li><a href="' . esc_url(home_url('/')) . '">Home</a></li>';
                     echo '<li><a href="' . esc_url(home_url('/products/')) . '">Products</a></li>';
                     echo '<li><a href="' . esc_url(home_url('/how-it-works/')) . '">How It Works</a></li>';
-                    echo '<li><a href="' . esc_url(home_url('/pricing/')) . '">Pricing</a></li>';
                     echo '<li><a href="' . esc_url(home_url('/contact/')) . '">Contact</a></li>';
                     echo '</ul>';
                 }

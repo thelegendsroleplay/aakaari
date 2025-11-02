@@ -281,9 +281,12 @@ function aakaari_ajax_verify_login_otp() {
         wp_set_current_user($user_id);
         wp_set_auth_cookie($user_id);
         
-        // Check onboarding status for redirect
-        $onboarding_status = get_user_meta($user_id, 'onboarding_status', true);
-        $redirect_url = ($onboarding_status === 'completed') ? home_url('/dashboard/') : get_permalink(get_option('reseller_page_id'));
+        // Use proper dashboard URL function for redirect
+        if (function_exists('aakaari_get_dashboard_url')) {
+            $redirect_url = aakaari_get_dashboard_url();
+        } else {
+            $redirect_url = home_url('/my-account/');
+        }
         
         wp_send_json_success(array('message' => 'Login successful! Redirecting...', 'redirect_url' => $redirect_url));
     } else {

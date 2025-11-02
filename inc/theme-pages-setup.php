@@ -192,7 +192,7 @@ function aakaari_create_required_pages() {
 }
 
 /**
- * Get correct dashboard URL based on user role
+ * Get correct dashboard URL based on user reseller status
  */
 function aakaari_get_dashboard_url() {
     if (!is_user_logged_in()) {
@@ -208,22 +208,50 @@ function aakaari_get_dashboard_url() {
         return home_url('/admin-dashboard/');
     }
 
-    // Check if user is reseller
+    // Get user reseller application status
     $user = wp_get_current_user();
-    $is_approved_reseller = false;
+    $status = 'not-submitted';
+
     if (function_exists('get_reseller_application_status')) {
-        $is_approved_reseller = get_reseller_application_status($user->user_email)['status'] === 'approved';
-    }
-    if (in_array('reseller', (array) $user->roles) || $is_approved_reseller) {
-        $reseller_dashboard_id = get_option('aakaari_dashboard_page_id');
-        if ($reseller_dashboard_id) {
-            return get_permalink($reseller_dashboard_id);
-        }
-        return home_url('/reseller-dashboard/');
+        $application_info = get_reseller_application_status($user->user_email);
+        $status = $application_info['status'];
     }
 
-    // Default to WooCommerce My Account
-    return wc_get_page_permalink('myaccount');
+    // Determine correct URL based on status
+    switch ($status) {
+        case 'approved':
+            // Approved reseller - go to reseller dashboard
+            $reseller_dashboard_id = get_option('aakaari_dashboard_page_id');
+            if ($reseller_dashboard_id) {
+                return get_permalink($reseller_dashboard_id);
+            }
+            return home_url('/reseller-dashboard/');
+
+        case 'pending':
+        case 'under_review':
+            // Application under review - go to application pending page
+            $pending_page_id = get_option('aakaari_pending_page_id');
+            if ($pending_page_id) {
+                return get_permalink($pending_page_id);
+            }
+            return home_url('/application-pending/');
+
+        case 'rejected':
+            // Application rejected - go to become a reseller (with rejection message)
+            $reseller_page_id = get_option('aakaari_reseller_page_id');
+            if ($reseller_page_id) {
+                return get_permalink($reseller_page_id);
+            }
+            return home_url('/become-a-reseller/');
+
+        default:
+            // No application found - go to become a reseller
+            $reseller_page_id = get_option('aakaari_reseller_page_id');
+            if ($reseller_page_id) {
+                return get_permalink($reseller_page_id);
+            }
+            return home_url('/become-a-reseller/');
+    }
 }
 
 /**

@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
+// Include email templates
+require_once get_template_directory() . '/inc/email-templates.php';
+
 /**
  * Register the Admin Dashboard template
  */
@@ -429,11 +432,19 @@ function aakaari_approve_application() {
         update_post_meta($application_id, 'approval_date', current_time('mysql'));
         update_post_meta($application_id, 'approved_by', get_current_user_id());
 
-        // Notify applicant
+        // Notify applicant with HTML email
         if (!empty($applicant_email)) {
+            $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+            $email_data = array(
+                'name' => $reseller_name,
+                'email' => $applicant_email
+            );
+            
             $subject = 'Your Aakaari Reseller Application Approved!';
-            $message = "Congratulations! Your reseller application has been approved. You can now log in and access your dashboard.";
-            wp_mail($applicant_email, $subject, $message);
+            $message = aakaari_email_application_approved($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message, $headers);
         }
 
         wp_send_json_success(array('message' => 'Application approved successfully'));
@@ -475,20 +486,40 @@ function aakaari_reject_application() {
         update_post_meta($application_id, 'rejected_date', current_time('mysql'));
         update_post_meta($application_id, 'rejected_by', get_current_user_id());
 
-        // Update user status if applicable
+        // Update user status and set cooldown
         $applicant_email = get_post_meta($application_id, 'reseller_email', true);
         if ($applicant_email) {
             $user = get_user_by('email', $applicant_email);
             if ($user) {
-                update_user_meta($user->ID, 'application_status', 'rejected');
+                // Set reseller status to rejected
+                update_user_meta($user->ID, 'reseller_status', 'rejected');
+
+                // Set 7-day cooldown
+                $cooldown_expires = strtotime('+7 days');
+                update_user_meta($user->ID, 'cooldown_expires_at', $cooldown_expires);
+
+                // Update other status meta
+                update_user_meta($user->ID, 'onboarding_status', 'rejected');
             }
         }
 
-        // Notify applicant
+        // Notify applicant with HTML email
         if ($applicant_email) {
+            $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+            $cooldown_date = date('F j, Y', strtotime('+7 days'));
+            
+            $email_data = array(
+                'name' => $reseller_name,
+                'reason' => $reason,
+                'cooldown_date' => $cooldown_date,
+                'cooldown_human' => '7 days'
+            );
+            
             $subject = 'Update on Your Aakaari Reseller Application';
-            $message = "We regret to inform you that your reseller application has been rejected.\n\nReason: " . $reason;
-            wp_mail($applicant_email, $subject, $message);
+            $message = aakaari_email_application_rejected($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message, $headers);
         }
 
         wp_send_json_success(array('message' => 'Application rejected'));
@@ -498,7 +529,45 @@ function aakaari_reject_application() {
 add_action('wp_ajax_reject_application', 'aakaari_reject_application');
 
 /**
- * Reset application cooldown
+ * Check if user can reapply for reseller status
+ */
+if (!function_exists('can_user_reapply')) {
+function can_user_reapply($user_id) {
+    // Get application info using the proper function
+    $application_info = get_reseller_application_status(get_user_by('id', $user_id)->user_email);
+    $status = $application_info['status'];
+
+    // No application exists - can apply
+    if (!$application_info['application']) {
+        return true;
+    }
+
+    // Check status-based logic
+    if ($status === 'rejected') {
+        // Check cooldown
+        $cooldown = get_user_meta($user_id, 'cooldown_expires_at', true);
+        if (empty($cooldown) || time() > intval($cooldown)) {
+            return true; // Cooldown expired or not set
+        }
+        return false; // Still in cooldown
+    }
+
+    // These statuses allow the user to see the form
+    if (in_array($status, array('resubmission_allowed', 'documents_requested'))) {
+        return true;
+    }
+
+    // Deleted or no status - can apply fresh
+    if ($status === 'deleted' || empty($status)) {
+        return true;
+    }
+
+    // All other statuses (pending, under_review, approved) - cannot reapply
+    return false;
+}}
+
+/**
+ * Reset application cooldown (admin action)
  */
 if (!function_exists('aakaari_reset_application_cooldown')) {
 function aakaari_reset_application_cooldown() {
@@ -514,24 +583,251 @@ function aakaari_reset_application_cooldown() {
         exit;
     }
 
-    // Reset the cooldown by changing status back to pending
-    $result = wp_set_object_terms($application_id, 'pending', 'reseller_application_status', false);
-
-    if (is_wp_error($result)) {
-        wp_send_json_error(array('message' => 'Failed to reset cooldown: ' . $result->get_error_message()));
-    } else {
-        // Clear any cooldown meta
-        delete_post_meta($application_id, 'cooldown_until');
-        delete_post_meta($application_id, 'cooldown_duration');
-        
-        update_post_meta($application_id, 'cooldown_reset_date', current_time('mysql'));
-        update_post_meta($application_id, 'cooldown_reset_by', get_current_user_id());
-
-        wp_send_json_success(array('message' => 'Cooldown reset successfully'));
+    // Get applicant email
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    if (!$applicant_email) {
+        wp_send_json_error(array('message' => 'Applicant email not found'));
+        exit;
     }
+
+    // Get user
+    $user = get_user_by('email', $applicant_email);
+    if (!$user) {
+        wp_send_json_error(array('message' => 'User not found'));
+        exit;
+    }
+
+    // Reset cooldown: Clear cooldown_expires_at and set status to 'rejected' (allows reapply)
+    delete_user_meta($user->ID, 'cooldown_expires_at');
+
+    // Set status to rejected but allow reapply
+    update_user_meta($user->ID, 'reseller_status', 'rejected');
+
+    // Log the reset action
+    update_post_meta($application_id, 'cooldown_reset_date', current_time('mysql'));
+    update_post_meta($application_id, 'cooldown_reset_by', get_current_user_id());
+
+    wp_send_json_success(array('message' => 'Cooldown reset successfully. User can now reapply.'));
     exit;
 }}
 add_action('wp_ajax_reset_application_cooldown', 'aakaari_reset_application_cooldown');
+
+/**
+ * Allow resubmission (admin action)
+ */
+if (!function_exists('aakaari_allow_resubmission')) {
+function aakaari_allow_resubmission() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Set status to resubmission_allowed and clear cooldown
+    $result = wp_set_object_terms($application_id, 'resubmission_allowed', 'reseller_application_status', false);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(array('message' => 'Failed to update status: ' . $result->get_error_message()));
+    } else {
+        // Clear cooldown and update meta
+        delete_post_meta($application_id, 'cooldown_until');
+        update_post_meta($application_id, 'resubmission_enabled_date', current_time('mysql'));
+        update_post_meta($application_id, 'resubmission_enabled_by', get_current_user_id());
+
+        // Get applicant info and clear user cooldown
+        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+
+        // Clear user cooldown meta so they can reapply immediately
+        if ($applicant_email) {
+            $user = get_user_by('email', $applicant_email);
+            if ($user) {
+                delete_user_meta($user->ID, 'cooldown_expires_at');
+                update_user_meta($user->ID, 'reseller_status', 'resubmission_allowed');
+            }
+        }
+
+        // Send notification email with HTML template
+        if ($applicant_email) {
+            $email_data = array(
+                'name' => $reseller_name
+            );
+            
+            $subject = 'You can now resubmit your reseller application';
+            $message = aakaari_email_resubmission_allowed($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message, $headers);
+        }
+
+        wp_send_json_success(array('message' => 'Resubmission enabled successfully. User has been notified.'));
+    }
+    exit;
+}}
+add_action('wp_ajax_allow_resubmission', 'aakaari_allow_resubmission');
+
+/**
+ * Request additional documents (admin action)
+ */
+if (!function_exists('aakaari_request_documents')) {
+function aakaari_request_documents() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $requested_docs = isset($_POST['requested_documents']) ? $_POST['requested_documents'] : array();
+    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    if (empty($requested_docs) || !is_array($requested_docs)) {
+        wp_send_json_error(array('message' => 'Please select at least one document to request'));
+        exit;
+    }
+
+    // Set status to documents_requested
+    $result = wp_set_object_terms($application_id, 'documents_requested', 'reseller_application_status', false);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(array('message' => 'Failed to update status: ' . $result->get_error_message()));
+    } else {
+        // Store requested documents and message
+        update_post_meta($application_id, 'requested_documents', $requested_docs);
+        update_post_meta($application_id, 'document_request_message', $message);
+        update_post_meta($application_id, 'documents_requested_date', current_time('mysql'));
+        update_post_meta($application_id, 'documents_requested_by', get_current_user_id());
+
+        // Get applicant info and update user meta
+        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+
+        // Clear user cooldown and update status so they can resubmit
+        if ($applicant_email) {
+            $user = get_user_by('email', $applicant_email);
+            if ($user) {
+                delete_user_meta($user->ID, 'cooldown_expires_at');
+                update_user_meta($user->ID, 'reseller_status', 'documents_requested');
+            }
+        }
+
+        // Send notification email with HTML template
+        if ($applicant_email) {
+            $email_data = array(
+                'name' => $reseller_name,
+                'requested_documents' => $requested_docs,
+                'message' => $message
+            );
+            
+            $subject = 'Action required: Upload documents for your reseller application';
+            $message_body = aakaari_email_documents_requested($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message_body, $headers);
+        }
+
+        wp_send_json_success(array('message' => 'Document request sent successfully. User has been notified.'));
+    }
+    exit;
+}}
+add_action('wp_ajax_request_documents', 'aakaari_request_documents');
+
+/**
+ * Delete application (admin action)
+ */
+if (!function_exists('aakaari_delete_application')) {
+function aakaari_delete_application() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Get applicant email before deletion
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+
+    // Delete uploaded documents
+    $document_urls = array(
+        'aadhaar_front_url',
+        'aadhaar_back_url',
+        'pan_card_url',
+        'bank_proof_url',
+        'business_proof_url',
+        'reseller_id_proof_url' // Legacy
+    );
+
+    foreach ($document_urls as $meta_key) {
+        $file_url = get_post_meta($application_id, $meta_key, true);
+        if ($file_url) {
+            // Convert URL to file path and delete
+            $upload_dir = wp_upload_dir();
+            $file_path = str_replace($upload_dir['baseurl'], $upload_dir['basedir'], $file_url);
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+        }
+    }
+
+    // Delete user meta related to reseller application
+    if ($applicant_email) {
+        $user = get_user_by('email', $applicant_email);
+        if ($user) {
+            delete_user_meta($user->ID, 'reseller_status');
+            delete_user_meta($user->ID, 'cooldown_expires_at');
+            delete_user_meta($user->ID, 'onboarding_status');
+            delete_user_meta($user->ID, 'email_verified');
+            delete_user_meta($user->ID, 'account_status');
+            delete_user_meta($user->ID, 'approved_date');
+            delete_user_meta($user->ID, 'resubmission_allowed');
+            delete_user_meta($user->ID, 'documents_requested');
+        }
+    }
+
+    // Log the deletion before deleting the post
+    $admin_id = get_current_user_id();
+    error_log("Admin {$admin_id} deleted reseller application {$application_id} for user {$applicant_email}");
+
+    // Send notification email with HTML template
+    if ($applicant_email) {
+        $email_data = array(
+            'name' => $reseller_name
+        );
+        
+        $subject = 'Your reseller application has been removed';
+        $message = aakaari_email_application_deleted($email_data);
+        
+        $headers = array('Content-Type: text/html; charset=UTF-8');
+        wp_mail($applicant_email, $subject, $message, $headers);
+    }
+
+    // Delete the application post
+    $delete_result = wp_delete_post($application_id, true);
+
+    if ($delete_result) {
+        wp_send_json_success(array('message' => 'Application deleted successfully. All related data has been removed and user notified.'));
+    } else {
+        wp_send_json_error(array('message' => 'Failed to delete application'));
+    }
+    exit;
+}}
+add_action('wp_ajax_delete_application', 'aakaari_delete_application');
 
 /**
  * Get application documents

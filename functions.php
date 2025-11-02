@@ -168,10 +168,6 @@ add_action('wp_enqueue_scripts', function () {
         'cartUrl' => wc_get_cart_url(),
     ]);
 }, /* priority */ 9999);   // <- important: load last
-// Include the shipping debug tool for admins
-if (is_admin() || current_user_can('manage_options')) {
-    require_once get_stylesheet_directory() . '/woocommerce-shipping-debug.php';
-}
 /**
  * Load Product Customizer System v2.0
  * 

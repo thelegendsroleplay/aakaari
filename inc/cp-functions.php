@@ -106,8 +106,6 @@ function aakaari_cp_enqueue_assets_and_localize() {
                 'nonce'    => wp_create_nonce( 'aakaari_customizer' ),
                 'max_upload_size' => wp_max_upload_size(),
             ) );
-            // add a quick inline logger
-            wp_add_inline_script( $localize_handle, 'console.warn("AAKAARI_PRODUCTS localized as empty — check PHP localization.");' );
         }
         return;
     }
@@ -134,9 +132,6 @@ function aakaari_cp_enqueue_assets_and_localize() {
 
     // IMPROVED: Get print studio data (with fallback)
     $studio_data = get_post_meta($product_id, '_aakaari_print_studio_data', true);
-    
-    // DEBUG: Log what we got from meta
-    error_log('Print Studio Data for Product #' . $product_id . ': ' . print_r($studio_data, true));
     
     if (!is_array($studio_data)) {
         $studio_data = array(
@@ -180,7 +175,6 @@ function aakaari_cp_enqueue_assets_and_localize() {
     if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
         // Print Studio saves colors as array of hex values: ['#FF0000', '#00FF00']
         // Product customizer needs: [{name: 'Red', color: '#FF0000', image: 'url'}, ...]
-        error_log('Converting ' . count($studio_data['colors']) . ' colors from Print Studio');
         foreach ($studio_data['colors'] as $hex) {
             $color_name = aakaari_hex_to_color_name($hex); // Convert hex back to name
 
@@ -195,24 +189,19 @@ function aakaari_cp_enqueue_assets_and_localize() {
                 'color' => $hex,
                 'image' => $color_image_url, // Per-color image override
             );
-            error_log("  - Converted: $hex => $color_name" . ($color_image_url ? " (with image)" : ""));
         }
     }
 
     // Fallback if no colors configured in Print Studio
     if (empty($colors_for_customizer)) {
-        error_log('No Print Studio colors found, using fallback colors');
         $colors_for_customizer = aakaari_get_product_colors($product);
     }
-
-    error_log('Final colors for customizer: ' . print_r($colors_for_customizer, true));
 
     // IMPROVED: Transform Print Studio fabrics format
     $fabrics_for_customizer = array();
     if (!empty($studio_data['fabrics']) && is_array($studio_data['fabrics'])) {
         // Print Studio saves fabrics as array of IDs: ['fab_123', 'fab_456']
         // Get full fabric data from pa_fabric taxonomy
-        error_log('Converting ' . count($studio_data['fabrics']) . ' fabrics from Print Studio');
         foreach ($studio_data['fabrics'] as $fabric_id) {
             // Extract term ID from 'fab_123' format
             $term_id = intval(str_replace('fab_', '', $fabric_id));
@@ -228,19 +217,15 @@ function aakaari_cp_enqueue_assets_and_localize() {
                     'description' => $description,
                     'price' => floatval($price),
                 );
-                error_log("  - Converted fabric: $fabric_id => {$term->name} (\${$price})");
             }
         }
     }
-    
-    error_log('Final fabrics for customizer: ' . print_r($fabrics_for_customizer, true));
 
     // IMPROVED: Transform Print Studio print types format
     $print_types_for_customizer = array();
     if (!empty($studio_data['printTypes']) && is_array($studio_data['printTypes'])) {
         // Print Studio saves print types as array of IDs: ['pt_123', 'pt_456']
         // Get full print type data from pa_print_type taxonomy
-        error_log('Converting ' . count($studio_data['printTypes']) . ' print types from Print Studio');
         foreach ($studio_data['printTypes'] as $print_type_id) {
             // Extract term ID from 'pt_123' format
             $term_id = intval(str_replace('pt_', '', $print_type_id));
@@ -258,28 +243,23 @@ function aakaari_cp_enqueue_assets_and_localize() {
                     'pricingModel' => $pricing_model,
                     'price' => floatval($price),
                 );
-                error_log("  - Converted print type: $print_type_id => {$term->name} (Model: {$pricing_model}, Price: \${$price})");
             }
         }
     }
     
     // Fallback to defaults if no print types configured
     if (empty($print_types_for_customizer)) {
-        error_log('No Print Studio print types found, using fallback defaults');
         $print_types_for_customizer = array(
             array('id'=>'pt_dtg','name'=>'DTG','description'=>'Per-square-inch pricing','pricingModel'=>'per-inch','price'=>0.12),
             array('id'=>'pt_vinyl','name'=>'HTV','description'=>'Fixed per-design','pricingModel'=>'fixed','price'=>5.00),
         );
     }
-    
-    error_log('Final print types for customizer: ' . print_r($print_types_for_customizer, true));
 
     // IMPROVED: Transform Print Studio sizes format
     $sizes_for_customizer = array();
     if (!empty($studio_data['sizes']) && is_array($studio_data['sizes'])) {
         // Print Studio saves sizes as array of IDs: ['size_123', 'size_456']
         // Get full size data from pa_size taxonomy
-        error_log('Converting ' . count($studio_data['sizes']) . ' sizes from Print Studio');
         foreach ($studio_data['sizes'] as $size_id) {
             // Extract term ID from 'size_123' format
             $term_id = intval(str_replace('size_', '', $size_id));
@@ -291,12 +271,9 @@ function aakaari_cp_enqueue_assets_and_localize() {
                     'name' => $term->name,
                     'slug' => $term->slug,
                 );
-                error_log("  - Converted size: $size_id => {$term->name}");
             }
         }
     }
-    
-    error_log('Final sizes for customizer: ' . print_r($sizes_for_customizer, true));
 
     // Build the product data array
     $product_data = array(
@@ -333,13 +310,6 @@ function aakaari_cp_enqueue_assets_and_localize() {
         'woocommerce_currency' => get_woocommerce_currency_symbol(),
     ) );
 
-    // Add inline script to immediately log what was localized (handy for debugging)
-    $inline = 'console.group("Aakaari Localization");';
-    $inline .= 'console.log("AAKAARI_PRODUCTS", window.AAKAARI_PRODUCTS);';
-    $inline .= 'console.log("AAKAARI_PRINT_TYPES", window.AAKAARI_PRINT_TYPES);';
-    $inline .= 'console.log("AAKAARI_SETTINGS", window.AAKAARI_SETTINGS);';
-    $inline .= 'console.groupEnd();';
-    wp_add_inline_script( 'aakaari-product-customizer', $inline );
 }
 add_action( 'wp_enqueue_scripts', 'aakaari_cp_enqueue_assets_and_localize', 20 );
 
@@ -581,31 +551,15 @@ function aakaari_validate_design_boundaries($product_id, $designs) {
             $pa_right = $pa_x + $pa_width;
             $pa_bottom = $pa_y + $pa_height;
 
-            // Log validation details for debugging
-            error_log(sprintf(
-                'Validating design (flat structure): center(%.2f, %.2f) -> top-left(%.2f, %.2f), size(%.2f, %.2f), right=%.2f, bottom=%.2f vs print area(x=%.2f, y=%.2f, w=%.2f, h=%.2f, right=%.2f, bottom=%.2f)',
-                $elem_center_x, $elem_center_y, $elem_x, $elem_y, $elem_width, $elem_height, $elem_right, $elem_bottom,
-                $pa_x, $pa_y, $pa_width, $pa_height, $pa_right, $pa_bottom
-            ));
-
             if ($elem_x < ($pa_x - $tolerance) || 
                 $elem_y < ($pa_y - $tolerance) ||
                 $elem_right > ($pa_right + $tolerance) || 
                 $elem_bottom > ($pa_bottom + $tolerance)) {
-                error_log(sprintf(
-                    'Validation FAILED: Design outside bounds. X bounds: %.2f < %.2f = %s, %.2f > %.2f = %s. Y bounds: %.2f < %.2f = %s, %.2f > %.2f = %s',
-                    $elem_x, $pa_x - $tolerance, ($elem_x < ($pa_x - $tolerance)) ? 'YES' : 'NO',
-                    $elem_right, $pa_right + $tolerance, ($elem_right > ($pa_right + $tolerance)) ? 'YES' : 'NO',
-                    $elem_y, $pa_y - $tolerance, ($elem_y < ($pa_y - $tolerance)) ? 'YES' : 'NO',
-                    $elem_bottom, $pa_bottom + $tolerance, ($elem_bottom > ($pa_bottom + $tolerance)) ? 'YES' : 'NO'
-                ));
                 return new WP_Error(
                     'design_out_of_bounds',
                     __('Your design extends outside the allowed print area. Please adjust your design to fit within the boundaries before adding to cart.', 'aakaari')
                 );
             }
-            
-            error_log('Design validation passed for this element.');
             continue; // Processed this design, continue to next
         }
 
@@ -720,8 +674,6 @@ function aakaari_wc_validate_add_to_cart($passed, $product_id, $quantity) {
 }
 
 function aakaari_ajax_add_to_cart() {
-    error_log('AJAX: aakaari_add_to_cart triggered.'); // Check if function runs
-
     // Validate nonce - check both POST and REQUEST for FormData compatibility
     $nonce = '';
     if (isset($_POST['security'])) {
@@ -731,10 +683,8 @@ function aakaari_ajax_add_to_cart() {
     }
     
     if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'aakaari_customizer' ) ) {
-        error_log('AJAX Error: Nonce verification failed. POST keys: ' . implode(', ', array_keys($_POST)) . ' Nonce received: ' . ($nonce ? 'yes' : 'no'));
         wp_send_json_error( array( 'message' => 'Invalid security token' ), 403 );
     }
-    error_log('AJAX: Nonce verified.');
 
     // Validate product id - check both POST and REQUEST for FormData compatibility
     $product_id = 0;
@@ -743,19 +693,15 @@ function aakaari_ajax_add_to_cart() {
     } elseif (isset($_REQUEST['product_id'])) {
         $product_id = intval($_REQUEST['product_id']);
     }
-    error_log('AJAX: Received product_id: ' . $product_id); // Log product ID
     if ( ! $product_id ) {
-         error_log('AJAX Error: Invalid product ID. POST: ' . print_r($_POST, true) . ' REQUEST: ' . print_r($_REQUEST, true));
         wp_send_json_error( array( 'message' => 'Invalid product id' ), 400 );
     }
 
     // Get product and check purchasable
     $product = wc_get_product( $product_id );
     if ( ! $product ) {
-        error_log('AJAX Error: Product not found for ID: ' . $product_id);
         wp_send_json_error( array( 'message' => 'Product not found' ), 404 );
     }
-    error_log('AJAX: Product found: ' . $product->get_name());
 
     // Parse designs (JSON) - check both POST and REQUEST for FormData compatibility
     $designs_raw = '';
@@ -766,33 +712,26 @@ function aakaari_ajax_add_to_cart() {
     } else {
         $designs_raw = '[]'; // Default to an empty JSON array
     }
-    error_log('AJAX: Received designs JSON: ' . $designs_raw); // Log raw designs
     $designs = array();
     // Always try to decode - empty string or '[]' should decode to empty array
     if ( !empty($designs_raw) && $designs_raw !== '[]' ) {
         $decoded = json_decode( $designs_raw, true );
         if ( json_last_error() === JSON_ERROR_NONE ) {
             $designs = $decoded;
-            error_log('AJAX: Designs decoded successfully: ' . print_r($designs, true));
         } else {
-            error_log('AJAX Error: Invalid designs JSON payload. Error: ' . json_last_error_msg() . ' Raw: ' . $designs_raw);
             wp_send_json_error( array( 'message' => 'Invalid designs payload: ' . json_last_error_msg() ), 400 );
         }
     } else {
         // Empty array is valid - means no designs (plain product)
         $designs = array();
-        error_log('AJAX: No designs or empty designs array - proceeding with plain product'); 
     }
 
     // Validate design boundaries against print areas (only if designs exist)
     if (!empty($designs) && is_array($designs)) {
         $validation_result = aakaari_validate_design_boundaries($product_id, $designs);
         if (is_wp_error($validation_result)) {
-            error_log('AJAX Error: Design boundary validation failed: ' . $validation_result->get_error_message());
             wp_send_json_error(array('message' => $validation_result->get_error_message()), 400);
         }
-    } else {
-        error_log('AJAX: No designs to validate - proceeding with plain product add to cart');
     }
 
     // Extract attachment IDs from designs array
@@ -805,28 +744,14 @@ function aakaari_ajax_add_to_cart() {
                 $attachment_id = intval($design['attachmentId']);
                 if ($attachment_id > 0 && !in_array($attachment_id, $attached_image_ids)) {
                     $attached_image_ids[] = $attachment_id;
-                    error_log('AJAX: Found image design with attachment ID: ' . $attachment_id);
                 }
             }
         }
     }
-    
-    error_log('AJAX: Processed file uploads and extracted original images. Total Attached IDs: ' . print_r($attached_image_ids, true));
 
     // Get original attachment ID (first uploaded file)
     // IMPORTANT: If no files in $_FILES but we have designs with images, use the attachment ID from designs
     $original_attachment_id = !empty($attached_image_ids) ? intval($attached_image_ids[0]) : 0;
-    
-    if ($original_attachment_id <= 0) {
-        error_log('AJAX ERROR: No original attachment ID found! This will cause "Not available" in order details.');
-        error_log('AJAX DEBUG - Files array: ' . (empty($_FILES['files']) ? 'EMPTY' : 'HAS FILES'));
-        error_log('AJAX DEBUG - Designs count: ' . (empty($designs) ? '0' : count($designs)));
-        if (!empty($designs)) {
-            error_log('AJAX DEBUG - First design: ' . print_r($designs[0], true));
-        }
-    } else {
-        error_log('AJAX SUCCESS: Original attachment ID set to: ' . $original_attachment_id);
-    }
 
     // Handle preview image (data URL base64) -> save as attachment and get ID
     $preview_attachment_id = 0;
@@ -834,11 +759,6 @@ function aakaari_ajax_add_to_cart() {
         $data_url = $_REQUEST['preview_image'];
         if ( is_string( $data_url ) && strpos( $data_url, 'data:image/png;base64,' ) === 0 ) {
             $preview_attachment_id = aakaari_store_data_url_image( $data_url, 'aakaari-custom-preview-' . time() . '.png' );
-            if ( $preview_attachment_id > 0 ) {
-                error_log('AJAX: Preview image saved as attachment ID: ' . $preview_attachment_id);
-            } else {
-                error_log('AJAX Warning: Failed to store preview image from data URL');
-            }
         }
     }
 
@@ -852,9 +772,6 @@ function aakaari_ajax_add_to_cart() {
         $data_url = $_REQUEST['print_area_image'];
         if ( is_string( $data_url ) && strpos( $data_url, 'data:image/png;base64,' ) === 0 ) {
             $print_area_attachment_id = aakaari_store_data_url_image( $data_url, 'aakaari-print-area-' . time() . '.png' );
-            if ($print_area_attachment_id > 0) {
-                error_log('AJAX: Print area image saved as attachment ID: ' . $print_area_attachment_id);
-            }
         }
     }
 
@@ -925,24 +842,18 @@ function aakaari_ajax_add_to_cart() {
     // Store the structured custom_design data
     if (!empty($custom_design)) {
         $cart_item_data['custom_design'] = $custom_design;
-        error_log('AJAX: Custom design data prepared: ' . print_r($custom_design, true));
     }
     
     // Also keep legacy fields for backward compatibility
     if (!empty($attached_image_ids)) {
         $cart_item_data['aakaari_attachments'] = $attached_image_ids;
     }
-    
-    error_log('AJAX: Cart Item Data prepared: ' . print_r($cart_item_data, true));
-
 
     $quantity = 1;
-    error_log('AJAX: Attempting to add product ID ' . $product_id . ' to cart...');
     
     // Check for WooCommerce notices/errors that might block add to cart
     $notices = wc_get_notices();
     if (!empty($notices)) {
-        error_log('AJAX Warning: WooCommerce notices found before add_to_cart: ' . print_r($notices, true));
         // Clear notices to avoid interference
         wc_clear_notices();
     }
@@ -956,22 +867,10 @@ function aakaari_ajax_add_to_cart() {
         $error_message = 'Could not add to cart';
         if (!empty($notices)) {
             $error_message .= ': ' . wp_strip_all_tags($notices[0]['notice']);
-            error_log('AJAX Error: WooCommerce error notices: ' . print_r($notices, true));
-        }
-        error_log('AJAX Error: WC()->cart->add_to_cart returned false. Product: ' . $product_id . ', Quantity: ' . $quantity);
-        error_log('AJAX Error: Cart item data: ' . print_r($cart_item_data, true));
-        
-        // Check if product is purchasable
-        $product = wc_get_product($product_id);
-        if ($product) {
-            error_log('AJAX Error: Product purchasable: ' . ($product->is_purchasable() ? 'yes' : 'no'));
-            error_log('AJAX Error: Product in stock: ' . ($product->is_in_stock() ? 'yes' : 'no'));
         }
         
         wp_send_json_error( array( 'message' => $error_message ), 500 );
     }
-
-    error_log('AJAX: Product added successfully. Cart Item Key: ' . $cart_item_key); // Log success
 
     // Return success with cart item key
     wp_send_json_success( array(
@@ -990,8 +889,6 @@ add_action( 'wp_ajax_nopriv_aakaari_add_to_cart', 'aakaari_ajax_add_to_cart' );
  * Returns attachment ID and URL to store with design
  */
 function aakaari_ajax_upload_design_image() {
-    error_log('AJAX: aakaari_upload_design_image triggered');
-
     // Validate nonce
     $nonce = '';
     if (isset($_POST['security'])) {
@@ -1001,13 +898,11 @@ function aakaari_ajax_upload_design_image() {
     }
 
     if (empty($nonce) || !wp_verify_nonce($nonce, 'aakaari_customizer')) {
-        error_log('AJAX Error: Nonce verification failed for image upload');
         wp_send_json_error(array('message' => 'Invalid security token'), 403);
     }
 
     // Check if file was uploaded
     if (empty($_FILES['file'])) {
-        error_log('AJAX Error: No file uploaded');
         wp_send_json_error(array('message' => 'No file provided'), 400);
     }
 
@@ -1016,7 +911,6 @@ function aakaari_ajax_upload_design_image() {
     // Validate file type
     $allowed_types = array('image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp');
     if (!in_array($file['type'], $allowed_types)) {
-        error_log('AJAX Error: Invalid file type: ' . $file['type']);
         wp_send_json_error(array('message' => 'Invalid file type. Only images are allowed.'), 400);
     }
 
@@ -1024,7 +918,6 @@ function aakaari_ajax_upload_design_image() {
     $attachment_id = aakaari_handle_upload_and_attach($file);
 
     if (!$attachment_id) {
-        error_log('AJAX Error: Failed to upload file to media library');
         wp_send_json_error(array('message' => 'Failed to upload image'), 500);
     }
 
@@ -1032,11 +925,8 @@ function aakaari_ajax_upload_design_image() {
     $attachment_url = wp_get_attachment_url($attachment_id);
 
     if (!$attachment_url) {
-        error_log('AJAX Error: Failed to get attachment URL for ID: ' . $attachment_id);
         wp_send_json_error(array('message' => 'Failed to get image URL'), 500);
     }
-
-    error_log('AJAX Success: Image uploaded - Attachment ID: ' . $attachment_id . ', URL: ' . $attachment_url);
 
     // Return success with attachment data
     wp_send_json_success(array(
@@ -1228,36 +1118,26 @@ function aakaari_cart_item_customization_thumbnail( $thumbnail, $cart_item, $car
 // Save customization data to order items
 add_action( 'woocommerce_checkout_create_order_line_item', 'aakaari_save_customization_to_order', 10, 4 );
 function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $order ) {
-    // Debug: Log what we receive from cart
-    error_log('Order Save - Received cart item values:');
-    error_log('  - Cart Item Key: ' . $cart_item_key);
-    error_log('  - Available keys: ' . print_r(array_keys($values), true));
-    
     // Save designs data
     if ( isset( $values['aakaari_designs'] ) ) {
         $item->add_meta_data( '_aakaari_designs', $values['aakaari_designs'], true );
-        error_log('Order Save - Saved _aakaari_designs');
     }
     
     // Save selected customization options
     if ( ! empty( $values['aakaari_selected_fabric'] ) ) {
         $item->add_meta_data( '_aakaari_selected_fabric', $values['aakaari_selected_fabric'], true );
-        error_log('Order Save - Saved _aakaari_selected_fabric: ' . $values['aakaari_selected_fabric']);
     }
     
     if ( ! empty( $values['aakaari_selected_size'] ) ) {
         $item->add_meta_data( '_aakaari_selected_size', $values['aakaari_selected_size'], true );
-        error_log('Order Save - Saved _aakaari_selected_size: ' . $values['aakaari_selected_size']);
     }
     
     if ( ! empty( $values['aakaari_selected_color'] ) ) {
         $item->add_meta_data( '_aakaari_selected_color', $values['aakaari_selected_color'], true );
-        error_log('Order Save - Saved _aakaari_selected_color: ' . $values['aakaari_selected_color']);
     }
     
     if ( ! empty( $values['aakaari_selected_print_type'] ) ) {
         $item->add_meta_data( '_aakaari_selected_print_type', $values['aakaari_selected_print_type'], true );
-        error_log('Order Save - Saved _aakaari_selected_print_type: ' . $values['aakaari_selected_print_type']);
     }
     
     // NEW: Save structured custom_design with three separate attachment IDs
@@ -1269,7 +1149,6 @@ function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $o
             $original_id = intval( $design['original'] );
             if ( $original_id > 0 ) {
                 $item->add_meta_data( '_aakaari_original_attachment', $original_id, true );
-                error_log('Order Save - Saved _aakaari_original_attachment: ' . $original_id);
             }
         }
         
@@ -1278,7 +1157,6 @@ function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $o
             $preview_id = intval( $design['preview'] );
             if ( $preview_id > 0 ) {
                 $item->add_meta_data( '_aakaari_preview_attachment', $preview_id, true );
-                error_log('Order Save - Saved _aakaari_preview_attachment: ' . $preview_id);
             }
         }
         
@@ -1287,7 +1165,6 @@ function aakaari_save_customization_to_order( $item, $cart_item_key, $values, $o
             $combined_id = intval( $design['combined'] );
             if ( $combined_id > 0 ) {
                 $item->add_meta_data( '_aakaari_combined_attachment', $combined_id, true );
-                error_log('Order Save - Saved _aakaari_combined_attachment: ' . $combined_id);
             }
         }
     }

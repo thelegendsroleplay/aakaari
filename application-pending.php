@@ -75,9 +75,11 @@ if ($q->have_posts()) {
     exit;
 }
 
-// If application is approved, redirect to dashboard
+// If application is approved, redirect to reseller dashboard
 if ($application_status === 'approved') {
-    wp_redirect(site_url('/dashboard'));
+    $dashboard_page_id = get_option('aakaari_dashboard_page_id');
+    $dashboard_url = $dashboard_page_id ? get_permalink($dashboard_page_id) : home_url('/reseller-dashboard/');
+    wp_redirect($dashboard_url);
     exit;
 }
 
@@ -259,7 +261,7 @@ $application_notes = get_post_meta($application_id, 'admin_notes', true);
 }
 
 .status-header.pending {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 .status-header.rejected {
@@ -332,7 +334,7 @@ $application_notes = get_post_meta($application_id, 'admin_notes', true);
 }
 
 .status-badge.pending {
-    background-color: #3498db;
+    background-color: #3b82f6;
     color: #fff;
 }
 
@@ -381,24 +383,24 @@ $application_notes = get_post_meta($application_id, 'admin_notes', true);
 }
 
 .btn-outline {
-    border: 1px solid #3498db;
-    color: #3498db;
+    border: 1px solid #3b82f6;
+    color: #3b82f6;
     background: transparent;
 }
 
 .btn-outline:hover {
-    background: #f0f7fc;
+    background: #eff6ff;
 }
 
 .btn-primary {
-    background: #3498db;
+    background: #3b82f6;
     color: #fff;
-    border: 1px solid #3498db;
+    border: 1px solid #3b82f6;
 }
 
 .btn-primary:hover {
-    background: #2980b9;
-    border-color: #2980b9;
+    background: #2563eb;
+    border-color: #2563eb;
 }
 </style>
 

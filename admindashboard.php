@@ -1107,13 +1107,43 @@ get_header('minimal'); // Use a minimal header or create one
                             </div>
                         </button>
 
-                        <button class="quick-action-card" id="resetCooldownCard" title="Unlocks the application early and marks it active for admin review again. Removes cooldown timer and sets status back to 'Pending'.">
+                        <button class="quick-action-card" id="resetCooldownCard" title="Unlocks the application early and allows the user to resubmit immediately. Clears cooldown timer.">
                             <div class="quick-action-icon" style="background: #f0f9ff;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                             </div>
                             <div class="quick-action-content">
                                 <span class="quick-action-title">Reset Cooldown</span>
-                                <span class="quick-action-subtitle">Make application active</span>
+                                <span class="quick-action-subtitle">Allow immediate resubmission</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="allowResubmissionCard" title="Allows the user to resubmit their application with updated information. Clears any cooldown.">
+                            <div class="quick-action-icon" style="background: #ecfdf5;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Allow Resubmission</span>
+                                <span class="quick-action-subtitle">Enable resubmission flow</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="requestDocumentsCard" title="Request specific additional documents from the applicant.">
+                            <div class="quick-action-icon" style="background: #fef3c7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Request Documents</span>
+                                <span class="quick-action-subtitle">Ask for additional docs</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="deleteApplicationCard" title="Permanently deletes this application and all associated data. This action cannot be undone.">
+                            <div class="quick-action-icon" style="background: #fef2f2;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Delete Application</span>
+                                <span class="quick-action-subtitle">Remove permanently</span>
                             </div>
                         </button>
                     </div>
@@ -1150,11 +1180,41 @@ get_header('minimal'); // Use a minimal header or create one
                             </div>
                             <div>
                                 <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Request Additional Documentation</h4>
-                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Specify what documents are needed</p>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Select specific documents needed</p>
                             </div>
                         </div>
                         <div class="action-form-body">
-                            <textarea id="documentRequest" class="aakaari-textarea" placeholder="Please specify what additional documentation is required (e.g., GST certificate, business license, etc.)..."></textarea>
+                            <div class="document-checkboxes">
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="aadhaar_front">
+                                    <span class="checkmark"></span>
+                                    Aadhaar Card (Front)
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="aadhaar_back">
+                                    <span class="checkmark"></span>
+                                    Aadhaar Card (Back)
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="pan_card">
+                                    <span class="checkmark"></span>
+                                    PAN Card
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="bank_proof">
+                                    <span class="checkmark"></span>
+                                    Bank Proof (Cancelled Cheque/Statement)
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="business_proof">
+                                    <span class="checkmark"></span>
+                                    Business Registration/GST Certificate
+                                </label>
+                            </div>
+                            <div class="aakaari-form-group" style="margin-top: 1rem;">
+                                <label for="documentRequestMessage">Additional Message (Optional)</label>
+                                <textarea id="documentRequestMessage" class="aakaari-textarea" placeholder="Add any specific instructions or additional information..."></textarea>
+                            </div>
                         </div>
                         <div class="action-form-footer">
                             <button type="button" class="aakaari-button aakaari-button-green" id="submitDocRequestBtn">
