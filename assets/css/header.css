@@ -1,37 +1,28 @@
 /* ===============================================
-   Modern Mobile Menu - Redesigned Header Styles
+   Mobile Menu - Exact Design Implementation
    =============================================== */
 
 :root {
-  --primary-color: #2563EB;
-  --primary-dark: #1D4ED8;
-  --primary-light: #3B82F6;
-  --text-dark: #111827;
-  --text-medium: #64748B;
-  --text-light: #94A3B8;
-  --border-color: #E5E7EB;
-  --bg-white: #ffffff;
-  --bg-light: #F8FAFC;
-  --bg-lighter: #F1F5F9;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 16px;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-fast: all 0.15s ease;
+    --primary-blue: #007bff;
+    --light-blue-bg: #e6f0ff;
+    --text-color: #4a4a4a;
+    --section-title-color: #8c8c8c;
+    --border-radius-small: 12px;
+    --border-radius-large: 16px;
+    --icon-blue: #4a90e2;
+    --icon-purple: #9b59b6;
+    --icon-orange: #f39c12;
+    --new-tag-green: #2ecc71;
+    --badge-pink: #e74c3c;
 }
 
 /* ===============================================
-   Base Header Styles
+   Desktop Header Styles
    =============================================== */
 
 .aakaari-header {
-  background-color: var(--bg-white);
-  box-shadow: var(--shadow);
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -49,10 +40,6 @@
   min-height: 60px;
 }
 
-/* ===============================================
-   Logo Styles
-   =============================================== */
-
 .aakaari-header .site-branding {
   flex-shrink: 0;
   z-index: 101;
@@ -67,11 +54,11 @@
   align-items: center;
   justify-content: flex-start;
   text-decoration: none;
-  color: var(--primary-color);
+  color: var(--primary-blue);
   font-weight: 700;
   font-size: 20px;
   white-space: nowrap;
-  transition: var(--transition-fast);
+  transition: opacity 0.2s ease;
   line-height: 1.2;
   height: 100%;
 }
@@ -88,63 +75,10 @@
   display: block;
   margin: 0 0 0 -10px;
   padding: 0;
-  transition: var(--transition);
+  transition: all 0.3s ease;
 }
 
-/* ===============================================
-   Desktop Navigation
-   =============================================== */
-
-.aakaari-header .main-navigation {
-  display: flex;
-  align-items: center;
-  gap: 40px;
-  flex: 1;
-  margin: 0 20px;
-}
-
-.aakaari-header .nav-menu {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 0;
-  flex: 1;
-}
-
-.aakaari-header .nav-menu li {
-  list-style: none;
-  margin: 0;
-}
-
-.aakaari-header .nav-menu a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-medium);
-  text-decoration: none;
-  font-size: 15px;
-  font-weight: 500;
-  padding: 12px 16px;
-  transition: var(--transition-fast);
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-}
-
-.aakaari-header .nav-menu a svg {
-  display: none;
-}
-
-.aakaari-header .nav-menu a:hover,
-.aakaari-header .nav-menu .current-menu-item a {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
-}
-
-/* ===============================================
-   Mobile Menu Toggle Button
-   =============================================== */
-
+/* Mobile Menu Toggle */
 .aakaari-header .mobile-menu-toggle {
   display: none;
   background: none;
@@ -159,12 +93,12 @@
   align-items: center;
   justify-content: center;
   z-index: 101;
-  border-radius: var(--radius-sm);
-  transition: var(--transition-fast);
+  border-radius: 8px;
+  transition: background 0.2s ease;
 }
 
 .aakaari-header .mobile-menu-toggle:hover {
-  background: var(--bg-lighter);
+  background: #f1f4f8;
 }
 
 .aakaari-header .hamburger {
@@ -180,9 +114,9 @@
   display: block;
   height: 2px;
   width: 100%;
-  background: var(--primary-color);
+  background: var(--primary-blue);
   border-radius: 2px;
-  transition: var(--transition);
+  transition: all 0.3s ease;
   transform-origin: center;
 }
 
@@ -198,7 +132,6 @@
   transform: translateY(-9px) rotate(-45deg);
 }
 
-/* Screen reader only */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -211,28 +144,17 @@
   border: 0;
 }
 
-/* ===============================================
-   Desktop Hidden Elements
-   =============================================== */
-
-.mobile-menu-header,
-.mobile-menu-content,
-.mobile-menu-footer,
-.mobile-menu-section,
-.mobile-menu-search,
-.mobile-menu-profile {
+/* Hide mobile menu elements on desktop */
+.sidebar-container {
   display: none;
 }
 
 /* ===============================================
-   RESPONSIVE BREAKPOINTS
+   Mobile Styles
    =============================================== */
 
 @media (max-width: 991px) {
-  /* ===============================================
-     Mobile Header Layout
-     =============================================== */
-
+  /* Header Layout */
   .aakaari-header .container {
     padding: 0 15px;
     position: relative;
@@ -259,36 +181,26 @@
     order: -1;
   }
 
-  /* ===============================================
-     Modern Mobile Menu - Sidebar Style
-     =============================================== */
-
+  /* Mobile Navigation */
   .aakaari-header .main-navigation {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
-    max-width: 380px;
     height: 100vh;
-    background: var(--bg-white);
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0;
-    margin: 0;
     z-index: 10000;
     transform: translateX(-100%);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow-y: auto;
-    overflow-x: hidden;
-    box-shadow: var(--shadow-xl);
-    gap: 0;
+    transition: transform 0.3s ease;
+    background: transparent;
+    pointer-events: none;
   }
 
   .aakaari-header .main-navigation.active {
     transform: translateX(0);
+    pointer-events: all;
   }
 
-  /* Backdrop Overlay */
+  /* Backdrop */
   .aakaari-header .main-navigation::before {
     content: '';
     position: fixed;
@@ -297,10 +209,8 @@
     width: 100vw;
     height: 100vh;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
     opacity: 0;
-    transition: opacity 0.4s ease;
-    z-index: -1;
+    transition: opacity 0.3s ease;
     pointer-events: none;
   }
 
@@ -309,466 +219,312 @@
     pointer-events: all;
   }
 
-  /* ===============================================
-     Mobile Menu Header
-     =============================================== */
-
-  .mobile-menu-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-    flex-shrink: 0;
+  /* Sidebar Container */
+  .sidebar-container {
+    display: block;
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    height: 100vh;
+    background-color: white;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1;
   }
 
-  .mobile-menu-logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .mobile-menu-logo img {
-    height: 40px;
-    width: auto;
-    max-width: 140px;
-    object-fit: contain;
-  }
-
-  .mobile-menu-site-name {
-    color: white;
-    font-weight: 700;
-    font-size: 20px;
-  }
-
+  /* Close Button */
   .mobile-menu-close {
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: var(--radius);
-    width: 44px;
-    height: 44px;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #f1f4f8;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: var(--transition);
-    backdrop-filter: blur(10px);
+    transition: background 0.2s ease;
+    z-index: 10;
   }
 
   .mobile-menu-close:hover {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: rotate(90deg) scale(1.05);
+    background: #e1e6ec;
   }
 
-  .mobile-menu-close svg {
-    width: 24px;
-    height: 24px;
-    color: white;
-    stroke: white;
+  .mobile-menu-close i {
+    font-size: 18px;
+    color: var(--text-color);
   }
 
-  /* ===============================================
-     Mobile Menu Content Container
-     =============================================== */
-
-  .mobile-menu-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    gap: 20px;
-  }
-
-  /* ===============================================
-     Search Bar
-     =============================================== */
-
-  .mobile-menu-search {
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .search-input-wrapper {
-    position: relative;
+  /* Search Bar */
+  .search-bar {
     display: flex;
     align-items: center;
+    background-color: #f1f4f8;
+    padding: 10px 15px;
+    border-radius: var(--border-radius-small);
+    margin-bottom: 20px;
   }
 
-  .search-icon {
-    position: absolute;
-    left: 16px;
-    color: var(--text-light);
-    pointer-events: none;
+  .search-bar i {
+    color: var(--section-title-color);
+    margin-right: 10px;
+    font-size: 16px;
   }
 
-  .search-field {
-    width: 100%;
-    padding: 14px 16px 14px 48px;
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius);
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--text-dark);
-    background: var(--bg-light);
-    transition: var(--transition-fast);
+  .search-bar input {
+    border: none;
     outline: none;
+    background: none;
+    font-size: 16px;
+    flex-grow: 1;
+    color: var(--text-color);
   }
 
-  .search-field:focus {
-    border-color: var(--primary-color);
-    background: var(--bg-white);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  .search-bar input::placeholder {
+    color: var(--section-title-color);
   }
 
-  .search-field::placeholder {
-    color: var(--text-light);
-  }
-
-  /* ===============================================
-     User Profile Section
-     =============================================== */
-
-  .mobile-menu-profile {
+  /* User Profile */
+  .user-profile {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 16px;
-    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-    border: 2px solid #BFDBFE;
-    border-radius: var(--radius-lg);
-    margin-bottom: 8px;
+    justify-content: space-between;
+    padding: 15px;
+    margin-bottom: 30px;
+    background-color: var(--light-blue-bg);
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
   }
 
-  .profile-avatar {
-    flex-shrink: 0;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid white;
-    box-shadow: var(--shadow);
-  }
-
-  .profile-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  .user-profile:hover {
+    background-color: #dbe4f1;
   }
 
   .profile-info {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
     flex: 1;
     min-width: 0;
   }
 
-  .profile-name {
+  .avatar-bg {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #c4d7f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 15px;
+    flex-shrink: 0;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid white;
+    object-fit: cover;
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .username {
+    font-weight: bold;
+    color: var(--text-color);
     font-size: 16px;
-    font-weight: 700;
-    color: var(--text-dark);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .profile-email {
+  .email {
     font-size: 13px;
-    font-weight: 500;
-    color: var(--text-medium);
+    color: var(--section-title-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  /* ===============================================
-     Menu Sections
-     =============================================== */
-
-  .mobile-menu-section {
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .mobile-menu-section-title {
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-light);
-    margin: 0 0 12px 0;
-    padding: 0 4px;
-  }
-
-  /* ===============================================
-     Navigation Menu Items
-     =============================================== */
-
-  .aakaari-header .nav-menu,
-  .quick-actions-menu,
-  .support-menu {
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-    flex: 0 0 auto;
-    padding: 0;
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeInUp 0.4s ease forwards;
-  }
-
-  .aakaari-header .main-navigation.active .nav-menu,
-  .aakaari-header .main-navigation.active .quick-actions-menu,
-  .aakaari-header .main-navigation.active .support-menu {
-    animation-delay: 0.1s;
-  }
-
-  @keyframes fadeInUp {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .aakaari-header .nav-menu li,
-  .quick-actions-menu li,
-  .support-menu li {
-    border-bottom: none;
-    margin: 0;
-    list-style: none;
-  }
-
-  .aakaari-header .nav-menu a,
-  .quick-actions-menu a,
-  .support-menu a {
-    padding: 14px 16px;
-    border-bottom: none;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-dark);
-    border-radius: var(--radius);
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    position: relative;
-    overflow: hidden;
-    background: var(--bg-light);
-    border: 2px solid transparent;
-  }
-
-  .aakaari-header .nav-menu a svg,
-  .quick-actions-menu a svg,
-  .support-menu a svg {
-    display: block;
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    color: var(--primary-color);
-    transition: var(--transition);
-  }
-
-  .aakaari-header .nav-menu a span,
-  .quick-actions-menu a span,
-  .support-menu a span {
-    flex: 1;
-  }
-
-  .aakaari-header .nav-menu a:hover,
-  .aakaari-header .nav-menu .current-menu-item a,
-  .quick-actions-menu a:hover,
-  .support-menu a:hover {
-    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-    transform: translateX(2px);
-  }
-
-  .aakaari-header .nav-menu a:hover svg,
-  .aakaari-header .nav-menu .current-menu-item a svg,
-  .quick-actions-menu a:hover svg,
-  .support-menu a:hover svg {
-    transform: scale(1.1);
-  }
-
-  /* ===============================================
-     Mobile Menu Footer
-     =============================================== */
-
-  .mobile-menu-footer {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 20px;
-    background: var(--bg-white);
-    border-top: 2px solid var(--border-color);
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-    flex-shrink: 0;
-  }
-
-  /* ===============================================
-     Mobile Cart Button
-     =============================================== */
-
-  .mobile-cart-button {
-    display: flex;
-    align-items: center;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    border-radius: var(--radius-lg);
-    text-decoration: none;
-    color: white;
-    font-weight: 600;
-    transition: var(--transition);
-    box-shadow: var(--shadow-md);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .mobile-cart-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s ease;
-  }
-
-  .mobile-cart-button:hover::before {
-    left: 100%;
-  }
-
-  .mobile-cart-button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .cart-button-content {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    position: relative;
-    z-index: 1;
-  }
-
-  .cart-button-content svg {
-    flex-shrink: 0;
-  }
-
-  .cart-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-  }
-
-  .cart-label {
-    font-size: 13px;
-    font-weight: 500;
-    opacity: 0.9;
-  }
-
-  .cart-total {
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .cart-count-badge {
-    background: white;
-    color: var(--primary-color);
-    border-radius: 20px;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 10px;
+  .user-profile .fa-chevron-right {
+    color: var(--section-title-color);
     font-size: 14px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+    margin-left: 10px;
   }
 
-  /* ===============================================
-     Mobile Footer Actions
-     =============================================== */
-
-  .mobile-menu-footer-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  /* Menu Sections */
+  .menu-section {
+    margin-bottom: 20px;
   }
 
-  .mobile-login-btn,
-  .mobile-logout-btn,
-  .mobile-reseller-btn {
+  .section-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--section-title-color);
+    margin-bottom: 15px;
+    padding-left: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .menu-item {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 20px;
-    border-radius: var(--radius);
-    font-size: 15px;
-    font-weight: 600;
     text-decoration: none;
-    transition: var(--transition);
-    border: 2px solid;
+    color: var(--text-color);
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: var(--border-radius-small);
+    transition: background-color 0.2s ease;
+    position: relative;
   }
 
-  .mobile-login-btn {
-    background: var(--bg-light);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
+  .menu-item:hover {
+    background-color: #f1f4f8;
   }
 
-  .mobile-login-btn:hover {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  .menu-icon {
+    font-size: 20px;
+    width: 30px;
+    text-align: center;
+    margin-right: 15px;
+    color: var(--icon-blue);
+    flex-shrink: 0;
+  }
+
+  .purple-icon {
+    color: var(--icon-purple);
+  }
+
+  .orange-icon {
+    color: var(--icon-orange);
+  }
+
+  .menu-item span {
+    flex-grow: 1;
+    font-weight: 500;
+    font-size: 16px;
+  }
+
+  .arrow-icon {
+    color: var(--section-title-color);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* New Tag */
+  .new-tag {
+    background-color: var(--new-tag-green);
     color: white;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    font-size: 10px;
+    font-weight: bold;
+    padding: 3px 7px;
+    border-radius: 5px;
+    margin-right: 10px;
+    flex-grow: 0 !important;
+    flex-shrink: 0;
   }
 
-  .mobile-reseller-btn {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  /* Badge */
+  .badge {
+    background-color: var(--badge-pink);
     color: white;
-    border-color: transparent;
-    box-shadow: var(--shadow);
+    font-size: 10px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 5px;
+    margin-right: 10px;
+    flex-grow: 0 !important;
+    flex-shrink: 0;
   }
 
-  .mobile-reseller-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+  /* Bottom Actions */
+  .bottom-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f4f8;
   }
 
-  .mobile-logout-btn {
-    background: #FEE2E2;
-    color: #DC2626;
-    border-color: #FCA5A5;
+  .shopping-cart-btn,
+  .logout-btn {
+    width: 100%;
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: var(--border-radius-small);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+    text-decoration: none;
   }
 
-  .mobile-logout-btn:hover {
-    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  .shopping-cart-btn {
+    background-color: var(--primary-blue);
     color: white;
-    border-color: transparent;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    border: none;
   }
 
-  /* Hide desktop elements in mobile menu */
+  .shopping-cart-btn:hover {
+    background-color: #0069d9;
+  }
+
+  .shopping-cart-btn i {
+    color: white;
+    font-size: 18px;
+    margin-right: 10px;
+  }
+
+  .shopping-cart-btn span {
+    color: white;
+  }
+
+  .cart-amount {
+    font-weight: bold;
+    margin-left: auto;
+  }
+
+  .logout-btn {
+    background-color: white;
+    color: var(--badge-pink);
+    border: 2px solid var(--badge-pink);
+  }
+
+  .logout-btn:hover {
+    background-color: #fcebeb;
+  }
+
+  .logout-btn i {
+    margin-right: 10px;
+    font-size: 18px;
+  }
+
+  .logout-btn > span {
+    flex-grow: 1;
+    text-align: center;
+    margin-left: -28px;
+  }
+
+  /* Hide desktop nav elements */
   .aakaari-header .main-navigation .auth-buttons {
     display: none;
   }
 }
 
-/* ===============================================
-   Small Mobile Optimizations
-   =============================================== */
-
+/* Small Mobile */
 @media (max-width: 576px) {
   .aakaari-header {
     padding: 10px 0;
@@ -783,61 +539,29 @@
     max-width: min(170px, 46vw);
   }
 
-  .aakaari-header .main-navigation {
+  .sidebar-container {
     max-width: 100%;
-  }
-
-  .mobile-menu-header {
-    padding: 16px 20px;
-  }
-
-  .mobile-menu-logo img {
-    height: 36px;
-  }
-
-  .mobile-menu-content {
-    padding: 16px;
-    gap: 16px;
-  }
-
-  .mobile-menu-footer {
     padding: 16px;
   }
 
-  .mobile-menu-section {
-    margin-bottom: 4px;
-  }
-
-  .aakaari-header .nav-menu a,
-  .quick-actions-menu a,
-  .support-menu a {
-    font-size: 15px;
-    padding: 13px 14px;
+  .mobile-menu-close {
+    top: 16px;
+    right: 16px;
   }
 }
 
-/* ===============================================
-   Extra Small Mobile
-   =============================================== */
-
+/* Extra Small Mobile */
 @media (max-width: 380px) {
   .aakaari-header .container {
     padding: 0 10px;
   }
 
-  .mobile-menu-content {
-    padding: 14px;
-  }
-
-  .mobile-menu-footer {
+  .sidebar-container {
     padding: 14px;
   }
 }
 
-/* ===============================================
-   Accessibility - Reduced Motion
-   =============================================== */
-
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .aakaari-header *,
   .aakaari-header *::before,
@@ -848,20 +572,12 @@
   }
 }
 
-/* ===============================================
-   Touch Device Optimizations
-   =============================================== */
-
+/* Touch Device Optimizations */
 @media (hover: none) and (pointer: coarse) {
-  .aakaari-header .nav-menu a,
-  .quick-actions-menu a,
-  .support-menu a,
-  .mobile-login-btn,
-  .mobile-logout-btn,
-  .mobile-reseller-btn,
-  .mobile-cart-button,
-  .mobile-menu-toggle,
-  .search-field {
+  .menu-item,
+  .shopping-cart-btn,
+  .logout-btn,
+  .mobile-menu-toggle {
     min-height: 48px;
   }
 }
