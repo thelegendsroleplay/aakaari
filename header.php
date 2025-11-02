@@ -173,7 +173,7 @@
                             <?php
                             $order_count = wc_get_customer_order_count(get_current_user_id());
                             ?>
-                            <a href="<?php echo esc_url(wc_get_account_endpoint_url('orders')); ?>" class="menu-item">
+                            <a href="<?php echo esc_url(home_url('/reseller-dashboard/#orders')); ?>" class="menu-item">
                                 <i class="fas fa-receipt menu-icon purple-icon"></i>
                                 <span>My Orders</span>
                                 <?php if ($order_count > 0): ?>
@@ -188,7 +188,7 @@
                 <!-- Help & Support -->
                 <div class="menu-section">
                     <div class="section-title">HELP & SUPPORT</div>
-                    <a href="<?php echo esc_url(home_url('/faq/')); ?>" class="menu-item">
+                    <a href="<?php echo esc_url(home_url('/how-it-works/')); ?>" class="menu-item">
                         <i class="fas fa-clipboard-list menu-icon orange-icon"></i>
                         <span>FAQ</span>
                         <i class="fas fa-chevron-right arrow-icon"></i>
