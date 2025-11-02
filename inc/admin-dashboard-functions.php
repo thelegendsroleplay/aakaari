@@ -497,6 +497,173 @@ function aakaari_reject_application() {
 }}
 add_action('wp_ajax_reject_application', 'aakaari_reject_application');
 
+/**
+ * Reset application cooldown
+ */
+if (!function_exists('aakaari_reset_application_cooldown')) {
+function aakaari_reset_application_cooldown() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Reset the cooldown by changing status back to pending
+    $result = wp_set_object_terms($application_id, 'pending', 'reseller_application_status', false);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(array('message' => 'Failed to reset cooldown: ' . $result->get_error_message()));
+    } else {
+        // Clear any cooldown meta
+        delete_post_meta($application_id, 'cooldown_until');
+        delete_post_meta($application_id, 'cooldown_duration');
+        
+        update_post_meta($application_id, 'cooldown_reset_date', current_time('mysql'));
+        update_post_meta($application_id, 'cooldown_reset_by', get_current_user_id());
+
+        wp_send_json_success(array('message' => 'Cooldown reset successfully'));
+    }
+    exit;
+}}
+add_action('wp_ajax_reset_application_cooldown', 'aakaari_reset_application_cooldown');
+
+/**
+ * Request additional documentation
+ */
+if (!function_exists('aakaari_request_application_documentation')) {
+function aakaari_request_application_documentation() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $documentation_request = isset($_POST['documentation_request']) ? sanitize_textarea_field($_POST['documentation_request']) : '';
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    if (empty($documentation_request)) {
+        wp_send_json_error(array('message' => 'Please specify what documentation is required'));
+        exit;
+    }
+
+    // Set status to awaiting_documentation (or keep as pending and add meta)
+    update_post_meta($application_id, 'awaiting_documentation', 'true');
+    update_post_meta($application_id, 'documentation_request', $documentation_request);
+    update_post_meta($application_id, 'documentation_request_date', current_time('mysql'));
+    update_post_meta($application_id, 'documentation_requested_by', get_current_user_id());
+
+    // Notify applicant
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    if ($applicant_email) {
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+        $subject = 'Additional Documentation Required for Your Reseller Application';
+        $message = "Dear {$reseller_name},\n\n";
+        $message .= "We are reviewing your reseller application and require additional documentation to proceed.\n\n";
+        $message .= "Required Documentation:\n{$documentation_request}\n\n";
+        $message .= "Please log in to your dashboard and upload the requested documents.\n\n";
+        $message .= "Thank you for your cooperation.\n\n";
+        $message .= "Best regards,\nAakaari Verification Team";
+        wp_mail($applicant_email, $subject, $message);
+    }
+
+    wp_send_json_success(array('message' => 'Documentation request sent successfully'));
+    exit;
+}}
+add_action('wp_ajax_request_application_documentation', 'aakaari_request_application_documentation');
+
+/**
+ * Allow document resubmission
+ */
+if (!function_exists('aakaari_allow_document_resubmission')) {
+function aakaari_allow_document_resubmission() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Enable document resubmission
+    update_post_meta($application_id, 'allow_document_resubmission', 'true');
+    update_post_meta($application_id, 'resubmission_enabled_date', current_time('mysql'));
+    update_post_meta($application_id, 'resubmission_enabled_by', get_current_user_id());
+
+    // Notify applicant
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    if ($applicant_email) {
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+        $subject = 'Document Resubmission Enabled for Your Reseller Application';
+        $message = "Dear {$reseller_name},\n\n";
+        $message .= "You can now resubmit your verification documents for your reseller application.\n\n";
+        $message .= "Please log in to your dashboard and upload new documents from your application page.\n\n";
+        $message .= "Thank you.\n\n";
+        $message .= "Best regards,\nAakaari Verification Team";
+        wp_mail($applicant_email, $subject, $message);
+    }
+
+    wp_send_json_success(array('message' => 'Document resubmission enabled successfully'));
+    exit;
+}}
+add_action('wp_ajax_allow_document_resubmission', 'aakaari_allow_document_resubmission');
+
+/**
+ * Set application cooldown
+ */
+if (!function_exists('aakaari_set_application_cooldown')) {
+function aakaari_set_application_cooldown() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $duration = isset($_POST['duration']) ? intval($_POST['duration']) : 24;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    if ($duration < 1 || $duration > 720) {
+        wp_send_json_error(array('message' => 'Invalid cooldown duration. Must be between 1 and 720 hours.'));
+        exit;
+    }
+
+    // Calculate cooldown expiry time
+    $cooldown_until = strtotime('+' . $duration . ' hours');
+    $cooldown_until_date = date('Y-m-d H:i:s', $cooldown_until);
+
+    update_post_meta($application_id, 'cooldown_until', $cooldown_until_date);
+    update_post_meta($application_id, 'cooldown_duration', $duration);
+    update_post_meta($application_id, 'cooldown_set_date', current_time('mysql'));
+    update_post_meta($application_id, 'cooldown_set_by', get_current_user_id());
+
+    // Change status to under_review or keep as pending with cooldown flag
+    update_post_meta($application_id, 'under_review', 'true');
+
+    wp_send_json_success(array(
+        'message' => 'Cooldown set successfully',
+        'cooldown_until' => $cooldown_until_date
+    ));
+    exit;
+}}
+add_action('wp_ajax_set_application_cooldown', 'aakaari_set_application_cooldown');
+
 /**************************************
  * RESELLERS MANAGEMENT FUNCTIONS
  **************************************/

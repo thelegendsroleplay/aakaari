@@ -1073,9 +1073,122 @@ get_header('minimal'); // Use a minimal header or create one
             <div class="aakaari-modal-body">
                 <div id="applicationDetails"></div>
                 
-                <div class="aakaari-form-group">
-                    <label for="rejectionReason">Rejection Reason (if rejecting)</label>
-                    <textarea id="rejectionReason" class="aakaari-textarea" placeholder="Please provide a reason for rejection..."></textarea>
+                <!-- Quick Actions Grid -->
+                <div class="quick-actions-section">
+                    <h4 class="section-header">Quick Actions</h4>
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" id="requestDocCard">
+                            <div class="quick-action-icon" style="background: #dbeafe;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Request Documentation</span>
+                                <span class="quick-action-subtitle">Specify needed docs</span>
+                            </div>
+                        </button>
+                        
+                        <button class="quick-action-card" id="allowResubmitCard">
+                            <div class="quick-action-icon" style="background: #dcfce7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Allow Resubmission</span>
+                                <span class="quick-action-subtitle">Enable document upload</span>
+                            </div>
+                        </button>
+                        
+                        <button class="quick-action-card" id="setCooldownCard">
+                            <div class="quick-action-icon" style="background: #fef3c7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Set Review Cooldown</span>
+                                <span class="quick-action-subtitle">Lock for review</span>
+                            </div>
+                        </button>
+                        
+                        <button class="quick-action-card" id="resetCooldownCard">
+                            <div class="quick-action-icon" style="background: #f0f9ff;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Reset Cooldown</span>
+                                <span class="quick-action-subtitle">Make application active</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conditional Action Forms -->
+                <div id="actionFormsContainer" style="display: none;">
+                    <!-- Rejection Reason Section -->
+                    <div class="action-form-section" id="rejectionReasonSection" style="display: none;">
+                        <div class="action-form-header">
+                            <div class="action-form-icon" style="background: #fee2e2;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Reject Application</h4>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Provide a reason for rejecting this application</p>
+                            </div>
+                        </div>
+                        <div class="action-form-body">
+                            <textarea id="rejectionReason" class="aakaari-textarea" placeholder="Please provide a reason for rejection..."></textarea>
+                        </div>
+                        <div class="action-form-footer">
+                            <button type="button" class="aakaari-button aakaari-button-red" id="submitRejectionBtn">
+                                Confirm Rejection
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Documentation Request Section -->
+                    <div class="action-form-section" id="documentRequestSection" style="display: none;">
+                        <div class="action-form-header">
+                            <div class="action-form-icon" style="background: #dbeafe;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Request Additional Documentation</h4>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Specify what documents are needed</p>
+                            </div>
+                        </div>
+                        <div class="action-form-body">
+                            <textarea id="documentRequest" class="aakaari-textarea" placeholder="Please specify what additional documentation is required (e.g., GST certificate, business license, etc.)..."></textarea>
+                        </div>
+                        <div class="action-form-footer">
+                            <button type="button" class="aakaari-button aakaari-button-green" id="submitDocRequestBtn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                Send Request
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cooldown Section -->
+                    <div class="action-form-section" id="cooldownSection" style="display: none;">
+                        <div class="action-form-header">
+                            <div class="action-form-icon" style="background: #fef3c7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Set Review Cooldown</h4>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Lock the application for a specified duration</p>
+                            </div>
+                        </div>
+                        <div class="action-form-body">
+                            <div class="aakaari-form-group">
+                                <label for="cooldownDuration">Duration (hours)</label>
+                                <input type="number" id="cooldownDuration" class="aakaari-input" min="1" max="720" value="24" placeholder="Enter hours">
+                                <small style="color: #666; display: block; margin-top: 0.5rem;">The application will be locked for review for this duration</small>
+                            </div>
+                        </div>
+                        <div class="action-form-footer">
+                            <button type="button" class="aakaari-button aakaari-button-green" id="submitCooldownBtn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Set Cooldown
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             

@@ -42,8 +42,17 @@
             }
         });
         
-        // Reject application
+        // Reject application - show reason section
         rejectAppBtn.on('click', function() {
+            // Show rejection section
+            $('#actionFormsContainer').show();
+            $('#rejectionReasonSection').slideDown();
+            $('#documentRequestSection').hide();
+            $('#cooldownSection').hide();
+        });
+        
+        // Submit rejection
+        $(document).on('click', '#submitRejectionBtn', function() {
             const reason = rejectionReason.val().trim();
             
             if (!reason) {
@@ -57,6 +66,53 @@
         // Approve application
         approveAppBtn.on('click', function() {
             approveApplication(selectedApplicationId);
+        });
+        
+        // Quick action card clicks
+        $(document).on('click', '#requestDocCard', function() {
+            $('#actionFormsContainer').show();
+            $('#documentRequestSection').slideDown();
+            $('#rejectionReasonSection').hide();
+            $('#cooldownSection').hide();
+        });
+        
+        $(document).on('click', '#allowResubmitCard', function() {
+            if (confirm('Allow this reseller to resubmit their verification documents?')) {
+                allowDocumentResubmission(selectedApplicationId);
+            }
+        });
+        
+        $(document).on('click', '#setCooldownCard', function() {
+            $('#actionFormsContainer').show();
+            $('#cooldownSection').slideDown();
+            $('#rejectionReasonSection').hide();
+            $('#documentRequestSection').hide();
+        });
+        
+        $(document).on('click', '#resetCooldownCard', function() {
+            if (confirm('Are you sure you want to reset the cooldown for this application?')) {
+                resetCooldown(selectedApplicationId);
+            }
+        });
+        
+        // Submit document request
+        $(document).on('click', '#submitDocRequestBtn', function() {
+            const request = $('#documentRequest').val().trim();
+            if (!request) {
+                showToast('Please specify what documentation is required', 'error');
+                return;
+            }
+            requestDocumentation(selectedApplicationId, request);
+        });
+        
+        // Submit cooldown
+        $(document).on('click', '#submitCooldownBtn', function() {
+            const duration = parseInt($('#cooldownDuration').val());
+            if (!duration || duration < 1) {
+                showToast('Please enter a valid cooldown duration', 'error');
+                return;
+            }
+            setCooldown(selectedApplicationId, duration);
         });
         
         // Toggle dropdown menus with improved handling
@@ -207,6 +263,18 @@
 
             applicationDetails.html(detailsHtml);
             rejectionReason.val('');
+            
+            // Reset all action form sections
+            $('#actionFormsContainer').hide();
+            $('#rejectionReasonSection').hide();
+            $('#documentRequestSection').hide();
+            $('#cooldownSection').hide();
+            $('#documentRequest').val('');
+            $('#rejectionReason').val('');
+            $('#cooldownDuration').val('24');
+            
+            // Close any open dropdowns
+            closeDropdowns();
 
             // Show modal
             applicationModal.addClass('active');
@@ -218,6 +286,18 @@
         function closeModal() {
             applicationModal.removeClass('active');
             selectedApplicationId = null;
+            
+            // Reset all action form sections
+            $('#actionFormsContainer').hide();
+            $('#rejectionReasonSection').hide();
+            $('#documentRequestSection').hide();
+            $('#cooldownSection').hide();
+            $('#documentRequest').val('');
+            $('#rejectionReason').val('');
+            $('#cooldownDuration').val('24');
+            
+            // Close any open dropdowns
+            closeDropdowns();
         }
         
         /**
@@ -320,6 +400,156 @@
                     .addClass(`status-${status}`)
                     .text(capitalizeFirstLetter(status));
             }
+        }
+        
+        /**
+         * Close all dropdowns
+         */
+        function closeDropdowns() {
+            $('.aakaari-dropdown').removeClass('active');
+        }
+        
+        /**
+         * Reset cooldown for an application
+         */
+        function resetCooldown(applicationId) {
+            if (!applicationId) {
+                showToast('Invalid application ID', 'error');
+                return;
+            }
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'reset_application_cooldown',
+                    application_id: applicationId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Cooldown reset successfully', 'success');
+                        updateApplicationStatus(applicationId, 'pending');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(response.data.message || 'Failed to reset cooldown', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+        
+        /**
+         * Request additional documentation
+         */
+        function requestDocumentation(applicationId, request) {
+            if (!applicationId || !request) {
+                showToast('Invalid parameters', 'error');
+                return;
+            }
+            
+            const btn = $('#submitDocRequestBtn');
+            btn.prop('disabled', true).html('<span>Processing...</span>');
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'request_application_documentation',
+                    application_id: applicationId,
+                    documentation_request: request,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Documentation request sent successfully', 'success');
+                        closeModal();
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(response.data.message || 'Failed to send request', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                },
+                complete: function() {
+                    btn.prop('disabled', false).html('Send Request');
+                }
+            });
+        }
+        
+        /**
+         * Allow document resubmission
+         */
+        function allowDocumentResubmission(applicationId) {
+            if (!applicationId) {
+                showToast('Invalid application ID', 'error');
+                return;
+            }
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'allow_document_resubmission',
+                    application_id: applicationId,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Document resubmission enabled for reseller', 'success');
+                        closeModal();
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(response.data.message || 'Failed to enable resubmission', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                }
+            });
+        }
+        
+        /**
+         * Set cooldown/timer for review
+         */
+        function setCooldown(applicationId, duration) {
+            if (!applicationId || !duration) {
+                showToast('Invalid parameters', 'error');
+                return;
+            }
+            
+            const btn = $('#submitCooldownBtn');
+            btn.prop('disabled', true).html('<span>Processing...</span>');
+            
+            $.ajax({
+                url: aakaari_admin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'set_application_cooldown',
+                    application_id: applicationId,
+                    duration: duration,
+                    nonce: aakaari_admin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Cooldown set successfully', 'success');
+                        updateApplicationStatus(applicationId, 'pending');
+                        closeModal();
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(response.data.message || 'Failed to set cooldown', 'error');
+                    }
+                },
+                error: function() {
+                    showToast('Server error. Please try again.', 'error');
+                },
+                complete: function() {
+                    btn.prop('disabled', false).html('Set Cooldown');
+                }
+            });
         }
         
         /**
