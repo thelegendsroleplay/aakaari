@@ -117,14 +117,22 @@ add_action('wp_enqueue_scripts', 'aakaari_main_enqueue_assets', 20);
  * Enqueue header assets
  */
 function enqueue_aakaari_header_assets() {
+    // Font Awesome for mobile menu icons
+    wp_enqueue_style(
+        'font-awesome',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
+        array(),
+        '6.0.0'
+    );
+
     // Header styles
     wp_enqueue_style(
         'aakaari-header-styles',
         get_template_directory_uri() . '/assets/css/header.css',
-        array(),
+        array('font-awesome'),
         '1.0.0'
     );
-    
+
     // Header scripts
     wp_enqueue_script(
         'aakaari-header-script',
