@@ -210,7 +210,11 @@ function aakaari_get_dashboard_url() {
 
     // Check if user is reseller
     $user = wp_get_current_user();
-    if (in_array('reseller', (array) $user->roles)) {
+    $is_approved_reseller = false;
+    if (function_exists('get_reseller_application_status')) {
+        $is_approved_reseller = get_reseller_application_status($user->user_email)['status'] === 'approved';
+    }
+    if (in_array('reseller', (array) $user->roles) || $is_approved_reseller) {
         $reseller_dashboard_id = get_option('aakaari_dashboard_page_id');
         if ($reseller_dashboard_id) {
             return get_permalink($reseller_dashboard_id);
