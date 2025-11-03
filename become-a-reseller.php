@@ -9,8 +9,14 @@ $submitted = false;
 $form_errors = [];
 $blocked_submission = false;
 
-// Get user IP
-$user_ip = $_SERVER['REMOTE_ADDR'];
+// Get user IP (sanitized and supports proxies)
+$user_ip = filter_var(
+    isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : $_SERVER['REMOTE_ADDR'],
+    FILTER_VALIDATE_IP
+);
+if (!$user_ip) {
+    $user_ip = '0.0.0.0'; // Fallback for invalid IPs
+}
 
 // --- Get user ID and onboarding status ---
 $current_user = wp_get_current_user();
