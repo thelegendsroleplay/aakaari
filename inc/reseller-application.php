@@ -22,17 +22,17 @@ if (is_user_logged_in()) {
  */
 function aar_enqueue_reseller_assets() {
     wp_enqueue_style(
-        'become-reseller-css', 
-        get_stylesheet_directory_uri() . '/assets/css/become-a-reseller.css', 
-        array(), 
-        '1.0'
+        'become-reseller-css',
+        get_stylesheet_directory_uri() . '/assets/css/become-a-reseller.css',
+        array(),
+        '2.0' // Ultimate fix: Simplified CSS - file input hidden with display:none
     );
-    
+
     wp_enqueue_script(
         'become-reseller-js',
         get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js',
         array(),
-        '1.2', // Enhanced fix: Added stopPropagation to prevent event bubbling
+        '2.0', // Ultimate fix: Simplified event handling - no bubbling prevention needed
         true
     );
 }
