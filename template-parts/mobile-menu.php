@@ -172,17 +172,6 @@ if (is_front_page()) {
                             <span class="mobile-menu-nav__label">Products</span>
                         </a>
 
-                        <a href="<?php echo esc_url(home_url('/custom-products/')); ?>" class="mobile-menu-nav__item <?php echo $current_page_slug === 'custom-products' ? 'mobile-menu-nav__item--active' : ''; ?>">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mobile-menu-nav__icon">
-                                <circle cx="13.5" cy="6.5" r=".5"></circle>
-                                <circle cx="17.5" cy="10.5" r=".5"></circle>
-                                <circle cx="8.5" cy="7.5" r=".5"></circle>
-                                <circle cx="6.5" cy="12.5" r=".5"></circle>
-                                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
-                            </svg>
-                            <span class="mobile-menu-nav__label">Custom Design</span>
-                        </a>
-
                         <a href="<?php echo esc_url(home_url('/how-it-works/')); ?>" class="mobile-menu-nav__item <?php echo $current_page_slug === 'how-it-works' ? 'mobile-menu-nav__item--active' : ''; ?>">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mobile-menu-nav__icon">
                                 <circle cx="12" cy="12" r="10"></circle>
@@ -190,14 +179,6 @@ if (is_front_page()) {
                                 <path d="M12 8h.01"></path>
                             </svg>
                             <span class="mobile-menu-nav__label">How It Works</span>
-                        </a>
-
-                        <a href="<?php echo esc_url(home_url('/pricing/')); ?>" class="mobile-menu-nav__item <?php echo $current_page_slug === 'pricing' ? 'mobile-menu-nav__item--active' : ''; ?>">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mobile-menu-nav__icon">
-                                <line x1="12" x2="12" y1="2" y2="22"></line>
-                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                            </svg>
-                            <span class="mobile-menu-nav__label">Pricing</span>
                         </a>
 
                         <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="mobile-menu-nav__item <?php echo $current_page_slug === 'contact' ? 'mobile-menu-nav__item--active' : ''; ?>">
