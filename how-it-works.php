@@ -338,5 +338,60 @@ get_header();
 </section>
 </main>
 
+<!-- Inline FAQ Accordion Script (Backup) -->
+<script>
+(function() {
+    'use strict';
+
+    // Wait for DOM to be ready
+    function initInlineFAQ() {
+        const faqItems = document.querySelectorAll('.faq-item');
+
+        if (!faqItems || faqItems.length === 0) {
+            console.log('Inline FAQ: No items found');
+            return;
+        }
+
+        console.log('Inline FAQ: Initializing', faqItems.length, 'items');
+
+        faqItems.forEach((item, index) => {
+            const question = item.querySelector('h3');
+
+            if (!question) return;
+
+            // Add click handler
+            question.addEventListener('click', function() {
+                const isActive = item.classList.contains('active');
+
+                console.log('Inline FAQ: Item', index, 'clicked. Active:', isActive);
+
+                // Close all others
+                faqItems.forEach(other => {
+                    if (other !== item) {
+                        other.classList.remove('active');
+                    }
+                });
+
+                // Toggle current
+                if (isActive) {
+                    item.classList.remove('active');
+                } else {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        console.log('Inline FAQ: Ready!');
+    }
+
+    // Run immediately if DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initInlineFAQ);
+    } else {
+        initInlineFAQ();
+    }
+})();
+</script>
+
 <?php
 get_footer();
