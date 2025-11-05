@@ -1190,7 +1190,7 @@
 
 /* Accordion Behavior */
 .faq-item.active .faq-answer {
-    max-height: 500px; /* Adjust based on longest answer */
+    max-height: 1000px; /* Increased for longer answers with lists */
     padding: 0 24px 20px;
     opacity: 1;
 }

@@ -21,60 +21,65 @@
   function initFAQAccordion() {
     const faqItems = document.querySelectorAll('.faq-item');
 
-    faqItems.forEach(item => {
+    if (!faqItems || faqItems.length === 0) {
+      console.log('No FAQ items found');
+      return;
+    }
+
+    console.log('Initializing FAQ accordion for', faqItems.length, 'items');
+
+    faqItems.forEach((item, index) => {
       const question = item.querySelector('h3');
+      const answer = item.querySelector('.faq-answer');
 
-      if (!question) return;
+      if (!question || !answer) {
+        console.log('FAQ item missing question or answer', index);
+        return;
+      }
 
-      question.addEventListener('click', function() {
+      // Make question visually clickable
+      question.style.cursor = 'pointer';
+      question.setAttribute('role', 'button');
+      question.setAttribute('aria-expanded', 'false');
+      question.setAttribute('tabindex', '0');
+
+      // Click handler
+      question.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
         const isActive = item.classList.contains('active');
+
+        console.log('FAQ item clicked:', index, 'isActive:', isActive);
 
         // Close all other FAQ items
         faqItems.forEach(otherItem => {
           if (otherItem !== item && otherItem.classList.contains('active')) {
             otherItem.classList.remove('active');
+            const otherQuestion = otherItem.querySelector('h3');
+            if (otherQuestion) {
+              otherQuestion.setAttribute('aria-expanded', 'false');
+            }
           }
         });
 
         // Toggle current item
         if (isActive) {
           item.classList.remove('active');
+          question.setAttribute('aria-expanded', 'false');
         } else {
           item.classList.add('active');
+          question.setAttribute('aria-expanded', 'true');
         }
       });
 
-      // Add keyboard support
-      question.addEventListener('keypress', function(e) {
+      // Keyboard support
+      question.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           question.click();
         }
       });
-
-      // Make it accessible
-      question.setAttribute('role', 'button');
-      question.setAttribute('aria-expanded', 'false');
-      question.setAttribute('tabindex', '0');
-    });
-
-    // Update aria-expanded when active class changes
-    const observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.attributeName === 'class') {
-          const item = mutation.target;
-          const question = item.querySelector('h3');
-          const isActive = item.classList.contains('active');
-
-          if (question) {
-            question.setAttribute('aria-expanded', isActive ? 'true' : 'false');
-          }
-        }
-      });
-    });
-
-    faqItems.forEach(item => {
-      observer.observe(item, { attributes: true });
     });
   }
 
