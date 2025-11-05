@@ -16,12 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!fileInput || !fileUploadArea || !selectedFileDiv) return;
 
-        // Prevent file input clicks from bubbling up to parent upload area
-        // This stops the double-trigger issue
-        fileInput.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-
         // Handle file selection
         fileInput.addEventListener('change', function() {
             updateSelectedFileInfo(this.files, selectedFileDiv, fileInput);
@@ -51,14 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Click on upload area triggers file input
-        // But NOT if the click was already on the file input itself (prevents double trigger)
-        fileUploadArea.addEventListener('click', function(e) {
-            // Don't trigger if user clicked directly on the file input
-            // Or if the click is bubbling up from the file input
-            if (e.target === fileInput || fileInput.contains(e.target)) {
-                return;
-            }
+        // Click on upload area triggers file input - simple and reliable
+        fileUploadArea.addEventListener('click', function() {
             fileInput.click();
         });
     });
