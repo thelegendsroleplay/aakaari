@@ -251,9 +251,19 @@ body {
   border: 0;
 }
 
-/* Hide mobile menu sidebar on desktop */
+/* Hide mobile menu on desktop */
 .sidebar-container {
   display: none;
+}
+
+/* Ensure main navigation is visible on desktop */
+.aakaari-header .main-navigation {
+  transform: none;
+  visibility: visible;
+  position: static;
+  background: transparent;
+  pointer-events: all;
+  height: auto;
 }
 
 /* ===============================================
@@ -309,18 +319,22 @@ body {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background: transparent;
     pointer-events: none;
-    flex-direction: column;
+    visibility: hidden;
+    flex-direction: row;
     align-items: flex-start;
+    justify-content: flex-start;
     margin: 0;
     gap: 0;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     will-change: transform;
+    overflow: hidden;
   }
 
   .aakaari-header .main-navigation.active {
     transform: translateX(0);
     pointer-events: all;
+    visibility: visible;
   }
 
   /* Backdrop */
@@ -331,23 +345,24 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.5);
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
+    visibility: hidden;
   }
 
   .aakaari-header .main-navigation.active::before {
     opacity: 1;
     pointer-events: all;
+    visibility: visible;
   }
 
   /* Sidebar Container */
   .sidebar-container {
     display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100%;
     max-width: 380px;
     height: 100vh;
@@ -358,13 +373,9 @@ body {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     z-index: 1;
-    transform: translateX(0);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    will-change: transform;
     border-right: none;
     box-shadow: none;
+    flex-shrink: 0;
   }
 
   /* Close Button */
