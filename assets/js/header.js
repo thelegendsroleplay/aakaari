@@ -45,6 +45,7 @@
     mainNav.classList.remove(config.activeClass);
     menuToggle.classList.remove(config.isActiveClass);
     menuToggle.setAttribute('aria-expanded', 'false');
+    body.classList.remove('menu-open');
     body.style.overflow = '';
     state.menuOpen = false;
   }
@@ -58,6 +59,7 @@
     mainNav.classList.add(config.activeClass);
     menuToggle.classList.add(config.isActiveClass);
     menuToggle.setAttribute('aria-expanded', 'true');
+    body.classList.add('menu-open');
     body.style.overflow = 'hidden';
     state.menuOpen = true;
   }
