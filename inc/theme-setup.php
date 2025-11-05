@@ -66,20 +66,20 @@ function aakaari_scripts() {
         true
     );
 
-    // Mobile Menu CSS
+    // Mobile Menu CSS - v1.0.3 with optimizations
     wp_enqueue_style(
         'aakaari-mobile-menu',
         get_template_directory_uri() . '/assets/css/mobile-menu.css',
         array(),
-        wp_get_theme()->get('Version')
+        '1.0.3'
     );
 
-    // Mobile Menu JavaScript
+    // Mobile Menu JavaScript - v1.0.3 with fixed scroll restoration
     wp_enqueue_script(
         'aakaari-mobile-menu',
         get_template_directory_uri() . '/assets/js/mobile-menu.js',
         array('jquery'),
-        wp_get_theme()->get('Version'),
+        '1.0.3',
         true
     );
 }
@@ -150,7 +150,10 @@ function enqueue_aakaari_header_assets() {
         '1.0.0'
     );
 
-    // Header scripts
+    // Header scripts - DISABLED: Conflicts with mobile-menu.js
+    // Both scripts were listening to #mobile-menu-toggle causing menu to get stuck
+    // Mobile-menu.js is the primary mobile menu controller
+    /*
     wp_enqueue_script(
         'aakaari-header-script',
         get_template_directory_uri() . '/assets/js/header.js',
@@ -158,6 +161,7 @@ function enqueue_aakaari_header_assets() {
         '1.0.0',
         true
     );
+    */
 }
 add_action('wp_enqueue_scripts', 'enqueue_aakaari_header_assets');
 
