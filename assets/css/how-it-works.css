@@ -104,28 +104,25 @@
 }
 
 /* ========================================
-   DESKTOP STEPS - ZIGZAG LAYOUT
+   DESKTOP STEPS - MODERN GRID LAYOUT
    ======================================== */
 
 .steps-timeline {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
     position: relative;
     padding: 0;
 }
 
-/* Desktop layout - Alternating cards */
+/* Desktop layout - 2x2 Grid */
 @media (min-width: 1024px) {
     .steps-timeline {
-        display: flex;
-        flex-direction: column;
-        gap: 80px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
     }
 
     .step-item {
-        display: flex;
-        align-items: center;
-        gap: 60px;
         opacity: 0;
         animation: slideIn 0.8s ease-out forwards;
     }
@@ -146,25 +143,15 @@
         }
     }
 
-    /* Alternate layout - even items reverse */
-    .step-item:nth-child(even) {
-        flex-direction: row-reverse;
+    /* Make cards equal height */
+    .step-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
     }
 
-    .step-item:nth-child(even) .step-card {
-        text-align: right;
-    }
-
-    .step-item:nth-child(even) .step-badge-wrapper {
-        justify-content: flex-end;
-    }
-
-    .step-item:nth-child(even) .step-checklist {
-        align-items: flex-end;
-    }
-
-    .step-item:nth-child(even) .step-checklist li {
-        flex-direction: row-reverse;
+    .step-body {
+        flex: 1;
     }
 }
 
@@ -261,6 +248,15 @@
     flex-shrink: 0;
     position: relative;
     transition: all 0.4s ease;
+}
+
+/* Number inside badge */
+.step-number {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+    text-align: center;
 }
 
 .step-badge-purple {
