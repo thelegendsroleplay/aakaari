@@ -72,8 +72,15 @@
         setTimeout(function() { $close.first().focus(); }, 300);
     }
 
-    function closeMenu() {
+    function closeMenu(e) {
         if (!isOpen) return;
+
+        // Prevent default and stop propagation
+        if (e && e.preventDefault) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
         isOpen = false;
 
         $menu.removeClass('mobile-menu--open');
@@ -81,8 +88,13 @@
         $body.removeClass('mobile-menu-open');
         $toggle.attr('aria-expanded', 'false');
 
+        // Force a reflow to ensure transition completes
+        void $menu[0].offsetHeight;
+
         // Return focus to toggle
-        setTimeout(function() { $toggle.focus(); }, 300);
+        setTimeout(function() {
+            $toggle.focus();
+        }, 300);
     }
 
     function toggleSection($header) {
