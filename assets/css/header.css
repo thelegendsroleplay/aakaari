@@ -263,7 +263,7 @@ body {
 @media (max-width: 991px) {
   /* Header Layout */
   .aakaari-header .container {
-    padding: 0 15px;
+    padding: 0 15px 0 0;
     position: relative;
   }
 
@@ -286,6 +286,8 @@ body {
   .aakaari-header .mobile-menu-toggle {
     display: flex;
     order: -1;
+    margin-left: 0;
+    padding-left: 12px;
   }
 
   /* Hide desktop navigation on mobile */
@@ -658,7 +660,11 @@ body {
   }
 
   .aakaari-header .container {
-    padding: 0 12px;
+    padding: 0 12px 0 0;
+  }
+
+  .aakaari-header .mobile-menu-toggle {
+    padding-left: 8px;
   }
 
   .aakaari-header .site-branding .logo-img {
@@ -680,7 +686,11 @@ body {
 /* Extra Small Mobile */
 @media (max-width: 380px) {
   .aakaari-header .container {
-    padding: 0 10px;
+    padding: 0 10px 0 0;
+  }
+
+  .aakaari-header .mobile-menu-toggle {
+    padding-left: 6px;
   }
 
   .sidebar-container {
