@@ -32,7 +32,7 @@ function aar_enqueue_reseller_assets() {
         'become-reseller-js',
         get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js',
         array(),
-        '1.1', // Fixed double file upload dialog issue
+        '1.2', // Enhanced fix: Added stopPropagation to prevent event bubbling
         true
     );
 }
