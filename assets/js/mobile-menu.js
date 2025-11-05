@@ -1,6 +1,7 @@
 /**
  * Optimized Mobile Menu JavaScript
  * Lightweight with smooth performance
+ * v1.0.3 - Fixed scroll restoration and touch handling
  */
 
 (function($) {
@@ -9,6 +10,7 @@
     // Cache DOM elements and state globally
     let $menu, $backdrop, $toggle, $close, $body, $html, isOpen = false;
     let scrollPosition = 0;
+    let isClosing = false;
 
     $(document).ready(function() {
         initMobileMenu();
@@ -46,6 +48,13 @@
         $menu.on('click', '.mobile-menu-nav__section-header', function(e) {
             e.preventDefault();
             toggleSection($(this));
+        });
+
+        // Prevent body scroll on touch when menu is open
+        $backdrop.on('touchmove', function(e) {
+            if (isOpen) {
+                e.preventDefault();
+            }
         });
 
         // Close on escape key
@@ -86,25 +95,34 @@
     }
 
     function closeMenu() {
-        if (!isOpen) return;
+        if (!isOpen || isClosing) return;
         isOpen = false;
+        isClosing = true;
 
         // Remove classes
         $menu.removeClass('mobile-menu--open');
         $backdrop.removeClass('mobile-menu-backdrop--open');
-        $body.removeClass('mobile-menu-open');
         $toggle.attr('aria-expanded', 'false');
 
-        // Restore scroll position
-        $body.css('top', '');
-        window.scrollTo(0, scrollPosition);
-
-        // Return focus to toggle (optional, for accessibility)
+        // Wait for CSS transition to complete before restoring scroll
+        // This prevents the race condition
         setTimeout(function() {
-            if ($toggle.length) {
-                $toggle.focus();
-            }
-        }, 100);
+            $body.removeClass('mobile-menu-open');
+            $body.css('top', '');
+
+            // Use requestAnimationFrame for smoother scroll restoration
+            requestAnimationFrame(function() {
+                window.scrollTo(0, scrollPosition);
+                isClosing = false;
+            });
+
+            // Return focus to toggle for accessibility
+            setTimeout(function() {
+                if ($toggle.length) {
+                    $toggle.focus();
+                }
+            }, 50);
+        }, 300); // Match CSS transition duration (0.3s)
     }
 
     function toggleSection($header) {

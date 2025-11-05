@@ -30,6 +30,7 @@ if (!is_dir($inc_dir)) {
 $required_files = array(
     'theme-setup.php',
     'theme-pages-setup.php', // Automatic page creation
+    'performance-optimizations.php', // Performance optimizations for shared hosting
     'woocommerce.php',
     'page-assets.php',
     'reseller-cta.php',
