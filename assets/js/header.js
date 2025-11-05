@@ -34,6 +34,7 @@
 
   const closeButton = mainNav.querySelector(config.closeButtonSelector);
   const menuItems = mainNav.querySelectorAll('.menu-item');
+  const allLinks = mainNav.querySelectorAll('a'); // Capture all links for auto-close
 
   /**
    * Close mobile menu
@@ -107,10 +108,12 @@
 
   /**
    * Close menu when clicking navigation links
+   * Prevents layout flicker by closing immediately
    */
-  function handleMenuItemClick() {
+  function handleMenuItemClick(event) {
     if (state.isMobile && state.menuOpen) {
-      setTimeout(closeMenu, 100);
+      // Close menu immediately to prevent layout flicker
+      closeMenu();
     }
   }
 
@@ -167,7 +170,12 @@
     // Browser navigation (back/forward)
     window.addEventListener('popstate', closeMenu);
 
-    // Close menu when clicking menu items
+    // Close menu when clicking any link (comprehensive auto-close)
+    allLinks.forEach(link => {
+      link.addEventListener('click', handleMenuItemClick);
+    });
+
+    // Also handle menu items for any non-link clicks
     menuItems.forEach(item => {
       item.addEventListener('click', handleMenuItemClick);
     });

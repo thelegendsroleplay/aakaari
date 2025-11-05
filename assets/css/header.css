@@ -16,6 +16,13 @@
     --badge-pink: #e74c3c;
 }
 
+/* Prevent horizontal scrolling and layout shifts */
+html,
+body {
+    overflow-x: hidden;
+    position: relative;
+}
+
 /* ===============================================
    Desktop Header Styles
    =============================================== */
@@ -294,15 +301,19 @@
     left: 0;
     width: 100%;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
     z-index: 10000;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background: transparent;
     pointer-events: none;
     flex-direction: column;
     align-items: flex-start;
     margin: 0;
     gap: 0;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
   }
 
   .aakaari-header .main-navigation.active {
@@ -332,15 +343,26 @@
   /* Sidebar Container */
   .sidebar-container {
     display: block;
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     max-width: 380px;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
     background-color: white;
     padding: 20px;
     overflow-y: auto;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     z-index: 1;
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
+    border-right: none;
+    box-shadow: none;
   }
 
   /* Close Button */
