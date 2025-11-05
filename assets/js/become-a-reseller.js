@@ -23,8 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log(`[File Upload Debug] Setting up event listeners for ${inputId}`);
 
-        // Track if we're already processing a click to prevent re-entry
+        // Track if we're already processing to prevent re-entry
         let isProcessing = false;
+        let lastTouchTime = 0; // Track last touch event to prevent duplicate click events on mobile
 
         // Handle file selection
         fileInput.addEventListener('change', function(e) {
@@ -61,28 +62,67 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Click on upload area triggers file input
-        fileUploadArea.addEventListener('click', function(e) {
-            console.log(`[File Upload Debug] ${inputId} - Upload area clicked`, {
-                isProcessing: isProcessing,
-                target: e.target.className,
-                currentTarget: e.currentTarget.className
+        // Handle touch events for mobile devices
+        fileUploadArea.addEventListener('touchend', function(e) {
+            console.log(`[File Upload Debug] ${inputId} - Touch event`, {
+                isProcessing: isProcessing
             });
 
             // Prevent re-entry if already processing
             if (isProcessing) {
-                console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing`);
+                console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing (touch)`);
+                e.preventDefault();
                 return;
             }
 
+            // Prevent the subsequent click event from firing
+            e.preventDefault();
+
             isProcessing = true;
-            console.log(`[File Upload Debug] ${inputId} - Triggering fileInput.click()`);
+            lastTouchTime = Date.now(); // Record touch time to block any delayed click events
+
+            console.log(`[File Upload Debug] ${inputId} - Triggering fileInput.click() from touch`);
             fileInput.click();
 
             // Reset after a short delay (in case user cancels immediately)
             setTimeout(() => {
                 if (isProcessing) {
-                    console.log(`[File Upload Debug] ${inputId} - Timeout reset (user likely cancelled)`);
+                    console.log(`[File Upload Debug] ${inputId} - Timeout reset (touch)`);
+                    isProcessing = false;
+                }
+            }, 500);
+        }, { passive: false }); // passive: false allows preventDefault
+
+        // Click on upload area triggers file input (for desktop/mouse)
+        fileUploadArea.addEventListener('click', function(e) {
+            console.log(`[File Upload Debug] ${inputId} - Click event`, {
+                isProcessing: isProcessing,
+                timeSinceTouch: Date.now() - lastTouchTime,
+                target: e.target.className
+            });
+
+            // If a touch event happened recently (within 1 second), ignore this click
+            // This prevents the synthesized click event that mobile browsers fire after touch
+            if (Date.now() - lastTouchTime < 1000) {
+                console.log(`[File Upload Debug] ${inputId} - BLOCKED: Click event after touch (mobile browser synthetic click)`);
+                e.preventDefault();
+                return;
+            }
+
+            // Prevent re-entry if already processing
+            if (isProcessing) {
+                console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing (click)`);
+                return;
+            }
+
+            isProcessing = true;
+            console.log(`[File Upload Debug] ${inputId} - Triggering fileInput.click() from click`);
+            fileInput.click();
+
+            // Reset after a short delay (in case user cancels immediately)
+            setTimeout(() => {
+                if (isProcessing) {
+                    console.log(`[File Upload Debug] ${inputId} - Timeout reset (click)`);
                     isProcessing = false;
                 }
             }, 500);
