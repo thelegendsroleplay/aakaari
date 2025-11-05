@@ -71,9 +71,7 @@ $payout_stats = aakaari_get_payout_stats();
 // Format the current date for display
 $current_date = date('F j, Y');
 
-// Enqueue styles and scripts
-wp_enqueue_style('aakaari-admin-dashboard-style', get_template_directory_uri() . '/assets/css/admindashboard.css', array(), '1.0.0');
-wp_enqueue_script('aakaari-admin-dashboard-script', get_template_directory_uri() . '/assets/js/admindashboard.js', array('jquery'), '1.0.0', true);
+// Note: Scripts and styles are enqueued via wp_enqueue_scripts hook in admin-dashboard-functions.php
 
 get_header('minimal'); // Use a minimal header or create one
 ?>
@@ -700,6 +698,7 @@ get_header('minimal'); // Use a minimal header or create one
                                         <th>Reseller</th>
                                         <th>Customer</th>
                                         <th>Products</th>
+                                        <th>Customization</th>
                                         <th>Amount</th>
                                         <th>Date</th>
                                         <th>Payment</th>
@@ -715,6 +714,13 @@ get_header('minimal'); // Use a minimal header or create one
                                                 <td><?php echo esc_html($order['reseller']); ?></td>
                                                 <td><?php echo esc_html($order['customer']); ?></td>
                                                 <td><?php echo esc_html($order['products']); ?> items</td>
+                                                <td style="text-align: center;">
+                                                    <?php if (!empty($order['has_customization'])): ?>
+                                                        <span style="display: inline-block; background: #2271b1; color: white; font-size: 10px; padding: 3px 8px; border-radius: 3px; font-weight: bold;">CUSTOM</span>
+                                                    <?php else: ?>
+                                                        <span style="color: #999;">—</span>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td>₹<?php echo esc_html(number_format($order['amount'])); ?></td>
                                                 <td><?php echo esc_html($order['date']); ?></td>
                                                 <td>
@@ -746,7 +752,7 @@ get_header('minimal'); // Use a minimal header or create one
                                         <?php endforeach; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="9" class="aakaari-text-center aakaari-py-8">
+                                            <td colspan="10" class="aakaari-text-center aakaari-py-8">
                                                 <p class="aakaari-text-muted">No orders found matching your criteria.</p>
                                             </td>
                                         </tr>
@@ -1067,9 +1073,182 @@ get_header('minimal'); // Use a minimal header or create one
             <div class="aakaari-modal-body">
                 <div id="applicationDetails"></div>
                 
-                <div class="aakaari-form-group">
-                    <label for="rejectionReason">Rejection Reason (if rejecting)</label>
-                    <textarea id="rejectionReason" class="aakaari-textarea" placeholder="Please provide a reason for rejection..."></textarea>
+                <!-- Quick Actions Grid -->
+                <div class="quick-actions-section">
+                    <h4 class="section-header">Quick Actions</h4>
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" id="requestDocCard" title="Opens a dialog to specify which documents are needed. An email will be sent to the applicant with the requirements. Status changes to 'Documents Requested'.">
+                            <div class="quick-action-icon" style="background: #dbeafe;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Request Documentation</span>
+                                <span class="quick-action-subtitle">Specify needed docs</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="allowResubmitCard" title="Enables the reseller to re-upload documents or edit information if their application was rejected or incomplete. Status changes to 'Resubmission Allowed'.">
+                            <div class="quick-action-icon" style="background: #dcfce7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Allow Resubmission</span>
+                                <span class="quick-action-subtitle">Enable document upload</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="setCooldownCard" title="Locks the application for a specific time period (1-720 hours) before admin can take further action. This helps prevent repeated reviews. Status becomes 'On Cooldown'.">
+                            <div class="quick-action-icon" style="background: #fef3c7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Set Review Cooldown</span>
+                                <span class="quick-action-subtitle">Lock for review</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="resetCooldownCard" title="Unlocks the application early and allows the user to resubmit immediately. Clears cooldown timer.">
+                            <div class="quick-action-icon" style="background: #f0f9ff;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Reset Cooldown</span>
+                                <span class="quick-action-subtitle">Allow immediate resubmission</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="allowResubmissionCard" title="Allows the user to resubmit their application with updated information. Clears any cooldown.">
+                            <div class="quick-action-icon" style="background: #ecfdf5;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Allow Resubmission</span>
+                                <span class="quick-action-subtitle">Enable resubmission flow</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="requestDocumentsCard" title="Request specific additional documents from the applicant.">
+                            <div class="quick-action-icon" style="background: #fef3c7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Request Documents</span>
+                                <span class="quick-action-subtitle">Ask for additional docs</span>
+                            </div>
+                        </button>
+
+                        <button class="quick-action-card" id="deleteApplicationCard" title="Permanently deletes this application and all associated data. This action cannot be undone.">
+                            <div class="quick-action-icon" style="background: #fef2f2;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </div>
+                            <div class="quick-action-content">
+                                <span class="quick-action-title">Delete Application</span>
+                                <span class="quick-action-subtitle">Remove permanently</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conditional Action Forms -->
+                <div id="actionFormsContainer" style="display: none;">
+                    <!-- Rejection Reason Section -->
+                    <div class="action-form-section" id="rejectionReasonSection" style="display: none;">
+                        <div class="action-form-header">
+                            <div class="action-form-icon" style="background: #fee2e2;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Reject Application</h4>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Provide a reason for rejecting this application</p>
+                            </div>
+                        </div>
+                        <div class="action-form-body">
+                            <textarea id="rejectionReason" class="aakaari-textarea" placeholder="Please provide a reason for rejection..."></textarea>
+                        </div>
+                        <div class="action-form-footer">
+                            <button type="button" class="aakaari-button aakaari-button-red" id="submitRejectionBtn">
+                                Confirm Rejection
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Documentation Request Section -->
+                    <div class="action-form-section" id="documentRequestSection" style="display: none;">
+                        <div class="action-form-header">
+                            <div class="action-form-icon" style="background: #dbeafe;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Request Additional Documentation</h4>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Select specific documents needed</p>
+                            </div>
+                        </div>
+                        <div class="action-form-body">
+                            <div class="document-checkboxes">
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="aadhaar_front">
+                                    <span class="checkmark"></span>
+                                    Aadhaar Card (Front)
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="aadhaar_back">
+                                    <span class="checkmark"></span>
+                                    Aadhaar Card (Back)
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="pan_card">
+                                    <span class="checkmark"></span>
+                                    PAN Card
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="bank_proof">
+                                    <span class="checkmark"></span>
+                                    Bank Proof (Cancelled Cheque/Statement)
+                                </label>
+                                <label class="document-checkbox">
+                                    <input type="checkbox" name="requested_documents[]" value="business_proof">
+                                    <span class="checkmark"></span>
+                                    Business Registration/GST Certificate
+                                </label>
+                            </div>
+                            <div class="aakaari-form-group" style="margin-top: 1rem;">
+                                <label for="documentRequestMessage">Additional Message (Optional)</label>
+                                <textarea id="documentRequestMessage" class="aakaari-textarea" placeholder="Add any specific instructions or additional information..."></textarea>
+                            </div>
+                        </div>
+                        <div class="action-form-footer">
+                            <button type="button" class="aakaari-button aakaari-button-green" id="submitDocRequestBtn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                Send Request
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cooldown Section -->
+                    <div class="action-form-section" id="cooldownSection" style="display: none;">
+                        <div class="action-form-header">
+                            <div class="action-form-icon" style="background: #fef3c7;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">Set Review Cooldown</h4>
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-medium);">Lock the application for a specified duration</p>
+                            </div>
+                        </div>
+                        <div class="action-form-body">
+                            <div class="aakaari-form-group">
+                                <label for="cooldownDuration">Duration (hours)</label>
+                                <input type="number" id="cooldownDuration" class="aakaari-input" min="1" max="720" value="24" placeholder="Enter hours">
+                                <small style="color: #666; display: block; margin-top: 0.5rem;">The application will be locked for review for this duration</small>
+                            </div>
+                        </div>
+                        <div class="action-form-footer">
+                            <button type="button" class="aakaari-button aakaari-button-green" id="submitCooldownBtn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                Set Cooldown
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             

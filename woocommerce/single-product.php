@@ -99,6 +99,7 @@ get_header();
           <div class="tab-triggers" style="margin-bottom:10px;">
             <button data-tab="fabric" class="tab-trigger active">Fabric</button>
             <button data-tab="color" class="tab-trigger">Color</button>
+            <button data-tab="size" class="tab-trigger">Size</button>
             <button data-tab="design" class="tab-trigger">Design</button>
             <button data-tab="print" class="tab-trigger">Print Type</button>
           </div>
@@ -114,6 +115,13 @@ get_header();
             <div id="color-selector-card" class="card hidden">
               <h4 style="margin:0 0 8px 0;">Select Color</h4>
               <div id="color-selector-container"></div>
+            </div>
+          </div>
+
+          <div id="size-tab-content" class="tab-content hidden">
+            <div id="size-selector-card" class="card hidden">
+              <h4 style="margin:0 0 8px 0;">Select Size</h4>
+              <div id="size-selector-container"></div>
             </div>
           </div>
 
@@ -157,18 +165,18 @@ get_header();
             <div style="color:#6B7280;">Product Base Price:</div>
             <div>
               <span id="product-base-price-strikethrough" class="hidden" style="text-decoration:line-through; color:#6B7280; margin-right:6px;"></span>
-              <span id="product-base-price">$0.00</span>
+              <span id="product-base-price">₹0.00</span>
             </div>
           </div>
 
           <div id="print-cost-summary" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;" class="hidden">
             <span id="print-cost-label" style="color:#6B7280;">Print Cost (0 designs):</span>
-            <span id="print-cost-value">+$0.00</span>
+            <span id="print-cost-value">+₹0.00</span>
           </div>
 
           <div style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <div style="font-weight:700;">Total Price:</div>
-            <div id="total-price" style="color:var(--primary); font-weight:700;">$0.00</div>
+            <div id="total-price" style="color:var(--primary); font-weight:700;">₹0.00</div>
           </div>
 
           <button id="add-to-cart-btn" disabled>Add to Cart</button>

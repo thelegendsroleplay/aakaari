@@ -3,6 +3,14 @@
 <head>
     <meta charset="<?php bloginfo('charset'); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php
+    // Set site icon (favicon) to logo.png
+    $favicon_url = get_template_directory_uri() . '/assets/img/logo.png';
+    $favicon_path = get_template_directory() . '/assets/img/logo.png';
+    if (file_exists($favicon_path)): ?>
+        <link rel="icon" type="image/png" href="<?php echo esc_url($favicon_url); ?>">
+        <link rel="apple-touch-icon" href="<?php echo esc_url($favicon_url); ?>">
+    <?php endif; ?>
     <?php wp_head(); ?>
 </head>
 
@@ -13,14 +21,19 @@
     <div class="container">
         <div class="site-branding">
             <a href="<?php echo esc_url(home_url('/')); ?>" class="logo">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#2563EB" viewBox="0 0 16 16">
-                    <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
-                </svg>
-                <span>Aakaari</span>
+                <?php 
+                $logo_url = get_template_directory_uri() . '/assets/img/logo.png';
+                $logo_path = get_template_directory() . '/assets/img/logo.png';
+                if (file_exists($logo_path)): ?>
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" class="logo-img">
+                <?php else: ?>
+                    <span style="color: #2563EB; font-weight: 700; font-size: 20px;"><?php bloginfo('name'); ?></span>
+                <?php endif; ?>
             </a>
         </div>
 
         <nav id="site-navigation" class="main-navigation">
+            <!-- Desktop Navigation Menu -->
             <?php
             wp_nav_menu(array(
                 'theme_location' => 'primary',
@@ -32,44 +45,40 @@
                     echo '<li><a href="' . esc_url(home_url('/')) . '">Home</a></li>';
                     echo '<li><a href="' . esc_url(home_url('/products/')) . '">Products</a></li>';
                     echo '<li><a href="' . esc_url(home_url('/how-it-works/')) . '">How It Works</a></li>';
-                    echo '<li><a href="' . esc_url(home_url('/pricing/')) . '">Pricing</a></li>';
                     echo '<li><a href="' . esc_url(home_url('/contact/')) . '">Contact</a></li>';
                     echo '</ul>';
                 }
             ));
             ?>
 
+            <!-- Desktop Auth Buttons -->
             <div class="auth-buttons">
-
-                <?php // ?>
-                <?php if ( class_exists( 'WooCommerce' ) ) : ?>
+                <?php if (class_exists('WooCommerce')): ?>
                     <?php
                     $cart_url = wc_get_cart_url();
                     $cart_count = WC()->cart->get_cart_contents_count();
                     ?>
-                    <a href="<?php echo esc_url( $cart_url ); ?>" class="login-btn cart-toggle" title="View your shopping cart">
+                    <a href="<?php echo esc_url($cart_url); ?>" class="login-btn cart-toggle" title="View your shopping cart">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>
                         </svg>
                         <span>Cart</span>
-                        <?php if ( $cart_count > 0 ) : ?>
+                        <?php if ($cart_count > 0): ?>
                             <span class="ml-1 bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                                <?php echo esc_html( $cart_count ); ?>
+                                <?php echo esc_html($cart_count); ?>
                             </span>
                         <?php endif; ?>
                     </a>
                 <?php endif; ?>
-                <?php // ?>
-
 
                 <?php if (is_user_logged_in()): ?>
-                    <a href="<?php echo esc_url(home_url('/dashboard/')); ?>" class="login-btn">
+                    <a href="<?php echo esc_url(aakaari_get_dashboard_url()); ?>" class="login-btn">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M8 4a.5.5 0 0 1 .5.5V6H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V7H6a.5.5 0 0 1 0-1h1.5V4.5A.5.5 0 0 1 8 4z"/>
                             <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
                             <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
                         </svg>
-                        <span>Dashboard</span>
+                        <span><?php echo current_user_can('manage_options') ? 'Admin Dashboard' : 'Dashboard'; ?></span>
                     </a>
                     <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="btn-reseller-header btn-logout">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -88,14 +97,135 @@
                     </a>
                     <?php
                     $reseller_page_id = get_option('reseller_page_id');
-                    $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/'); // Fallback
+                    $reseller_link = $reseller_page_id ? get_permalink($reseller_page_id) : home_url('/become-a-reseller/');
                     $login_link = home_url('/login/');
-                    
-                    // User is not logged in, send to login with redirect
                     $final_reseller_href = add_query_arg('redirect_to', urlencode($reseller_link), $login_link);
                     ?>
                     <a href="<?php echo esc_url($final_reseller_href); ?>" class="btn-reseller-header">Become a Reseller</a>
                 <?php endif; ?>
+            </div>
+
+            <!-- Mobile Menu Sidebar (Only visible on mobile) -->
+            <div class="sidebar-container">
+                <!-- Close Button -->
+                <button class="mobile-menu-close" aria-label="Close menu">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <!-- Search Bar -->
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="search" placeholder="Search products..." value="<?php echo get_search_query(); ?>" name="s">
+                </div>
+
+                <?php if (is_user_logged_in()): ?>
+                    <!-- User Profile -->
+                    <div class="user-profile">
+                        <div class="profile-info">
+                            <div class="avatar-bg">
+                                <?php echo get_avatar(get_current_user_id(), 40, '', '', array('class' => 'avatar')); ?>
+                            </div>
+                            <div class="user-details">
+                                <span class="username"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
+                                <span class="email"><?php echo esc_html(wp_get_current_user()->user_email); ?></span>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Menu Section -->
+                <div class="menu-section">
+                    <div class="section-title">MENU</div>
+                    <a href="<?php echo esc_url(home_url('/')); ?>" class="menu-item">
+                        <i class="fas fa-home menu-icon"></i>
+                        <span>Home</span>
+                        <i class="fas fa-chevron-right arrow-icon"></i>
+                    </a>
+                    <a href="<?php echo esc_url(home_url('/products/')); ?>" class="menu-item products-item">
+                        <i class="fas fa-box menu-icon"></i>
+                        <span>Products</span>
+                        <span class="new-tag">New</span>
+                        <i class="fas fa-chevron-right arrow-icon"></i>
+                    </a>
+                    <a href="<?php echo esc_url(home_url('/how-it-works/')); ?>" class="menu-item">
+                        <i class="fas fa-question-circle menu-icon"></i>
+                        <span>How It Works</span>
+                        <i class="fas fa-chevron-right arrow-icon"></i>
+                    </a>
+                    <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="menu-item">
+                        <i class="fas fa-comment-dots menu-icon"></i>
+                        <span>Contact</span>
+                        <i class="fas fa-chevron-right arrow-icon"></i>
+                    </a>
+                </div>
+
+                <?php if (is_user_logged_in()): ?>
+                    <!-- Quick Actions -->
+                    <div class="menu-section">
+                        <div class="section-title">QUICK ACTIONS</div>
+                        <a href="<?php echo esc_url(aakaari_get_dashboard_url()); ?>" class="menu-item">
+                            <i class="fas fa-th-large menu-icon purple-icon"></i>
+                            <span><?php echo current_user_can('manage_options') ? 'Admin Dashboard' : 'Dashboard'; ?></span>
+                            <i class="fas fa-chevron-right arrow-icon"></i>
+                        </a>
+                        <?php if (class_exists('WooCommerce')): ?>
+                            <?php
+                            $order_count = wc_get_customer_order_count(get_current_user_id());
+                            ?>
+                            <a href="<?php echo esc_url(home_url('/reseller-dashboard/#orders')); ?>" class="menu-item">
+                                <i class="fas fa-receipt menu-icon purple-icon"></i>
+                                <span>My Orders</span>
+                                <?php if ($order_count > 0): ?>
+                                    <span class="badge"><?php echo esc_html($order_count); ?></span>
+                                <?php endif; ?>
+                                <i class="fas fa-chevron-right arrow-icon"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Help & Support -->
+                <div class="menu-section">
+                    <div class="section-title">HELP & SUPPORT</div>
+                    <a href="<?php echo esc_url(home_url('/how-it-works/')); ?>" class="menu-item">
+                        <i class="fas fa-clipboard-list menu-icon orange-icon"></i>
+                        <span>FAQ</span>
+                        <i class="fas fa-chevron-right arrow-icon"></i>
+                    </a>
+                    <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="menu-item">
+                        <i class="fas fa-question menu-icon orange-icon"></i>
+                        <span>Support Center</span>
+                        <i class="fas fa-chevron-right arrow-icon"></i>
+                    </a>
+                </div>
+
+                <!-- Bottom Actions -->
+                <div class="bottom-actions">
+                    <?php if (class_exists('WooCommerce')): ?>
+                        <?php
+                        $cart_url = wc_get_cart_url();
+                        $cart_total = WC()->cart->get_cart_total();
+                        ?>
+                        <a href="<?php echo esc_url($cart_url); ?>" class="shopping-cart-btn">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Shopping Cart</span>
+                            <span class="cart-amount"><?php echo $cart_total; ?></span>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if (is_user_logged_in()): ?>
+                        <a href="<?php echo esc_url(wp_logout_url(home_url())); ?>" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    <?php else: ?>
+                        <a href="<?php echo esc_url(home_url('/login/')); ?>" class="logout-btn">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Reseller Login</span>
+                        </a>
+                    <?php endif; ?>
+                </div>
             </div>
         </nav>
 

@@ -63,6 +63,14 @@ body.login-body #wpadminbar {
   font-weight: 600;
 }
 
+.login-logo-img {
+  height: 50px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  display: block;
+}
+
 /* Headings */
 .login-title {
   font-size: 24px;

@@ -20,4 +20,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Steps animation - Trigger immediately and on scroll
+    const stepItems = document.querySelectorAll('.step-item');
+    
+    // Check if mobile (simple check)
+    const isMobile = window.innerWidth <= 767;
+    
+    if (isMobile) {
+        // On mobile, add animate class immediately without delays to ensure proper order
+        stepItems.forEach((item) => {
+            item.classList.add('animate');
+        });
+    } else {
+        // On desktop, use staggered animations
+        stepItems.forEach((item, index) => {
+            // Sort by data-step attribute to ensure correct order
+            const stepNumber = parseInt(item.getAttribute('data-step')) || index + 1;
+            setTimeout(() => {
+                item.classList.add('animate');
+            }, (stepNumber - 1) * 150);
+        });
+        
+        // Intersection Observer for scroll animations (if user scrolls back up)
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const stepObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting && !entry.target.classList.contains('animate')) {
+                    entry.target.classList.add('animate');
+                }
+            });
+        }, observerOptions);
+
+        stepItems.forEach((item) => {
+            stepObserver.observe(item);
+        });
+    }
 });

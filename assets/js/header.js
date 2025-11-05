@@ -1,6 +1,6 @@
 /**
- * Enhanced Header Mobile Navigation
- * Fully responsive with smooth animations and accessibility support
+ * Mobile Menu Navigation
+ * Simple and effective mobile menu controller
  */
 
 (function() {
@@ -10,58 +10,70 @@
   const config = {
     menuToggleSelector: '#mobile-menu-toggle',
     navigationSelector: '#site-navigation',
+    closeButtonSelector: '.mobile-menu-close',
     activeClass: 'active',
     isActiveClass: 'is-active',
     breakpoint: 991
   };
 
   // State
-  let menuOpen = false;
-  let isMobile = window.innerWidth <= config.breakpoint;
+  let state = {
+    menuOpen: false,
+    isMobile: window.innerWidth <= config.breakpoint
+  };
 
-  // Get DOM elements
+  // DOM Elements
   const menuToggle = document.querySelector(config.menuToggleSelector);
   const mainNav = document.querySelector(config.navigationSelector);
   const body = document.body;
 
-  if (!menuToggle || !mainNav) return;
+  if (!menuToggle || !mainNav) {
+    console.warn('Mobile menu elements not found');
+    return;
+  }
 
-  const navLinks = mainNav.querySelectorAll('a');
+  const closeButton = mainNav.querySelector(config.closeButtonSelector);
+  const menuItems = mainNav.querySelectorAll('.menu-item');
+  const allLinks = mainNav.querySelectorAll('a'); // Capture all links for auto-close
 
   /**
    * Close mobile menu
    */
   function closeMenu() {
-    if (!menuOpen) return;
+    if (!state.menuOpen) return;
 
     mainNav.classList.remove(config.activeClass);
     menuToggle.classList.remove(config.isActiveClass);
     menuToggle.setAttribute('aria-expanded', 'false');
+    body.classList.remove('menu-open');
     body.style.overflow = '';
-    menuOpen = false;
+    state.menuOpen = false;
   }
 
   /**
    * Open mobile menu
    */
   function openMenu() {
-    if (menuOpen) return;
+    if (state.menuOpen) return;
 
     mainNav.classList.add(config.activeClass);
     menuToggle.classList.add(config.isActiveClass);
     menuToggle.setAttribute('aria-expanded', 'true');
+    body.classList.add('menu-open');
     body.style.overflow = 'hidden';
-    menuOpen = true;
+    state.menuOpen = true;
   }
 
   /**
    * Toggle mobile menu
    */
   function toggleMenu(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (menuOpen) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (state.menuOpen) {
       closeMenu();
     } else {
       openMenu();
@@ -72,11 +84,11 @@
    * Handle window resize
    */
   function handleResize() {
-    const wasMobile = isMobile;
-    isMobile = window.innerWidth <= config.breakpoint;
+    const wasMobile = state.isMobile;
+    state.isMobile = window.innerWidth <= config.breakpoint;
 
     // Close menu when switching from mobile to desktop
-    if (wasMobile && !isMobile && menuOpen) {
+    if (wasMobile && !state.isMobile && state.menuOpen) {
       closeMenu();
     }
   }
@@ -85,21 +97,24 @@
    * Handle clicking outside menu
    */
   function handleOutsideClick(event) {
-    if (!isMobile || !menuOpen) return;
+    if (!state.isMobile || !state.menuOpen) return;
 
-    const isMenuClick = mainNav.contains(event.target);
-    const isToggleClick = menuToggle.contains(event.target);
+    // Check if click is on backdrop
+    const isBackdropClick = !mainNav.querySelector('.sidebar-container').contains(event.target) &&
+                           !menuToggle.contains(event.target);
 
-    if (!isMenuClick && !isToggleClick) {
+    if (isBackdropClick) {
       closeMenu();
     }
   }
 
   /**
    * Close menu when clicking navigation links
+   * Prevents layout flicker by closing immediately
    */
-  function handleNavLinkClick() {
-    if (isMobile && menuOpen) {
+  function handleMenuItemClick(event) {
+    if (state.isMobile && state.menuOpen) {
+      // Close menu immediately to prevent layout flicker
       closeMenu();
     }
   }
@@ -108,29 +123,69 @@
    * Handle Escape key
    */
   function handleEscapeKey(event) {
-    if (event.key === 'Escape' && menuOpen) {
+    if (event.key === 'Escape' && state.menuOpen) {
       closeMenu();
       menuToggle.focus();
     }
   }
 
   /**
+   * Debounce function for resize events
+   */
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  /**
    * Initialize event listeners
    */
   function init() {
-    // Set initial state
+    // Set initial ARIA state
     menuToggle.setAttribute('aria-expanded', 'false');
+    menuToggle.setAttribute('aria-label', 'Toggle navigation menu');
 
-    // Event listeners
+    // Menu toggle click
     menuToggle.addEventListener('click', toggleMenu);
+
+    // Close button click
+    if (closeButton) {
+      closeButton.addEventListener('click', toggleMenu);
+    }
+
+    // Outside click detection
     document.addEventListener('click', handleOutsideClick);
+
+    // Keyboard support
     document.addEventListener('keydown', handleEscapeKey);
-    window.addEventListener('resize', handleResize);
+
+    // Window resize
+    window.addEventListener('resize', debounce(handleResize, 150));
+
+    // Browser navigation (back/forward)
     window.addEventListener('popstate', closeMenu);
 
-    // Close menu when clicking nav links
-    navLinks.forEach(link => {
-      link.addEventListener('click', handleNavLinkClick);
+    // Close menu when clicking any link (comprehensive auto-close)
+    allLinks.forEach(link => {
+      link.addEventListener('click', handleMenuItemClick);
+    });
+
+    // Also handle menu items for any non-link clicks
+    menuItems.forEach(item => {
+      item.addEventListener('click', handleMenuItemClick);
+    });
+
+    // Close menu when clicking bottom action buttons
+    const bottomActionButtons = mainNav.querySelectorAll('.shopping-cart-btn, .logout-btn');
+    bottomActionButtons.forEach(button => {
+      button.addEventListener('click', handleMenuItemClick);
     });
   }
 
@@ -140,4 +195,13 @@
   } else {
     init();
   }
+
+  // Expose API for external use if needed
+  window.AakaariMobileMenu = {
+    open: openMenu,
+    close: closeMenu,
+    toggle: toggleMenu,
+    isOpen: () => state.menuOpen
+  };
+
 })();

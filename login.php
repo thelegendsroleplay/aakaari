@@ -7,7 +7,11 @@
 
 // Redirect if user is already logged in
 if (is_user_logged_in()) {
-    wp_safe_redirect(home_url('/dashboard/'));
+    if (function_exists('aakaari_get_dashboard_url')) {
+        wp_safe_redirect(aakaari_get_dashboard_url());
+    } else {
+        wp_safe_redirect(home_url('/my-account/'));
+    }
     exit;
 }
 
@@ -70,13 +74,11 @@ if (is_wp_error($user)) {
     // Successful login - redirect
     // Note: Our 'wp_authenticate_user' hook might still block unverified users here.
     
-    // Check for onboarding status
-    $onboarding_status = get_user_meta($user->ID, 'onboarding_status', true);
-    
-    if ($onboarding_status !== 'completed') {
-        $redirect = get_permalink(get_option('reseller_page_id')); // Send to onboarding
+    // Use the proper dashboard URL function for redirect
+    if (function_exists('aakaari_get_dashboard_url')) {
+        $redirect = aakaari_get_dashboard_url();
     } else {
-        $redirect = home_url('/dashboard/'); // Send to dashboard
+        $redirect = home_url('/my-account/');
     }
 
     // Check for custom redirect_to param
@@ -104,10 +106,7 @@ get_header('minimal'); // Use a minimal header or create one
 <div class="login-page">
     <div class="login-container">
         <div class="login-logo">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#2563EB" viewBox="0 0 16 16">
-                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/>
-            </svg>
-            <span class="logo-text">Aakaari</span>
+            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php bloginfo('name'); ?>" class="login-logo-img">
         </div>
         
         <h1 class="login-title">Reseller Login</h1>

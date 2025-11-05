@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
+// Include email templates
+require_once get_template_directory() . '/inc/email-templates.php';
+
 /**
  * Register the Admin Dashboard template
  */
@@ -31,7 +34,7 @@ function aakaari_admin_dashboard_enqueue_assets() {
             'aakaari-admin-dashboard-style',
             get_template_directory_uri() . '/assets/css/admindashboard.css',
             array(),
-            '1.0.0'
+            '1.1.0'
         );
 
         // Enqueue Script
@@ -39,7 +42,7 @@ function aakaari_admin_dashboard_enqueue_assets() {
             'aakaari-admin-dashboard-script',
             get_template_directory_uri() . '/assets/js/admindashboard.js',
             array('jquery'),
-            '1.0.0',
+            '1.1.0',
             true
         );
 
@@ -412,7 +415,8 @@ function aakaari_approve_application() {
             $user = get_user_by('email', $applicant_email);
             if ($user) {
                 // Mark onboarding completed only on approval
-                update_user_meta($user->ID, 'onboarding_status', 'completed');
+                update_user_meta($user->ID, 'email_verified', 'true');
+                update_user_meta($user->ID, 'onboarding_status', 'approved');
                 update_user_meta($user->ID, 'account_status', 'active');
                 update_user_meta($user->ID, 'approved_date', current_time('mysql'));
 
@@ -428,11 +432,19 @@ function aakaari_approve_application() {
         update_post_meta($application_id, 'approval_date', current_time('mysql'));
         update_post_meta($application_id, 'approved_by', get_current_user_id());
 
-        // Notify applicant
+        // Notify applicant with HTML email
         if (!empty($applicant_email)) {
+            $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+            $email_data = array(
+                'name' => $reseller_name,
+                'email' => $applicant_email
+            );
+            
             $subject = 'Your Aakaari Reseller Application Approved!';
-            $message = "Congratulations! Your reseller application has been approved. You can now log in and access your dashboard.";
-            wp_mail($applicant_email, $subject, $message);
+            $message = aakaari_email_application_approved($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message, $headers);
         }
 
         wp_send_json_success(array('message' => 'Application approved successfully'));
@@ -474,20 +486,40 @@ function aakaari_reject_application() {
         update_post_meta($application_id, 'rejected_date', current_time('mysql'));
         update_post_meta($application_id, 'rejected_by', get_current_user_id());
 
-        // Update user status if applicable
+        // Update user status and set cooldown
         $applicant_email = get_post_meta($application_id, 'reseller_email', true);
         if ($applicant_email) {
             $user = get_user_by('email', $applicant_email);
             if ($user) {
-                update_user_meta($user->ID, 'application_status', 'rejected');
+                // Set reseller status to rejected
+                update_user_meta($user->ID, 'reseller_status', 'rejected');
+
+                // Set 7-day cooldown
+                $cooldown_expires = strtotime('+7 days');
+                update_user_meta($user->ID, 'cooldown_expires_at', $cooldown_expires);
+
+                // Update other status meta
+                update_user_meta($user->ID, 'onboarding_status', 'rejected');
             }
         }
 
-        // Notify applicant
+        // Notify applicant with HTML email
         if ($applicant_email) {
+            $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+            $cooldown_date = date('F j, Y', strtotime('+7 days'));
+            
+            $email_data = array(
+                'name' => $reseller_name,
+                'reason' => $reason,
+                'cooldown_date' => $cooldown_date,
+                'cooldown_human' => '7 days'
+            );
+            
             $subject = 'Update on Your Aakaari Reseller Application';
-            $message = "We regret to inform you that your reseller application has been rejected.\n\nReason: " . $reason;
-            wp_mail($applicant_email, $subject, $message);
+            $message = aakaari_email_application_rejected($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message, $headers);
         }
 
         wp_send_json_success(array('message' => 'Application rejected'));
@@ -495,6 +527,479 @@ function aakaari_reject_application() {
     exit;
 }}
 add_action('wp_ajax_reject_application', 'aakaari_reject_application');
+
+/**
+ * Check if user can reapply for reseller status
+ */
+if (!function_exists('can_user_reapply')) {
+function can_user_reapply($user_id) {
+    // Get application info using the proper function
+    $application_info = get_reseller_application_status(get_user_by('id', $user_id)->user_email);
+    $status = $application_info['status'];
+
+    // No application exists - can apply
+    if (!$application_info['application']) {
+        return true;
+    }
+
+    // Check status-based logic
+    if ($status === 'rejected') {
+        // Check cooldown
+        $cooldown = get_user_meta($user_id, 'cooldown_expires_at', true);
+        if (empty($cooldown) || time() > intval($cooldown)) {
+            return true; // Cooldown expired or not set
+        }
+        return false; // Still in cooldown
+    }
+
+    // These statuses allow the user to see the form
+    if (in_array($status, array('resubmission_allowed', 'documents_requested'))) {
+        return true;
+    }
+
+    // Deleted or no status - can apply fresh
+    if ($status === 'deleted' || empty($status)) {
+        return true;
+    }
+
+    // All other statuses (pending, under_review, approved) - cannot reapply
+    return false;
+}}
+
+/**
+ * Reset application cooldown (admin action)
+ */
+if (!function_exists('aakaari_reset_application_cooldown')) {
+function aakaari_reset_application_cooldown() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Get applicant email
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    if (!$applicant_email) {
+        wp_send_json_error(array('message' => 'Applicant email not found'));
+        exit;
+    }
+
+    // Get user
+    $user = get_user_by('email', $applicant_email);
+    if (!$user) {
+        wp_send_json_error(array('message' => 'User not found'));
+        exit;
+    }
+
+    // Reset cooldown: Clear cooldown_expires_at and set status to 'rejected' (allows reapply)
+    delete_user_meta($user->ID, 'cooldown_expires_at');
+
+    // Set status to rejected but allow reapply
+    update_user_meta($user->ID, 'reseller_status', 'rejected');
+
+    // Log the reset action
+    update_post_meta($application_id, 'cooldown_reset_date', current_time('mysql'));
+    update_post_meta($application_id, 'cooldown_reset_by', get_current_user_id());
+
+    wp_send_json_success(array('message' => 'Cooldown reset successfully. User can now reapply.'));
+    exit;
+}}
+add_action('wp_ajax_reset_application_cooldown', 'aakaari_reset_application_cooldown');
+
+/**
+ * Allow resubmission (admin action)
+ */
+if (!function_exists('aakaari_allow_resubmission')) {
+function aakaari_allow_resubmission() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Set status to resubmission_allowed and clear cooldown
+    $result = wp_set_object_terms($application_id, 'resubmission_allowed', 'reseller_application_status', false);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(array('message' => 'Failed to update status: ' . $result->get_error_message()));
+    } else {
+        // Clear cooldown and update meta
+        delete_post_meta($application_id, 'cooldown_until');
+        update_post_meta($application_id, 'resubmission_enabled_date', current_time('mysql'));
+        update_post_meta($application_id, 'resubmission_enabled_by', get_current_user_id());
+
+        // Get applicant info and clear user cooldown
+        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+
+        // Clear user cooldown meta so they can reapply immediately
+        if ($applicant_email) {
+            $user = get_user_by('email', $applicant_email);
+            if ($user) {
+                delete_user_meta($user->ID, 'cooldown_expires_at');
+                update_user_meta($user->ID, 'reseller_status', 'resubmission_allowed');
+            }
+        }
+
+        // Send notification email with HTML template
+        if ($applicant_email) {
+            $email_data = array(
+                'name' => $reseller_name
+            );
+            
+            $subject = 'You can now resubmit your reseller application';
+            $message = aakaari_email_resubmission_allowed($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message, $headers);
+        }
+
+        wp_send_json_success(array('message' => 'Resubmission enabled successfully. User has been notified.'));
+    }
+    exit;
+}}
+add_action('wp_ajax_allow_resubmission', 'aakaari_allow_resubmission');
+
+/**
+ * Request additional documents (admin action)
+ */
+if (!function_exists('aakaari_request_documents')) {
+function aakaari_request_documents() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $requested_docs = isset($_POST['requested_documents']) ? $_POST['requested_documents'] : array();
+    $message = isset($_POST['message']) ? sanitize_textarea_field($_POST['message']) : '';
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    if (empty($requested_docs) || !is_array($requested_docs)) {
+        wp_send_json_error(array('message' => 'Please select at least one document to request'));
+        exit;
+    }
+
+    // Set status to documents_requested
+    $result = wp_set_object_terms($application_id, 'documents_requested', 'reseller_application_status', false);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(array('message' => 'Failed to update status: ' . $result->get_error_message()));
+    } else {
+        // Store requested documents and message
+        update_post_meta($application_id, 'requested_documents', $requested_docs);
+        update_post_meta($application_id, 'document_request_message', $message);
+        update_post_meta($application_id, 'documents_requested_date', current_time('mysql'));
+        update_post_meta($application_id, 'documents_requested_by', get_current_user_id());
+
+        // Get applicant info and update user meta
+        $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+
+        // Clear user cooldown and update status so they can resubmit
+        if ($applicant_email) {
+            $user = get_user_by('email', $applicant_email);
+            if ($user) {
+                delete_user_meta($user->ID, 'cooldown_expires_at');
+                update_user_meta($user->ID, 'reseller_status', 'documents_requested');
+            }
+        }
+
+        // Send notification email with HTML template
+        if ($applicant_email) {
+            $email_data = array(
+                'name' => $reseller_name,
+                'requested_documents' => $requested_docs,
+                'message' => $message
+            );
+            
+            $subject = 'Action required: Upload documents for your reseller application';
+            $message_body = aakaari_email_documents_requested($email_data);
+            
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+            wp_mail($applicant_email, $subject, $message_body, $headers);
+        }
+
+        wp_send_json_success(array('message' => 'Document request sent successfully. User has been notified.'));
+    }
+    exit;
+}}
+add_action('wp_ajax_request_documents', 'aakaari_request_documents');
+
+/**
+ * Delete application (admin action)
+ */
+if (!function_exists('aakaari_delete_application')) {
+function aakaari_delete_application() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Get applicant email before deletion
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+
+    // Delete uploaded documents
+    $document_urls = array(
+        'aadhaar_front_url',
+        'aadhaar_back_url',
+        'pan_card_url',
+        'bank_proof_url',
+        'business_proof_url',
+        'reseller_id_proof_url' // Legacy
+    );
+
+    foreach ($document_urls as $meta_key) {
+        $file_url = get_post_meta($application_id, $meta_key, true);
+        if ($file_url) {
+            // Convert URL to file path and delete
+            $upload_dir = wp_upload_dir();
+            $file_path = str_replace($upload_dir['baseurl'], $upload_dir['basedir'], $file_url);
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+        }
+    }
+
+    // Delete user meta related to reseller application
+    if ($applicant_email) {
+        $user = get_user_by('email', $applicant_email);
+        if ($user) {
+            delete_user_meta($user->ID, 'reseller_status');
+            delete_user_meta($user->ID, 'cooldown_expires_at');
+            delete_user_meta($user->ID, 'onboarding_status');
+            delete_user_meta($user->ID, 'email_verified');
+            delete_user_meta($user->ID, 'account_status');
+            delete_user_meta($user->ID, 'approved_date');
+            delete_user_meta($user->ID, 'resubmission_allowed');
+            delete_user_meta($user->ID, 'documents_requested');
+        }
+    }
+
+    // Log the deletion before deleting the post
+    $admin_id = get_current_user_id();
+    error_log("Admin {$admin_id} deleted reseller application {$application_id} for user {$applicant_email}");
+
+    // Send notification email with HTML template
+    if ($applicant_email) {
+        $email_data = array(
+            'name' => $reseller_name
+        );
+        
+        $subject = 'Your reseller application has been removed';
+        $message = aakaari_email_application_deleted($email_data);
+        
+        $headers = array('Content-Type: text/html; charset=UTF-8');
+        wp_mail($applicant_email, $subject, $message, $headers);
+    }
+
+    // Delete the application post
+    $delete_result = wp_delete_post($application_id, true);
+
+    if ($delete_result) {
+        wp_send_json_success(array('message' => 'Application deleted successfully. All related data has been removed and user notified.'));
+    } else {
+        wp_send_json_error(array('message' => 'Failed to delete application'));
+    }
+    exit;
+}}
+add_action('wp_ajax_delete_application', 'aakaari_delete_application');
+
+/**
+ * Get application documents
+ */
+if (!function_exists('aakaari_get_application_documents')) {
+function aakaari_get_application_documents() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Get all document URLs from post meta
+    $documents = array(
+        'aadhaar_front' => get_post_meta($application_id, 'aadhaar_front_url', true),
+        'aadhaar_back' => get_post_meta($application_id, 'aadhaar_back_url', true),
+        'pan_card' => get_post_meta($application_id, 'pan_card_url', true),
+        'bank_proof' => get_post_meta($application_id, 'bank_proof_url', true),
+        'business_proof' => get_post_meta($application_id, 'business_proof_url', true),
+        // Legacy field for backward compatibility
+        'id_proof' => get_post_meta($application_id, 'reseller_id_proof_url', true),
+    );
+
+    // Remove empty documents
+    $documents = array_filter($documents, function($url) {
+        return !empty($url);
+    });
+
+    wp_send_json_success(array(
+        'documents' => $documents,
+        'message' => 'Documents retrieved successfully'
+    ));
+    exit;
+}}
+add_action('wp_ajax_get_application_documents', 'aakaari_get_application_documents');
+
+/**
+ * Request additional documentation
+ */
+if (!function_exists('aakaari_request_application_documentation')) {
+function aakaari_request_application_documentation() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $documentation_request = isset($_POST['documentation_request']) ? sanitize_textarea_field($_POST['documentation_request']) : '';
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    if (empty($documentation_request)) {
+        wp_send_json_error(array('message' => 'Please specify what documentation is required'));
+        exit;
+    }
+
+    // Set status to awaiting_documentation (or keep as pending and add meta)
+    update_post_meta($application_id, 'awaiting_documentation', 'true');
+    update_post_meta($application_id, 'documentation_request', $documentation_request);
+    update_post_meta($application_id, 'documentation_request_date', current_time('mysql'));
+    update_post_meta($application_id, 'documentation_requested_by', get_current_user_id());
+
+    // Notify applicant
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    if ($applicant_email) {
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+        $subject = 'Additional Documentation Required for Your Reseller Application';
+        $message = "Dear {$reseller_name},\n\n";
+        $message .= "We are reviewing your reseller application and require additional documentation to proceed.\n\n";
+        $message .= "Required Documentation:\n{$documentation_request}\n\n";
+        $message .= "Please log in to your dashboard and upload the requested documents.\n\n";
+        $message .= "Thank you for your cooperation.\n\n";
+        $message .= "Best regards,\nAakaari Verification Team";
+        wp_mail($applicant_email, $subject, $message);
+    }
+
+    wp_send_json_success(array('message' => 'Documentation request sent successfully'));
+    exit;
+}}
+add_action('wp_ajax_request_application_documentation', 'aakaari_request_application_documentation');
+
+/**
+ * Allow document resubmission
+ */
+if (!function_exists('aakaari_allow_document_resubmission')) {
+function aakaari_allow_document_resubmission() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    // Enable document resubmission
+    update_post_meta($application_id, 'allow_document_resubmission', 'true');
+    update_post_meta($application_id, 'resubmission_enabled_date', current_time('mysql'));
+    update_post_meta($application_id, 'resubmission_enabled_by', get_current_user_id());
+
+    // Notify applicant
+    $applicant_email = get_post_meta($application_id, 'reseller_email', true);
+    if ($applicant_email) {
+        $reseller_name = get_post_meta($application_id, 'reseller_name', true);
+        $subject = 'Document Resubmission Enabled for Your Reseller Application';
+        $message = "Dear {$reseller_name},\n\n";
+        $message .= "You can now resubmit your verification documents for your reseller application.\n\n";
+        $message .= "Please log in to your dashboard and upload new documents from your application page.\n\n";
+        $message .= "Thank you.\n\n";
+        $message .= "Best regards,\nAakaari Verification Team";
+        wp_mail($applicant_email, $subject, $message);
+    }
+
+    wp_send_json_success(array('message' => 'Document resubmission enabled successfully'));
+    exit;
+}}
+add_action('wp_ajax_allow_document_resubmission', 'aakaari_allow_document_resubmission');
+
+/**
+ * Set application cooldown
+ */
+if (!function_exists('aakaari_set_application_cooldown')) {
+function aakaari_set_application_cooldown() {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'aakaari_ajax_nonce')) {
+        wp_send_json_error(array('message' => 'Security check failed'));
+        exit;
+    }
+
+    $application_id = isset($_POST['application_id']) ? intval($_POST['application_id']) : 0;
+    $duration = isset($_POST['duration']) ? intval($_POST['duration']) : 24;
+
+    if ($application_id <= 0 || get_post_type($application_id) !== 'reseller_application') {
+        wp_send_json_error(array('message' => 'Invalid Application ID'));
+        exit;
+    }
+
+    if ($duration < 1 || $duration > 720) {
+        wp_send_json_error(array('message' => 'Invalid cooldown duration. Must be between 1 and 720 hours.'));
+        exit;
+    }
+
+    // Calculate cooldown expiry time
+    $cooldown_until = strtotime('+' . $duration . ' hours');
+    $cooldown_until_date = date('Y-m-d H:i:s', $cooldown_until);
+
+    update_post_meta($application_id, 'cooldown_until', $cooldown_until_date);
+    update_post_meta($application_id, 'cooldown_duration', $duration);
+    update_post_meta($application_id, 'cooldown_set_date', current_time('mysql'));
+    update_post_meta($application_id, 'cooldown_set_by', get_current_user_id());
+
+    // Change status to under_review or keep as pending with cooldown flag
+    update_post_meta($application_id, 'under_review', 'true');
+
+    wp_send_json_success(array(
+        'message' => 'Cooldown set successfully',
+        'cooldown_until' => $cooldown_until_date
+    ));
+    exit;
+}}
+add_action('wp_ajax_set_application_cooldown', 'aakaari_set_application_cooldown');
 
 /**************************************
  * RESELLERS MANAGEMENT FUNCTIONS
@@ -764,19 +1269,29 @@ function aakaari_get_orders($args = array()) {
     foreach ($wc_orders as $order) {
         $customer_id = $order->get_customer_id();
         $customer = $customer_id ? get_userdata($customer_id) : null;
-        
+
         // Get if the order is by a reseller
         $is_reseller = $customer && in_array('reseller', (array) $customer->roles);
-        
+
         // Process line items
         $items = $order->get_items();
         $products_count = count($items);
-        
+
+        // Check if order has customized products
+        $has_customization = false;
+        foreach ($items as $item) {
+            if ($item->get_meta('_aakaari_designs') || $item->get_meta('_aakaari_attachments') || $item->get_meta('_aakaari_preview_image')) {
+                $has_customization = true;
+                break;
+            }
+        }
+
         $orders[] = array(
             'id' => $order->get_id(),
             'orderId' => $order->get_order_number(),
             'reseller' => $is_reseller ? $customer->display_name : 'Direct Customer',
             'reseller_id' => $is_reseller ? $customer_id : 0,
+            'reseller_email' => $is_reseller && $customer ? $customer->user_email : '',
             'customer' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
             'customer_email' => $order->get_billing_email(),
             'products' => $products_count,
@@ -784,7 +1299,8 @@ function aakaari_get_orders($args = array()) {
             'status' => $order->get_status(),
             'date' => $order->get_date_created()->date('Y-m-d'),
             'paymentStatus' => $order->is_paid() ? 'paid' : 'pending',
-            'commission' => $is_reseller ? aakaari_calculate_order_commission($order, $customer_id) : 0
+            'commission' => $is_reseller ? aakaari_calculate_order_commission($order, $customer_id) : 0,
+            'has_customization' => $has_customization
         );
     }
     
@@ -1290,4 +1806,383 @@ function aakaari_register_payout_post_type() {
     register_post_type('reseller_payout', $args);
 }
 add_action('init', 'aakaari_register_payout_post_type');
+
+/**
+ * AJAX Handler: Get order details
+ */
+add_action("wp_ajax_aakaari_get_order_details", "aakaari_ajax_get_order_details");
+function aakaari_ajax_get_order_details() {
+    // Verify nonce
+    check_ajax_referer("aakaari_ajax_nonce", "nonce");
+
+    if (!current_user_can("manage_options")) {
+        wp_send_json_error(["message" => "Unauthorized"], 403);
+    }
+
+    $order_id = isset($_POST["order_id"]) ? absint($_POST["order_id"]) : 0;
+
+    if (!$order_id) {
+        wp_send_json_error(["message" => "Invalid order ID"], 400);
+    }
+
+    $order = wc_get_order($order_id);
+
+    if (!$order) {
+        wp_send_json_error(["message" => "Order not found"], 404);
+    }
+
+    // Format billing address
+    $billing_address = sprintf(
+        "%s\n%s\n%s, %s %s\n%s",
+        $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+        $order->get_billing_address_1() . ($order->get_billing_address_2() ? " " . $order->get_billing_address_2() : ""),
+        $order->get_billing_city(),
+        $order->get_billing_state(),
+        $order->get_billing_postcode(),
+        $order->get_billing_country()
+    );
+
+    // Format shipping address
+    $shipping_address = sprintf(
+        "%s\n%s\n%s, %s %s\n%s",
+        $order->get_shipping_first_name() . " " . $order->get_shipping_last_name(),
+        $order->get_shipping_address_1() . ($order->get_shipping_address_2() ? " " . $order->get_shipping_address_2() : ""),
+        $order->get_shipping_city(),
+        $order->get_shipping_state(),
+        $order->get_shipping_postcode(),
+        $order->get_shipping_country()
+    );
+
+    // Get order items with meta data
+    $items = [];
+    foreach ($order->get_items() as $item_id => $item) {
+        $product = $item->get_product();
+        $meta_display = "";
+        $preview_image = "";
+        $customization_details = "";
+
+        // Get customization meta data - NEW: Use structured attachment IDs
+        $designs_raw = $item->get_meta("_aakaari_designs");
+        $original_attachment_id = intval($item->get_meta("_aakaari_original_attachment"));
+        $preview_attachment_id = intval($item->get_meta("_aakaari_preview_attachment"));
+        $combined_attachment_id = intval($item->get_meta("_aakaari_combined_attachment"));
+        
+        // Unserialize designs if needed
+        $designs = is_string($designs_raw) ? maybe_unserialize($designs_raw) : $designs_raw;
+        
+        // Legacy support: Fallback to old meta keys if new ones don't exist
+        if ($original_attachment_id <= 0) {
+            // Try old attachments meta key
+            $attachments_raw = $item->get_meta("_aakaari_attachments");
+            $attachments = is_string($attachments_raw) ? maybe_unserialize($attachments_raw) : $attachments_raw;
+            if (!empty($attachments) && is_array($attachments)) {
+                $original_attachment_id = intval($attachments[0]);
+                error_log('Admin Dashboard - Found original via legacy _aakaari_attachments: ' . $original_attachment_id);
+            }
+            
+            // Also try extracting from designs array if still not found
+            if ($original_attachment_id <= 0 && !empty($designs) && is_array($designs)) {
+                foreach ($designs as $design) {
+                    if (isset($design['type']) && $design['type'] === 'image' && !empty($design['src'])) {
+                        $src = $design['src'];
+                        if (strpos($src, 'wp-content/uploads') !== false && strpos($src, 'data:image') === false) {
+                            $attachment_id = attachment_url_to_postid($src);
+                            if ($attachment_id) {
+                                $original_attachment_id = intval($attachment_id);
+                                error_log('Admin Dashboard - Found original via designs array extraction: ' . $original_attachment_id);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if ($preview_attachment_id <= 0) {
+            $preview_img_url = $item->get_meta("_aakaari_preview_image");
+            if ($preview_img_url) {
+                $preview_attachment_id = attachment_url_to_postid($preview_img_url);
+                if (!$preview_attachment_id) {
+                    // Try direct DB lookup
+                    global $wpdb;
+                    $preview_attachment_id = $wpdb->get_var($wpdb->prepare(
+                        "SELECT ID FROM {$wpdb->posts} WHERE guid = %s AND post_type = 'attachment' LIMIT 1",
+                        $preview_img_url
+                    ));
+                }
+                if ($preview_attachment_id) {
+                    error_log('Admin Dashboard - Found preview via legacy _aakaari_preview_image: ' . $preview_attachment_id);
+                }
+            }
+        }
+        
+        // If combined is same as preview, set it
+        if ($combined_attachment_id <= 0 && $preview_attachment_id > 0) {
+            $combined_attachment_id = $preview_attachment_id;
+        }
+
+        // Debug: Log what we found
+        error_log('Admin Dashboard - Order Item Meta Debug (Item ID: ' . $item_id . '):');
+        error_log('  - Original Attachment ID: ' . ($original_attachment_id > 0 ? $original_attachment_id : 'NOT FOUND'));
+        error_log('  - Preview Attachment ID: ' . ($preview_attachment_id > 0 ? $preview_attachment_id : 'NOT FOUND'));
+        error_log('  - Combined Attachment ID: ' . ($combined_attachment_id > 0 ? $combined_attachment_id : 'NOT FOUND'));
+
+        // Check if this is a customized product
+        $is_customized = !empty($designs) || $original_attachment_id > 0 || $preview_attachment_id > 0 || $combined_attachment_id > 0;
+
+        if ($is_customized) {
+            $meta_display .= "<div class='customization-section'>";
+
+            // Download Options Section - Three separate files with clear labels
+            $meta_display .= "<div style='margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #2271b1;'>";
+            $meta_display .= "<strong style='color: #2271b1; font-size: 14px; display: block; margin-bottom: 12px;'>Download Options:</strong>";
+            
+            // Helper function to render download option
+            $render_download_option = function($attachment_id, $label, $description) use (&$meta_display) {
+                if ($attachment_id <= 0) {
+                    $meta_display .= "<div class='download-option' style='margin-bottom: 15px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
+                    $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>" . esc_html($label) . ":</strong>";
+                    $meta_display .= "<p style='margin: 0; color: #999; font-size: 12px; font-style: italic;'>Not available</p>";
+                    $meta_display .= "</div>";
+                    return;
+                }
+                
+                $file_url = wp_get_attachment_url($attachment_id);
+                $thumb_url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
+                $file_name = basename(get_attached_file($attachment_id));
+                if (!$file_name) {
+                    $file_name = basename(parse_url($file_url, PHP_URL_PATH)) ?: 'file.png';
+                }
+                
+                if ($file_url) {
+                    $meta_display .= "<div class='download-option' style='margin-bottom: 15px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e5e7eb;'>";
+                    $meta_display .= "<strong style='color: #2271b1; font-size: 13px; display: block; margin-bottom: 8px;'>" . esc_html($label) . ":</strong>";
+                    $meta_display .= "<div style='display: flex; align-items: flex-start; gap: 12px;'>";
+                    
+                    // Thumbnail
+                    if ($thumb_url) {
+                        $meta_display .= "<img src='" . esc_url($thumb_url) . "' alt='" . esc_attr($label) . "' style='max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: contain; background: #fff;' />";
+                    } elseif ($file_url) {
+                        $meta_display .= "<img src='" . esc_url($file_url) . "' alt='" . esc_attr($label) . "' style='max-width: 150px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; object-fit: contain; background: #fff;' />";
+                    }
+                    
+                    $meta_display .= "<div style='flex: 1;'>";
+                    $meta_display .= "<p style='margin: 0 0 8px 0; color: #666; font-size: 12px;'>" . esc_html($description) . "</p>";
+                    $meta_display .= "<div style='font-size: 11px; color: #999; margin-bottom: 10px;'>" . esc_html($file_name) . "</div>";
+                    $meta_display .= "<a href='" . esc_url($file_url) . "' target='_blank' download='" . esc_attr($file_name) . "' class='button button-small' style='background:#2271b1; color:white; padding: 6px 14px; text-decoration: none; border-radius: 3px; display: inline-block; font-size: 12px; font-weight: 500;'>Download " . esc_html($label) . "</a>";
+                    $meta_display .= "</div></div></div>";
+                }
+            };
+            
+            // 1. Original Design - The exact file the user uploaded
+            $render_download_option($original_attachment_id, 'Original Design', 'The exact file the customer uploaded for customization');
+            
+            // 2. Preview Product Image - Small preview/thumbnail used in cart/checkout
+            $render_download_option($preview_attachment_id, 'Preview Product Image', 'Small preview/thumbnail used in cart and checkout');
+            
+            // 3. Combined (Product Mockup) - Generated mockup with design composited onto product
+            $render_download_option($combined_attachment_id, 'Combined (Product Mockup)', 'Complete product preview with design applied');
+            
+            $meta_display .= "</div>"; // Close download options section
+
+            // Get selected customization options from order item meta
+            $selected_fabric_id = $item->get_meta("_aakaari_selected_fabric");
+            $selected_size_id = $item->get_meta("_aakaari_selected_size");
+            $selected_color_hex = $item->get_meta("_aakaari_selected_color");
+            $selected_print_type_id = $item->get_meta("_aakaari_selected_print_type");
+            
+            // Helper function to get fabric name from ID
+            $get_fabric_name = function($fabric_id) {
+                if (empty($fabric_id)) return '';
+                $term_id = intval(str_replace('fab_', '', $fabric_id));
+                if ($term_id > 0) {
+                    $term = get_term($term_id, 'pa_fabric');
+                    if ($term && !is_wp_error($term)) {
+                        return $term->name;
+                    }
+                }
+                return $fabric_id;
+            };
+            
+            // Helper function to get size name from ID
+            $get_size_name = function($size_id) {
+                if (empty($size_id)) return '';
+                $term_id = intval(str_replace('size_', '', $size_id));
+                if ($term_id > 0) {
+                    $term = get_term($term_id, 'pa_size');
+                    if ($term && !is_wp_error($term)) {
+                        return $term->name;
+                    }
+                }
+                return $size_id;
+            };
+            
+            // Helper function to get print type name from ID
+            $get_print_type_name = function($print_type_id) {
+                if (empty($print_type_id)) return '';
+                $term_id = intval(str_replace('pt_', '', $print_type_id));
+                if ($term_id > 0) {
+                    $term = get_term($term_id, 'pa_print_type');
+                    if ($term && !is_wp_error($term)) {
+                        return $term->name;
+                    }
+                }
+                return str_replace('_', ' ', $print_type_id);
+            };
+            
+            // Helper function to get color name from hex
+            $get_color_name = function($color_hex) {
+                if (empty($color_hex)) return '';
+                // Try to find color term by hex
+                $terms = get_terms([
+                    'taxonomy' => 'pa_color',
+                    'hide_empty' => false,
+                    'meta_query' => [
+                        'relation' => 'OR',
+                        [
+                            'key' => 'hex_code',
+                            'value' => ltrim($color_hex, '#'),
+                            'compare' => '='
+                        ],
+                        [
+                            'key' => 'product_attribute_color',
+                            'value' => $color_hex,
+                            'compare' => '='
+                        ]
+                    ]
+                ]);
+                
+                if (!empty($terms) && !is_wp_error($terms)) {
+                    return $terms[0]->name;
+                }
+                
+                // Fallback to hex code
+                return $color_hex;
+            };
+            
+            // Show customization details
+            $meta_display .= "<div class='customization-details' style='margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 6px;'>";
+            $meta_display .= "<strong style='color: #2271b1;'>Customization Details:</strong><br>";
+            
+            $has_details = false;
+            
+            // Show selected color
+            if (!empty($selected_color_hex)) {
+                $color_name = $get_color_name($selected_color_hex);
+                $meta_display .= "• <strong>Color:</strong> " . esc_html($color_name) . "<br>";
+                $has_details = true;
+            }
+            
+            // Show selected fabric
+            if (!empty($selected_fabric_id)) {
+                $fabric_name = $get_fabric_name($selected_fabric_id);
+                $meta_display .= "• <strong>Fabric:</strong> " . esc_html($fabric_name) . "<br>";
+                $has_details = true;
+            }
+            
+            // Show selected size
+            if (!empty($selected_size_id)) {
+                $size_name = $get_size_name($selected_size_id);
+                $meta_display .= "• <strong>Size:</strong> " . esc_html($size_name) . "<br>";
+                $has_details = true;
+            }
+            
+            // Show selected print type (from meta or from designs)
+            if (!empty($selected_print_type_id)) {
+                $print_type_name = $get_print_type_name($selected_print_type_id);
+                $meta_display .= "• <strong>Print Method:</strong> " . esc_html($print_type_name) . "<br>";
+                $has_details = true;
+            } elseif (!empty($designs) && is_array($designs) && !empty($designs[0]["printType"])) {
+                $print_type_name = $get_print_type_name($designs[0]["printType"]);
+                if (!empty($print_type_name)) {
+                    $meta_display .= "• <strong>Print Method:</strong> " . esc_html($print_type_name) . "<br>";
+                    $has_details = true;
+                }
+            }
+            
+            // Show design-specific details if available
+            if (!empty($designs) && is_array($designs)) {
+                foreach ($designs as $index => $design) {
+                    if (count($designs) > 1) {
+                        $meta_display .= "<div style='margin-top: 8px;'><em>Design " . ($index + 1) . ":</em></div>";
+                    }
+                    if (!empty($design["side"])) {
+                        $meta_display .= "• <strong>Side:</strong> " . esc_html(ucfirst($design["side"])) . "<br>";
+                        $has_details = true;
+                    }
+                }
+            }
+            
+            if (!$has_details) {
+                $meta_display .= "<em style='color: #999;'>No customization details available</em>";
+            }
+            
+            $meta_display .= "</div>";
+
+            $meta_display .= "</div>";
+        }
+
+        $items[] = [
+            "name" => $item->get_name(),
+            "quantity" => $item->get_quantity(),
+            "price" => wc_price($item->get_subtotal() / $item->get_quantity()),
+            "total" => wc_price($item->get_total()),
+            "meta_display" => $meta_display,
+            "is_customized" => $is_customized
+        ];
+    }
+
+    $order_data = [
+        "id" => $order->get_id(),
+        "order_number" => $order->get_order_number(),
+        "date" => $order->get_date_created()->date("Y-m-d H:i:s"),
+        "status" => $order->get_status(),
+        "total" => wc_price($order->get_total()),
+        "payment_status" => $order->is_paid() ? "Paid" : "Pending",
+        "customer_name" => $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+        "customer_email" => $order->get_billing_email(),
+        "customer_phone" => $order->get_billing_phone(),
+        "billing_address" => nl2br($billing_address),
+        "shipping_address" => nl2br($shipping_address),
+        "items" => $items,
+        "notes" => $order->get_customer_note()
+    ];
+
+    wp_send_json_success($order_data);
+}
+
+/**
+ * AJAX Handler: Update order status
+ */
+add_action("wp_ajax_aakaari_update_order_status", "aakaari_ajax_update_order_status");
+function aakaari_ajax_update_order_status() {
+    // Verify nonce if you have one
+    check_ajax_referer("aakaari_ajax_nonce", "nonce");
+
+    if (!current_user_can("manage_options")) {
+        wp_send_json_error(["message" => "Unauthorized"], 403);
+    }
+
+    $order_id = isset($_POST["order_id"]) ? absint($_POST["order_id"]) : 0;
+    $new_status = isset($_POST["status"]) ? sanitize_text_field($_POST["status"]) : "";
+    $note = isset($_POST["note"]) ? sanitize_textarea_field($_POST["note"]) : "";
+
+    if (!$order_id || !$new_status) {
+        wp_send_json_error(["message" => "Invalid parameters"], 400);
+    }
+
+    $order = wc_get_order($order_id);
+
+    if (!$order) {
+        wp_send_json_error(["message" => "Order not found"], 404);
+    }
+
+    // Update order status
+    $order->update_status($new_status, $note, true);
+
+    wp_send_json_success([
+        "message" => "Order status updated successfully",
+        "new_status" => $new_status
+    ]);
+}
 

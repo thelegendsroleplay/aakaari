@@ -45,6 +45,15 @@
     margin-right: 8px;
 }
 
+.aakaari-footer .footer-logo-img {
+    height: clamp(48px, 5.5vw, 65px);
+    width: auto;
+    max-width: min(240px, 32vw);
+    object-fit: contain;
+    display: block;
+    transition: height 0.3s ease, max-width 0.3s ease;
+}
+
 .aakaari-footer .company-tagline {
     font-size: 14px;
     line-height: 1.6;
@@ -153,6 +162,11 @@
     .aakaari-footer .footer-column h3 {
         margin-top: 10px;
     }
+    
+    .aakaari-footer .footer-logo-img {
+        height: clamp(44px, 6.5vw, 58px);
+        max-width: min(220px, 38vw);
+    }
 }
 
 @media (min-width: 768px) and (max-width: 991px) {
@@ -167,5 +181,19 @@
     
     .aakaari-footer .footer-column.company-info {
         flex: 0 0 100%;
+    }
+}
+
+@media (max-width: 767px) {
+    .aakaari-footer .footer-logo-img {
+        height: clamp(42px, 7vw, 55px);
+        max-width: min(200px, 42vw);
+    }
+}
+
+@media (max-width: 480px) {
+    .aakaari-footer .footer-logo-img {
+        height: clamp(38px, 8vw, 48px);
+        max-width: min(180px, 48vw);
     }
 }

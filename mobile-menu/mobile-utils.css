@@ -1,0 +1,319 @@
+/* Mobile Menu Utilities & Enhancements */
+
+/* Prevent body scroll when menu is open */
+body.mobile-menu-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Safe area support for notched devices (iPhone X+) */
+@supports (padding: max(0px)) {
+  .mobile-menu {
+    padding-top: max(env(safe-area-inset-top), 0px);
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  
+  .mobile-menu-footer {
+    padding-bottom: calc(16px + max(env(safe-area-inset-bottom), 0px));
+  }
+}
+
+/* Smooth scrolling enhancement */
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-menu__content {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu,
+  .mobile-menu-backdrop,
+  .mobile-menu-nav__chevron,
+  .mobile-menu-nav__collapsible,
+  .mobile-menu__cta-btn,
+  .mobile-menu-actions__item,
+  .mobile-menu-nav__item,
+  .mobile-menu-nav__subitem,
+  .mobile-menu-footer__link,
+  .mobile-menu-footer__logout {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .mobile-menu {
+    border-left: 2px solid #000;
+  }
+  
+  .mobile-menu-nav__item--active {
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
+  }
+  
+  .mobile-menu-actions__badge {
+    border-width: 3px;
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .mobile-menu {
+    background-color: #1f2937;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+  
+  .mobile-menu-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .mobile-menu-header {
+    border-bottom-color: #374151;
+    background-color: #1f2937;
+  }
+  
+  .mobile-menu-header__user {
+    background-color: #111827;
+  }
+  
+  .mobile-menu-header__user:active {
+    background-color: #1f2937;
+  }
+  
+  .mobile-menu-header__user-name {
+    color: #f9fafb;
+  }
+  
+  .mobile-menu-header__user-role {
+    color: #9ca3af;
+  }
+  
+  .mobile-menu-actions__item {
+    background-color: #111827;
+  }
+  
+  .mobile-menu-actions__item:active {
+    background-color: #1e3a8a;
+  }
+  
+  .mobile-menu-actions__icon-wrapper {
+    background-color: #1f2937;
+  }
+  
+  .mobile-menu-actions__label {
+    color: #d1d5db;
+  }
+  
+  .mobile-menu-nav__section-header {
+    background-color: #111827;
+    color: #d1d5db;
+  }
+  
+  .mobile-menu-nav__section-header:active {
+    background-color: #1f2937;
+  }
+  
+  .mobile-menu-nav__item {
+    color: #d1d5db;
+  }
+  
+  .mobile-menu-nav__item:active {
+    background-color: #1f2937;
+  }
+  
+  .mobile-menu-nav__item--active {
+    background-color: #1e3a8a;
+    color: #60a5fa;
+  }
+  
+  .mobile-menu-nav__item--active:active {
+    background-color: #1e40af;
+  }
+  
+  .mobile-menu-nav__subitem {
+    color: #9ca3af;
+  }
+  
+  .mobile-menu-nav__subitem:active {
+    background-color: #1f2937;
+    color: #60a5fa;
+  }
+  
+  .mobile-menu-footer {
+    border-top-color: #374151;
+    background-color: #111827;
+  }
+  
+  .mobile-menu-footer__link {
+    color: #9ca3af;
+  }
+  
+  .mobile-menu-footer__link:active {
+    background-color: #1f2937;
+    color: #60a5fa;
+  }
+  
+  .mobile-menu-footer__logout {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+  }
+  
+  .mobile-menu-footer__logout:active {
+    background-color: #991b1b;
+  }
+  
+  .mobile-menu-footer__info p {
+    color: #6b7280;
+  }
+  
+  .mobile-menu__close-btn {
+    color: #9ca3af;
+  }
+  
+  .mobile-menu__close-btn:hover,
+  .mobile-menu__close-btn:active {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .mobile-menu {
+    max-width: 320px;
+  }
+  
+  .mobile-menu__content {
+    padding: 12px;
+  }
+  
+  .mobile-menu-header {
+    padding: 12px;
+  }
+  
+  .mobile-menu-header__logo {
+    margin-bottom: 8px;
+  }
+  
+  .mobile-menu-actions {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+  
+  .mobile-menu-nav__item {
+    padding: 10px 16px;
+  }
+  
+  .mobile-menu-footer {
+    padding: 12px;
+  }
+}
+
+/* Focus visible styles */
+.mobile-menu-nav__item:focus-visible,
+.mobile-menu-nav__subitem:focus-visible,
+.mobile-menu-actions__item:focus-visible,
+.mobile-menu-footer__link:focus-visible,
+.mobile-menu-footer__logout:focus-visible,
+.mobile-menu__close-btn:focus-visible,
+.mobile-menu-header__logo:focus-visible,
+.mobile-menu-header__user:focus-visible,
+.mobile-menu__cta-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Loading state (for future use) */
+.mobile-menu--loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.mobile-menu--loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Print styles - hide menu */
+@media print {
+  .mobile-menu,
+  .mobile-menu-backdrop {
+    display: none !important;
+  }
+}
+
+/* Prevent text selection on interactive elements */
+.mobile-menu-nav__item,
+.mobile-menu-nav__subitem,
+.mobile-menu-actions__item,
+.mobile-menu-footer__link,
+.mobile-menu-footer__logout,
+.mobile-menu__close-btn,
+.mobile-menu-header__logo,
+.mobile-menu-header__user,
+.mobile-menu__cta-btn,
+.mobile-menu-nav__section-header {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Optimize for 60fps animations */
+.mobile-menu,
+.mobile-menu-backdrop,
+.mobile-menu-nav__chevron {
+  will-change: transform, opacity;
+}
+
+/* Remove will-change after animation */
+.mobile-menu--open {
+  animation: removeWillChange 0.3s 0.3s forwards;
+}
+
+@keyframes removeWillChange {
+  to {
+    will-change: auto;
+  }
+}
+
+/* iOS momentum scrolling */
+.mobile-menu__content {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Android Chrome address bar compensation */
+@supports (-webkit-touch-callout: none) {
+  .mobile-menu {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Improve tap performance on iOS */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+button, a {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}

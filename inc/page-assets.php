@@ -22,7 +22,7 @@ function enqueue_how_it_works_scripts() {
         // JavaScript file
         wp_enqueue_script(
             'how-it-works-js',
-            get_template_directory_uri() . '/assets/js/how-it-works.js',
+            get_template_directory_uri() . '/assets/js/how-it-work.js',
             array(),
             '1.0.0',
             true
@@ -88,6 +88,60 @@ function enqueue_contact_assets() {
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_contact_assets');
+
+/**
+ * Enqueue Terms & Conditions page assets
+ */
+function enqueue_terms_conditions_assets() {
+    if (is_page_template('page-terms-conditions.php') || 
+        is_page('terms-conditions') || 
+        is_page('terms-and-conditions')) {
+        // CSS
+        wp_enqueue_style(
+            'terms-conditions-styles',
+            get_template_directory_uri() . '/assets/css/terms-conditions.css',
+            array(),
+            '1.0.0'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_terms_conditions_assets');
+
+/**
+ * Enqueue Privacy Policy page assets
+ */
+function enqueue_privacy_policy_assets() {
+    if (is_page_template('page-privacy-policy.php') || 
+        is_page('privacy-policy') || 
+        is_page('privacy')) {
+        // CSS
+        wp_enqueue_style(
+            'privacy-policy-styles',
+            get_template_directory_uri() . '/assets/css/privacy-policy.css',
+            array(),
+            '1.0.0'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_privacy_policy_assets');
+
+/**
+ * Enqueue Shipping Policy page assets
+ */
+function enqueue_shipping_policy_assets() {
+    if (is_page_template('page-shipping-policy.php') || 
+        is_page('shipping-policy') || 
+        is_page('shipping')) {
+        // CSS
+        wp_enqueue_style(
+            'shipping-policy-styles',
+            get_template_directory_uri() . '/assets/css/shipping-policy.css',
+            array(),
+            '1.0.0'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_shipping_policy_assets');
 
 /**
  * Enqueue Login page assets

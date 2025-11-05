@@ -26,7 +26,9 @@
              // These will be filled by AJAX:
              categories: [],
              wooCommerceColors: [], // Renamed for clarity, filled from 'colors' in AJAX response
-             fetchedProducts: [] // Store products fetched from AJAX separately initially
+             fetchedProducts: [], // Store products fetched from AJAX separately initially
+             sizes: [], // Size options (from WooCommerce pa_size attribute)
+             colors: [] // Color options (from WooCommerce pa_color attribute)
         };
     // --- Temporary / Form state ---
 
@@ -141,6 +143,54 @@ const wooCommerceAPI = {
                 print_type_id: printTypeId
             }
         });
+    },
+    
+    saveSize: function (size) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_size',
+                nonce: AakaariPS.nonce,
+                size_data: JSON.stringify(size)
+            }
+        });
+    },
+    
+    deleteSize: function (sizeId) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_delete_size',
+                nonce: AakaariPS.nonce,
+                size_id: sizeId
+            }
+        });
+    },
+    
+    saveColor: function (color) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_save_color',
+                nonce: AakaariPS.nonce,
+                color_data: JSON.stringify(color)
+            }
+        });
+    },
+    
+    deleteColor: function (colorId) {
+        return jQuery.ajax({
+            url: AakaariPS.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'aakaari_ps_delete_color',
+                nonce: AakaariPS.nonce,
+                color_id: colorId
+            }
+        });
     }
 };
 
@@ -160,6 +210,8 @@ const wooCommerceAPI = {
                      appState.wooCommerceColors = response.data.colors || [];
                      appState.fabrics = response.data.fabrics || [];
                      appState.printTypes = response.data.printTypes || [];
+                     appState.sizes = response.data.sizes || [];
+                     appState.colors = response.data.colors || []; // Use same colors for color tab
 
                       // Now merge fetched products into the main products list if needed, or just use fetchedProducts
                       // For simplicity, let's just replace the default products array
@@ -171,6 +223,8 @@ const wooCommerceAPI = {
                      console.log("✓ Loaded " + appState.wooCommerceColors.length + " colors from WooCommerce");
                      console.log("✓ Loaded " + appState.fabrics.length + " fabrics from WooCommerce");
                      console.log("✓ Loaded " + appState.printTypes.length + " print types from WooCommerce");
+                     console.log("✓ Loaded " + appState.sizes.length + " sizes from WooCommerce");
+                     console.log("✓ Loaded " + appState.colors.length + " colors from WooCommerce");
                      
                      if (appState.wooCommerceColors.length > 0) {
                          console.log("Colors available:", appState.wooCommerceColors.map(c => c.name).join(', '));
@@ -218,9 +272,13 @@ const wooCommerceAPI = {
       fabricForm: { name: '', description: '', price: 0 },
       printTypeForm: { name: '', description: '', pricingModel: 'per-inch', price: 0.15 },
       categoryForm: { name: '' },
+      sizeForm: { name: '' },
+      colorForm: { name: '', hex: '#808080' },
       editingFabricId: null,
       editingPrintTypeId: null,
       editingCategoryId: null,
+      editingSizeId: null,
+      editingColorId: null,
       editingSideId: null,
     };
 
@@ -345,6 +403,8 @@ const wooCommerceAPI = {
           ${appState.activeTab === 'fabrics' ? renderFabricsTab() : ''}
           ${appState.activeTab === 'printTypes' ? renderPrintTypesTab() : ''}
           ${appState.activeTab === 'categories' ? renderCategoriesTab() : ''}
+          ${appState.activeTab === 'sizes' ? renderSizesTab() : ''}
+          ${appState.activeTab === 'colors' ? renderColorsTab() : ''}
         </div>
       `;
     }
@@ -519,7 +579,9 @@ const wooCommerceAPI = {
         { id: 'products', label: 'Products', icon: 'package' },
         { id: 'fabrics', label: 'Fabrics', icon: 'layers' },
         { id: 'printTypes', label: 'Print Types', icon: 'printer' },
-        { id: 'categories', label: 'Categories', icon: 'tag' }
+        { id: 'categories', label: 'Categories', icon: 'tag' },
+        { id: 'sizes', label: 'Sizes', icon: 'ruler' },
+        { id: 'colors', label: 'Colors', icon: 'palette' }
       ];
       return `
         <div class="ps-tabs">
@@ -682,6 +744,78 @@ const wooCommerceAPI = {
       `;
     }
 
+    function renderSizesTab() {
+      return `
+        <div class="ps-tab-content-header">
+          <h3>Manage Sizes</h3>
+          <button class="ps-btn ps-btn--primary" data-action="show-size-modal">
+            <i data-lucide="plus" class="ps-icon"></i> Add Size
+          </button>
+        </div>
+        <table class="ps-table">
+          <thead>
+            <tr><th>Name</th><th>Slug</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${appState.sizes.length === 0 ? `
+              <tr><td colspan="3" class="ps-table-empty">No sizes found. Add your first size option.</td></tr>
+            ` : appState.sizes.map(s => `
+              <tr>
+                <td>${escapeHtml(s.name)}</td>
+                <td><code>${escapeHtml(s.slug || '')}</code></td>
+                <td>
+                  <button class="ps-btn ps-btn--outline ps-btn--small" data-action="show-size-modal" data-size-id="${s.id}">
+                    <i data-lucide="edit-3" class="ps-icon"></i> Edit
+                  </button>
+                  <button class="ps-btn ps-btn--destructive ps-btn--small" data-action="delete-size" data-size-id="${s.id}">
+                    <i data-lucide="trash-2" class="ps-icon"></i>
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderColorsTab() {
+      return `
+        <div class="ps-tab-content-header">
+          <h3>Manage Colors</h3>
+          <button class="ps-btn ps-btn--primary" data-action="show-color-modal">
+            <i data-lucide="plus" class="ps-icon"></i> Add Color
+          </button>
+        </div>
+        <table class="ps-table">
+          <thead>
+            <tr><th>Name</th><th>Color</th><th>Slug</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${appState.colors.length === 0 ? `
+              <tr><td colspan="4" class="ps-table-empty">No colors found. Add your first color option.</td></tr>
+            ` : appState.colors.map(c => `
+              <tr>
+                <td>${escapeHtml(c.name)}</td>
+                <td>
+                  <span class="ps-color-swatch" style="background-color: ${escapeHtml(c.hex || '#808080')}; width: 24px; height: 24px; display: inline-block; border-radius: 4px; border: 1px solid #ddd;"></span>
+                  <span style="margin-left: 8px;">${escapeHtml(c.hex || '')}</span>
+                </td>
+                <td><code>${escapeHtml(c.slug || '')}</code></td>
+                <td>
+                  <button class="ps-btn ps-btn--outline ps-btn--small" data-action="show-color-modal" data-color-id="${c.id}">
+                    <i data-lucide="edit-3" class="ps-icon"></i> Edit
+                  </button>
+                  <button class="ps-btn ps-btn--destructive ps-btn--small" data-action="delete-color" data-color-id="${c.id}">
+                    <i data-lucide="trash-2" class="ps-icon"></i>
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
     // ---------- Modal Renderers ----------
     function renderModal(title, content, footer) {
       return `
@@ -799,6 +933,68 @@ const wooCommerceAPI = {
       return renderModal(title, content, footer);
     }
 
+    function renderSizeModal() {
+      const isEditing = !!tempState.editingSizeId;
+      const form = tempState.sizeForm;
+      const title = isEditing ? 'Edit Size' : 'Add New Size';
+      const content = `
+        <div class="ps-form-column">
+          <div class="ps-form-group">
+            <label class="ps-label" for="size-name">Size Name</label>
+            <input type="text" id="size-name" class="ps-input" 
+                   value="${escapeHtml(form.name)}" data-form="sizeForm" data-prop="name" placeholder="e.g., Small, Medium, Large, XL">
+            <p class="ps-helper">This will be added to WooCommerce Size attribute.</p>
+          </div>
+        </div>
+      `;
+      const footer = `
+        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
+        <button class="ps-btn ps-btn--primary" data-action="save-size">
+          ${isEditing ? 'Save Changes' : 'Create Size'}
+        </button>
+      `;
+      return renderModal(title, content, footer);
+    }
+
+    function renderColorModal() {
+      const isEditing = !!tempState.editingColorId;
+      const form = tempState.colorForm;
+      const title = isEditing ? 'Edit Color' : 'Add New Color';
+      const content = `
+        <div class="ps-form-column">
+          <div class="ps-form-group">
+            <label class="ps-label" for="color-name">Color Name</label>
+            <input type="text" id="color-name" class="ps-input" 
+                   value="${escapeHtml(form.name)}" data-form="colorForm" data-prop="name" placeholder="e.g., Red, Blue, Black">
+            <p class="ps-helper">This will be added to WooCommerce Color attribute.</p>
+          </div>
+          <div class="ps-form-group">
+            <label class="ps-label" for="color-hex">Color Code (Hex)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="color" id="color-hex-picker" 
+                     value="${escapeHtml(form.hex || '#808080')}" 
+                     data-form="colorForm" data-prop="hex"
+                     style="width: 60px; height: 40px; cursor: pointer;">
+              <input type="text" id="color-hex" class="ps-input" 
+                     value="${escapeHtml(form.hex || '#808080')}" 
+                     data-form="colorForm" data-prop="hex" 
+                     pattern="#[0-9A-Fa-f]{6}" 
+                     placeholder="#FF0000"
+                     style="flex: 1;">
+            </div>
+            <p class="ps-helper">Choose a color or enter a hex code (e.g., #FF0000 for red).</p>
+          </div>
+        </div>
+      `;
+      const footer = `
+        <button class="ps-btn ps-btn--outline" data-action="close-modal">Cancel</button>
+        <button class="ps-btn ps-btn--primary" data-action="save-color">
+          ${isEditing ? 'Save Changes' : 'Create Color'}
+        </button>
+      `;
+      return renderModal(title, content, footer);
+    }
+
     function renderProductModal() {
       const form = tempState.productForm;
       const title = 'Edit Product Details';
@@ -897,6 +1093,25 @@ const wooCommerceAPI = {
             <p class="ps-helper" style="color: #f59e0b;">
               <i data-lucide="alert-circle" class="ps-icon"></i>
               No print types found. Please add print types in the <strong>Print Types</strong> tab.
+            </p>
+            `}
+          </div>
+          <div class="ps-form-group">
+            <label class="ps-label">Available Sizes</label>
+            ${appState.sizes.length > 0 ? `
+            <div class="ps-form-column">
+              ${appState.sizes.map(s => `
+                <label class="ps-checkbox-label">
+                  <input type="checkbox" value="${s.id}" data-form="productForm" data-prop="sizes"
+                         ${form.sizes && form.sizes.includes(s.id) ? 'checked' : ''}>
+                  <span>${escapeHtml(s.name)}</span>
+                </label>
+              `).join('')}
+            </div>
+            ` : `
+            <p class="ps-helper" style="color: #f59e0b;">
+              <i data-lucide="alert-circle" class="ps-icon"></i>
+              No sizes found. Please add sizes in the <strong>Sizes</strong> tab.
             </p>
             `}
           </div>
@@ -1666,6 +1881,8 @@ const wooCommerceAPI = {
       if (action === 'show-fabric-modal') handleShowFabricModal(data.fabricId);
       if (action === 'show-print-type-modal') handleShowPrintTypeModal(data.printTypeId);
       if (action === 'show-category-modal') handleShowCategoryModal(data.categoryId);
+      if (action === 'show-size-modal') handleShowSizeModal(data.sizeId);
+      if (action === 'show-color-modal') handleShowColorModal(data.colorId);
       if (action === 'show-product-modal') handleShowProductModal();
       
       // Modal Actions
@@ -1673,6 +1890,8 @@ const wooCommerceAPI = {
       if (action === 'save-fabric') handleSaveFabric();
       if (action === 'save-print-type') handleSavePrintType();
       if (action === 'save-category') handleSaveCategory();
+      if (action === 'save-size') handleSaveSize();
+      if (action === 'save-color') handleSaveColor();
       if (action === 'save-product-details') handleSaveProductDetails();
       if (action === 'save-side') handleSaveSide();
 
@@ -1680,6 +1899,8 @@ const wooCommerceAPI = {
       if (action === 'delete-fabric') handleDelete('fabric', data.fabricId);
       if (action === 'delete-print-type') handleDelete('printType', data.printTypeId);
       if (action === 'delete-category') handleDelete('category', data.categoryId);
+      if (action === 'delete-size') handleDelete('size', data.sizeId);
+      if (action === 'delete-color') handleDelete('color', data.colorId);
       if (action === 'delete-side') handleDeleteSide(data.sideId);
       
       // Editor Actions
@@ -2049,11 +2270,134 @@ const wooCommerceAPI = {
           renderApp(); // Redraw the dashboard
           showToast(tempState.editingCategoryId ? 'Category updated!' : 'Category added!', 'success');
         } else {
-          alert('Error saving category: ' (response.data?.message || 'Unknown error'));
+          alert('Error saving category: ' + (response.data?.message || 'Unknown error'));
           if(saveBtn) saveBtn.disabled = false;
         }
       }).catch(function(error) {
         alert('AJAX Error saving category: ' + (error.responseJSON?.data?.message || error.statusText || 'Unknown error'));
+        if(saveBtn) saveBtn.disabled = false;
+      });
+    }
+
+    function handleShowSizeModal(sizeId = null) {
+      if (sizeId) {
+        const size = appState.sizes.find(s => s.id === sizeId);
+        if (size) {
+          tempState.sizeForm = JSON.parse(JSON.stringify(size));
+          tempState.editingSizeId = sizeId;
+        } else {
+          tempState.sizeForm = { name: '' };
+          tempState.editingSizeId = null;
+        }
+      } else {
+        tempState.sizeForm = { name: '' };
+        tempState.editingSizeId = null;
+      }
+      showModal(renderSizeModal());
+    }
+
+    function handleSaveSize() {
+      const form = tempState.sizeForm;
+      if (!form.name || form.name.trim() === '') {
+        alert('Size name is required.');
+        return;
+      }
+      
+      const saveBtn = document.querySelector('#ps-modal-overlay [data-action="save-size"]');
+      if(saveBtn) saveBtn.disabled = true;
+
+      wooCommerceAPI.saveSize(form).then(function(response) {
+        if (response.success && response.data) {
+          if (tempState.editingSizeId) {
+            const index = appState.sizes.findIndex(s => s.id === tempState.editingSizeId);
+            if (index > -1) {
+              appState.sizes[index] = response.data;
+            }
+          } else {
+            appState.sizes.push(response.data);
+          }
+          closeModal();
+          renderApp();
+          showToast(tempState.editingSizeId ? 'Size updated!' : 'Size added!', 'success');
+        } else {
+          alert('Error saving size: ' + (response.data?.message || 'Unknown error'));
+          if(saveBtn) saveBtn.disabled = false;
+        }
+      }).catch(function(error) {
+        console.error('Failed to save size:', error);
+        alert('Error saving size: ' + (error.responseJSON?.data || error.statusText || 'Unknown error'));
+        if(saveBtn) saveBtn.disabled = false;
+      });
+    }
+
+    function handleShowColorModal(colorId = null) {
+      if (colorId) {
+        const color = appState.colors.find(c => c.id === colorId);
+        if (color) {
+          tempState.colorForm = JSON.parse(JSON.stringify(color));
+          tempState.editingColorId = colorId;
+        } else {
+          tempState.colorForm = { name: '', hex: '#808080' };
+          tempState.editingColorId = null;
+        }
+      } else {
+        tempState.colorForm = { name: '', hex: '#808080' };
+        tempState.editingColorId = null;
+      }
+      showModal(renderColorModal());
+      
+      // Sync color picker with text input
+      setTimeout(() => {
+        const picker = document.getElementById('color-hex-picker');
+        const textInput = document.getElementById('color-hex');
+        if (picker && textInput) {
+          picker.addEventListener('input', function() {
+            textInput.value = picker.value;
+          });
+          textInput.addEventListener('input', function() {
+            if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+              picker.value = textInput.value;
+            }
+          });
+        }
+      }, 100);
+    }
+
+    function handleSaveColor() {
+      const form = tempState.colorForm;
+      if (!form.name || form.name.trim() === '') {
+        alert('Color name is required.');
+        return;
+      }
+      
+      // Ensure hex is valid
+      if (!form.hex || !/^#[0-9A-Fa-f]{6}$/i.test(form.hex)) {
+        form.hex = '#808080'; // Default to gray if invalid
+      }
+      
+      const saveBtn = document.querySelector('#ps-modal-overlay [data-action="save-color"]');
+      if(saveBtn) saveBtn.disabled = true;
+
+      wooCommerceAPI.saveColor(form).then(function(response) {
+        if (response.success && response.data) {
+          if (tempState.editingColorId) {
+            const index = appState.colors.findIndex(c => c.id === tempState.editingColorId);
+            if (index > -1) {
+              appState.colors[index] = response.data;
+            }
+          } else {
+            appState.colors.push(response.data);
+          }
+          closeModal();
+          renderApp();
+          showToast(tempState.editingColorId ? 'Color updated!' : 'Color added!', 'success');
+        } else {
+          alert('Error saving color: ' + (response.data?.message || 'Unknown error'));
+          if(saveBtn) saveBtn.disabled = false;
+        }
+      }).catch(function(error) {
+        console.error('Failed to save color:', error);
+        alert('Error saving color: ' + (error.responseJSON?.data || error.statusText || 'Unknown error'));
         if(saveBtn) saveBtn.disabled = false;
       });
     }
@@ -2063,6 +2407,8 @@ const wooCommerceAPI = {
             'fabric': { stateKey: 'fabrics', name: 'Fabric', apiMethod: 'deleteFabric' },
             'printType': { stateKey: 'printTypes', name: 'Print Type', apiMethod: 'deletePrintType' },
             'category': { stateKey: 'categories', name: 'Category', apiMethod: 'deleteCategory' },
+            'size': { stateKey: 'sizes', name: 'Size', apiMethod: 'deleteSize' },
+            'color': { stateKey: 'colors', name: 'Color', apiMethod: 'deleteColor' },
         };
         const config = typeMap[type];
         if (!config) return;
@@ -2109,6 +2455,11 @@ const wooCommerceAPI = {
       // Ensure availablePrintTypes array exists
       if (!Array.isArray(tempState.productForm.availablePrintTypes)) {
         tempState.productForm.availablePrintTypes = [];
+      }
+      
+      // Ensure sizes array exists
+      if (!Array.isArray(tempState.productForm.sizes)) {
+        tempState.productForm.sizes = [];
       }
       
       showModal(renderProductModal());

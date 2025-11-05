@@ -45,6 +45,14 @@
     text-decoration: none;
 }
 
+.checkout-logo-img {
+    height: 35px;
+    width: auto;
+    max-width: 150px;
+    object-fit: contain;
+    display: block;
+}
+
 .checkout-header .secure-badge {
     display: flex;
     align-items: center;

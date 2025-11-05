@@ -36,6 +36,14 @@
     color: #2563eb;
 }
 
+.header-logo-img {
+    height: 45px;
+    width: auto;
+    max-width: 180px;
+    object-fit: contain;
+    display: block;
+}
+
 .header-brand-name {
     font-size: 1.5rem;
     font-weight: 600;

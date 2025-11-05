@@ -29,6 +29,7 @@ if (!is_dir($inc_dir)) {
 // List of required files
 $required_files = array(
     'theme-setup.php',
+    'theme-pages-setup.php', // Automatic page creation
     'woocommerce.php',
     'page-assets.php',
     'reseller-cta.php',
@@ -51,6 +52,10 @@ $required_files = array(
     'order-emails.php',
     'order-tracking-ajax.php',
     'order-tracking-admin.php',
+    // New enhancements
+    // 'cod-otp-verification.php', // Disabled COD OTP verification as per request
+    'verified-seller-restrictions.php',
+    'admin-color-variant-images.php',
 );
 
 // Load each file with error checking
@@ -163,7 +168,13 @@ add_action('wp_enqueue_scripts', function () {
         'cartUrl' => wc_get_cart_url(),
     ]);
 }, /* priority */ 9999);   // <- important: load last
-// Include the shipping debug tool for admins
-if (is_admin() || current_user_can('manage_options')) {
-    require_once get_stylesheet_directory() . '/woocommerce-shipping-debug.php';
-}
+/**
+ * Load Product Customizer System v2.0
+ * 
+ * Comprehensive product customization system with:
+ * - Color-specific mockups
+ * - Print area enforcement
+ * - WooCommerce cart/order integration
+ * - Fabric.js canvas editor
+ */
+require_once get_stylesheet_directory() . '/inc/customizer/init.php';

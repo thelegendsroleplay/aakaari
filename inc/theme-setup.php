@@ -134,14 +134,22 @@ add_action('wp_enqueue_scripts', 'aakaari_main_enqueue_assets', 20);
  * Enqueue header assets
  */
 function enqueue_aakaari_header_assets() {
+    // Font Awesome for mobile menu icons
+    wp_enqueue_style(
+        'font-awesome',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
+        array(),
+        '6.0.0'
+    );
+
     // Header styles
     wp_enqueue_style(
         'aakaari-header-styles',
         get_template_directory_uri() . '/assets/css/header.css',
-        array(),
+        array('font-awesome'),
         '1.0.0'
     );
-    
+
     // Header scripts
     wp_enqueue_script(
         'aakaari-header-script',
@@ -165,3 +173,29 @@ function enqueue_aakaari_footer_assets() {
     );
 }
 add_action('wp_enqueue_scripts', 'enqueue_aakaari_footer_assets');
+
+/**
+ * Enqueue How It Works page assets
+ */
+function enqueue_how_it_works_assets() {
+    // Only load on the How It Works page
+    if (is_page_template('how-it-works.php') || is_page('how-it-works')) {
+        // How It Works CSS
+        wp_enqueue_style(
+            'aakaari-how-it-works-styles',
+            get_template_directory_uri() . '/assets/css/how-it-works.css',
+            array(),
+            '1.0.1'
+        );
+
+        // How It Works JavaScript
+        wp_enqueue_script(
+            'aakaari-how-it-works-script',
+            get_template_directory_uri() . '/assets/js/how-it-works.js',
+            array(),
+            '1.0.1',
+            true
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_how_it_works_assets');

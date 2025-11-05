@@ -184,6 +184,25 @@ function aakaari_ps_load_data() {
             }
         }
 
+        // --- Get Sizes ---
+        $size_terms = get_terms([
+            'taxonomy'   => 'pa_size',
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC'
+        ]);
+        
+        $sizes = [];
+        if (!is_wp_error($size_terms) && !empty($size_terms)) {
+            foreach ($size_terms as $term) {
+                $sizes[] = [
+                    'id' => 'size_' . $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                ];
+            }
+        }
+
         // --- Get Existing Print Studio Products ---
         $product_query = new WP_Query([
             'post_type'      => 'product',
@@ -224,7 +243,9 @@ function aakaari_ps_load_data() {
                     'category'            => $first_category,
                     'isActive'            => $wc_product->get_status() === 'publish',
                     'colors'              => $studio_data['colors'] ?? [],
+                    'fabrics'             => $studio_data['fabrics'] ?? [],
                     'availablePrintTypes' => $studio_data['printTypes'] ?? [],
+                    'sizes'               => $studio_data['sizes'] ?? [],
                     'sides'               => $studio_data['sides'] ?? [],
                 ];
             }
@@ -237,6 +258,7 @@ function aakaari_ps_load_data() {
             'colors'      => $colors,
             'fabrics'     => $fabrics,
             'printTypes'  => $print_types,
+            'sizes'       => $sizes,
         ]);
 
     } catch (Exception $e) {
@@ -244,6 +266,77 @@ function aakaari_ps_load_data() {
     }
 }
 add_action('wp_ajax_aakaari_ps_load_data', 'aakaari_ps_load_data');
+
+/**
+ * Helper Function: Get or create attachment from URL
+ * Downloads an image from a URL and creates a WordPress attachment
+ * Returns attachment ID or false on failure
+ */
+function aakaari_ps_get_or_create_attachment_from_url($image_url, $post_id = 0) {
+    // Validate URL
+    if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
+        return false;
+    }
+
+    // Check if this URL already exists as an attachment
+    global $wpdb;
+    $attachment = $wpdb->get_col($wpdb->prepare(
+        "SELECT ID FROM {$wpdb->posts} WHERE guid = %s AND post_type = 'attachment' LIMIT 1",
+        $image_url
+    ));
+
+    if (!empty($attachment)) {
+        return $attachment[0];
+    }
+
+    // Include required WordPress files
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+    // Download the image
+    $tmp = download_url($image_url);
+
+    if (is_wp_error($tmp)) {
+        error_log("Aakaari PS: Failed to download image from {$image_url}: " . $tmp->get_error_message());
+        return false;
+    }
+
+    // Get the filename and extension
+    $file_array = array();
+    preg_match('/[^\?]+\.(jpg|jpeg|gif|png|webp)/i', $image_url, $matches);
+
+    if (empty($matches)) {
+        // If we can't get extension from URL, try to get it from the downloaded file
+        $image_info = getimagesize($tmp);
+        if ($image_info && isset($image_info['mime'])) {
+            $ext = image_type_to_extension($image_info[2], false);
+            $file_array['name'] = 'product-image-' . uniqid() . '.' . $ext;
+        } else {
+            $file_array['name'] = 'product-image-' . uniqid() . '.jpg';
+        }
+    } else {
+        $file_array['name'] = basename($matches[0]);
+    }
+
+    $file_array['tmp_name'] = $tmp;
+
+    // Handle the upload
+    $attachment_id = media_handle_sideload($file_array, $post_id, null);
+
+    // Clean up temp file
+    if (is_file($tmp)) {
+        @unlink($tmp);
+    }
+
+    // Check for errors
+    if (is_wp_error($attachment_id)) {
+        error_log("Aakaari PS: Failed to create attachment: " . $attachment_id->get_error_message());
+        return false;
+    }
+
+    return $attachment_id;
+}
 
 /**
  * AJAX Handler: Saves a Product (Creates or Updates)
@@ -344,11 +437,12 @@ function aakaari_ps_save_product() {
             'colors'     => isset($product_data['colors']) ? array_map('sanitize_text_field', $product_data['colors']) : [],
             'fabrics'    => isset($product_data['fabrics']) ? array_map('sanitize_text_field', $product_data['fabrics']) : [],
             'printTypes' => isset($product_data['availablePrintTypes']) ? array_map('sanitize_text_field', $product_data['availablePrintTypes']) : [],
+            'sizes'      => isset($product_data['sizes']) ? array_map('sanitize_text_field', $product_data['sizes']) : [],
             'sides'      => $sanitized_sides, // Use sanitized sides
         ];
 
         $product->update_meta_data('_aakaari_print_studio_data', $studio_data);
-        
+
         // **Sync to WooCommerce product attributes**
         if (!empty($studio_data['colors']) && is_array($studio_data['colors'])) {
             aakaari_ps_sync_colors_to_attribute($product, $studio_data['colors']);
@@ -359,8 +453,27 @@ function aakaari_ps_save_product() {
         if (!empty($studio_data['printTypes']) && is_array($studio_data['printTypes'])) {
             aakaari_ps_sync_print_types_to_attribute($product, $studio_data['printTypes']);
         }
+        if (!empty($studio_data['sizes']) && is_array($studio_data['sizes'])) {
+            aakaari_ps_sync_sizes_to_attribute($product, $studio_data['sizes']);
+        }
 
         $new_product_id = $product->save();
+
+        // **Set Featured Image from first side image**
+        // This ensures WooCommerce displays the product image properly
+        if (!empty($sanitized_sides) && isset($sanitized_sides[0]['imageUrl']) && !empty($sanitized_sides[0]['imageUrl'])) {
+            $image_url = $sanitized_sides[0]['imageUrl'];
+            $attachment_id = aakaari_ps_get_or_create_attachment_from_url($image_url, $new_product_id);
+
+            if ($attachment_id) {
+                set_post_thumbnail($new_product_id, $attachment_id);
+                error_log("Aakaari PS: Set featured image (attachment #{$attachment_id}) for product #{$new_product_id}");
+            } else {
+                error_log("Aakaari PS: Failed to create attachment for product #{$new_product_id} from URL: {$image_url}");
+            }
+        } else {
+            error_log("Aakaari PS: No side image available to set as featured image for product #{$new_product_id}");
+        }
 
         if ($new_product_id === 0) {
              throw new Exception('Failed to save product to WooCommerce.');
@@ -385,6 +498,7 @@ function aakaari_ps_save_product() {
             'colors'              => is_array($final_studio_data) && isset($final_studio_data['colors']) ? $final_studio_data['colors'] : [],
             'fabrics'             => is_array($final_studio_data) && isset($final_studio_data['fabrics']) ? $final_studio_data['fabrics'] : [],
             'availablePrintTypes' => is_array($final_studio_data) && isset($final_studio_data['printTypes']) ? $final_studio_data['printTypes'] : [],
+            'sizes'               => is_array($final_studio_data) && isset($final_studio_data['sizes']) ? $final_studio_data['sizes'] : [],
             'sides'               => is_array($final_studio_data) && isset($final_studio_data['sides']) ? $final_studio_data['sides'] : [],
         ];
 
@@ -795,7 +909,169 @@ function aakaari_ps_sync_print_types_to_attribute($product, $print_type_ids) {
     }
 }
 
+/**
+ * Sync Print Studio sizes (IDs) to WooCommerce product attribute (pa_size)
+ * This updates the product's size attribute with the selected sizes
+ * 
+ * @param WC_Product $product The product object
+ * @param array $size_ids Array of size IDs like ['size_123', 'size_456']
+ */
+function aakaari_ps_sync_sizes_to_attribute($product, $size_ids) {
+    if (empty($size_ids) || !is_array($size_ids)) {
+        return;
+    }
+    
+    $attribute_taxonomy = 'pa_size';
+    
+    if (!taxonomy_exists($attribute_taxonomy)) {
+        error_log('Warning: pa_size taxonomy does not exist. Sizes not synced to product attribute.');
+        return;
+    }
+    
+    $term_ids = array();
+    
+    foreach ($size_ids as $size_id) {
+        // Extract term ID from 'size_123' format
+        $term_id = intval(str_replace('size_', '', $size_id));
+        
+        if ($term_id > 0 && term_exists($term_id, $attribute_taxonomy)) {
+            $term_ids[] = $term_id;
+        } else {
+            error_log("Size term ID $term_id not found in pa_size taxonomy");
+        }
+    }
+    
+    if (!empty($term_ids)) {
+        wp_set_object_terms($product->get_id(), $term_ids, $attribute_taxonomy);
+        
+        $attributes = $product->get_attributes();
+        
+        $size_attribute = new WC_Product_Attribute();
+        $size_attribute->set_id(wc_attribute_taxonomy_id_by_name($attribute_taxonomy));
+        $size_attribute->set_name($attribute_taxonomy);
+        $size_attribute->set_options($term_ids);
+        $size_attribute->set_visible(true);
+        $size_attribute->set_variation(false);
+        
+        $attributes[$attribute_taxonomy] = $size_attribute;
+        $product->set_attributes($attributes);
+        
+        error_log('Synced ' . count($term_ids) . ' sizes to product attribute pa_size');
+    }
+}
+
 // Hook the new upload handler
 add_action('wp_ajax_aakaari_ps_upload_side_image', 'aakaari_ps_upload_side_image');
+
+/**
+ * AJAX Handler: Upload color-specific mockup image
+ * Action: aakaari_ps_upload_color_mockup
+ */
+function aakaari_ps_upload_color_mockup() {
+    aakaari_ps_ajax_check(); // Security check
+
+    if (empty($_FILES['color_mockup_file'])) {
+        wp_send_json_error('No file uploaded.', 400);
+    }
+
+    if (empty($_POST['color'])) {
+        wp_send_json_error('No color specified.', 400);
+    }
+
+    $color = sanitize_text_field($_POST['color']);
+    $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
+
+    $file = $_FILES['color_mockup_file'];
+
+    // Use WordPress's media uploader
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+
+    // Allow common image types
+    $allowed_mime_types = array(
+        'jpg|jpeg|jpe' => 'image/jpeg',
+        'png'          => 'image/png',
+        'gif'          => 'image/gif',
+        'webp'         => 'image/webp',
+    );
+
+    // Upload the file to the media library
+    $attachment_id = media_handle_upload('color_mockup_file', $product_id, array(), array(
+        'mimes' => $allowed_mime_types,
+        'test_form' => false
+    ));
+
+    if (is_wp_error($attachment_id)) {
+        wp_send_json_error('Upload Error: ' . $attachment_id->get_error_message(), 500);
+    }
+
+    // Get the URL of the uploaded image
+    $image_url = wp_get_attachment_image_url($attachment_id, 'full');
+
+    if (!$image_url) {
+        wp_delete_attachment($attachment_id, true); // Clean up
+        wp_send_json_error('Failed to get image URL after upload.', 500);
+    }
+
+    // Send back the attachment ID and URL
+    wp_send_json_success(array(
+        'message'       => 'Color mockup uploaded successfully.',
+        'attachment_id' => $attachment_id,
+        'url'           => $image_url,
+        'color'         => $color
+    ));
+}
+add_action('wp_ajax_aakaari_ps_upload_color_mockup', 'aakaari_ps_upload_color_mockup');
+
+/**
+ * AJAX Handler: Save color mockups with print areas
+ * Action: aakaari_ps_save_color_mockups
+ */
+function aakaari_ps_save_color_mockups() {
+    aakaari_ps_ajax_check(); // Security check
+
+    $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
+    $color_mockups = isset($_POST['color_mockups']) ? $_POST['color_mockups'] : array();
+
+    if (!$product_id) {
+        wp_send_json_error('Invalid product ID.', 400);
+    }
+
+    // Sanitize and validate color mockups data
+    $sanitized_mockups = array();
+    foreach ($color_mockups as $color => $mockup_data) {
+        $color_hex = sanitize_text_field($color);
+
+        $sanitized_mockups[$color_hex] = array(
+            'attachment_id' => isset($mockup_data['attachment_id']) ? absint($mockup_data['attachment_id']) : 0,
+            'url' => isset($mockup_data['url']) ? esc_url_raw($mockup_data['url']) : '',
+            'print_area' => array(
+                'x' => isset($mockup_data['print_area']['x']) ? floatval($mockup_data['print_area']['x']) : 0,
+                'y' => isset($mockup_data['print_area']['y']) ? floatval($mockup_data['print_area']['y']) : 0,
+                'width' => isset($mockup_data['print_area']['width']) ? floatval($mockup_data['print_area']['width']) : 100,
+                'height' => isset($mockup_data['print_area']['height']) ? floatval($mockup_data['print_area']['height']) : 100,
+            )
+        );
+    }
+
+    // Save to product meta
+    update_post_meta($product_id, '_aakaari_color_mockups', $sanitized_mockups);
+
+    // Also update the color variant images for backward compatibility
+    $variant_images = array();
+    foreach ($sanitized_mockups as $color => $mockup_data) {
+        if (!empty($mockup_data['attachment_id'])) {
+            $variant_images[$color] = $mockup_data['attachment_id'];
+        }
+    }
+    update_post_meta($product_id, '_aakaari_color_variant_images', $variant_images);
+
+    wp_send_json_success(array(
+        'message' => 'Color mockups saved successfully.',
+        'mockups' => $sanitized_mockups
+    ));
+}
+add_action('wp_ajax_aakaari_ps_save_color_mockups', 'aakaari_ps_save_color_mockups');
 
 ?>

@@ -5,19 +5,21 @@
 
 defined('ABSPATH') || exit;
 
-// Get order from URL parameter
-$order_id = isset($_GET['order']) ? absint($_GET['order']) : 0;
-$order_key = isset($_GET['key']) ? wc_clean(wp_unslash($_GET['key'])) : '';
+// Get the order ID from the endpoint URL.
+global $wp;
+$order_id = !empty($wp->query_vars['order-received']) ? absint($wp->query_vars['order-received']) : 0;
+$order_key = isset($_GET['key']) ? wc_clean(wp_unslash($_GET['key'])) : ''; // The key is still a GET parameter.
 
 if ($order_id > 0) {
     $order = wc_get_order($order_id);
 
     // Verify order key for security
-    if (!$order || !hash_equals($order->get_order_key(), $order_key)) {
+    // Also check if the order belongs to the current user if they are logged in.
+    if (!$order || !hash_equals($order->get_order_key(), $order_key) || (is_user_logged_in() && $order->get_customer_id() !== get_current_user_id())) {
         $order = false;
     }
 } else {
-    $order = false;
+    $order = false; // No order ID found in the URL.
 }
 ?>
 

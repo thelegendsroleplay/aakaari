@@ -59,7 +59,7 @@ if ($q->have_posts()) {
 
 if (!$approved) {
     // If application exists but not approved, send to pending page
-    if ($status === 'pending' || $status === 'rejected') {
+    if ($status !== 'not-submitted') {
         wp_redirect(site_url('/application-pending/'));
         exit;
     } else {
@@ -114,8 +114,18 @@ if (empty($wallet_balance)) {
     update_user_meta($current_user->ID, 'wallet_balance', $wallet_balance);
 }
 
-// Get active products count (you may need to adjust this based on your setup)
-$active_products = 45; // Example static value, replace with dynamic data
+// Get active products count from WooCommerce
+$active_products = 0;
+if (class_exists('WooCommerce')) {
+    $product_args = array(
+        'post_type' => 'product',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'fields' => 'ids'
+    );
+    $products = get_posts($product_args);
+    $active_products = count($products);
+}
 
 // Recent orders (last 3)
 $recent_orders = wc_get_orders(array(
@@ -125,30 +135,19 @@ $recent_orders = wc_get_orders(array(
     'order' => 'DESC',
 ));
 
-// Recent transactions (for wallet section)
-$transactions = array(
-    array(
-        'id' => 'TXN-001',
-        'type' => 'Credit',
-        'description' => 'Commission from #ORD-1234',
-        'date' => '2025-10-15',
-        'amount' => 925
-    ),
-    array(
-        'id' => 'TXN-002',
-        'type' => 'Debit',
-        'description' => 'Withdrawal to bank',
-        'date' => '2025-10-14',
-        'amount' => -5000
-    ),
-    array(
-        'id' => 'TXN-003',
-        'type' => 'Credit',
-        'description' => 'Commission from #ORD-1233',
-        'date' => '2025-10-13',
-        'amount' => 1200
-    ),
-);
+// Recent transactions (for wallet section) - get from user meta
+$transactions = get_user_meta($current_user->ID, 'wallet_transactions', true);
+if (!is_array($transactions)) {
+    $transactions = array();
+}
+
+// Sort transactions by date (most recent first)
+usort($transactions, function($a, $b) {
+    return strcmp($b['date'], $a['date']);
+});
+
+// Limit to last 10 transactions for display
+$transactions = array_slice($transactions, 0, 10);
 
 // Calculate monthly goal percentage
 $goal_percentage = ($current_month_earnings / $monthly_goal) * 100;
