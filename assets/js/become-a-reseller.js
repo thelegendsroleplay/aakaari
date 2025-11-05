@@ -23,17 +23,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log(`[File Upload Debug] Setting up event listeners for ${inputId}`);
 
-        // Track if we're already processing a click to prevent re-entry
+        // Global flag to prevent multiple simultaneous triggers
         let isProcessing = false;
+        let processingTimeout = null;
 
         // Handle file selection
         fileInput.addEventListener('change', function(e) {
             console.log(`[File Upload Debug] ${inputId} - Change event fired`, {
-                filesSelected: this.files.length,
-                isProcessing: isProcessing
+                filesSelected: this.files.length
             });
             updateSelectedFileInfo(this.files, selectedFileDiv, fileInput);
-            isProcessing = false; // Reset after file selection
+            // Reset processing flag when file is selected or cancelled
+            isProcessing = false;
+            if (processingTimeout) {
+                clearTimeout(processingTimeout);
+                processingTimeout = null;
+            }
         });
 
         // Handle drag and drop for file upload
@@ -61,31 +66,50 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Click on upload area triggers file input
-        fileUploadArea.addEventListener('click', function(e) {
-            console.log(`[File Upload Debug] ${inputId} - Upload area clicked`, {
+        // Use pointerdown instead of touch/click to handle all input types uniformly
+        // This works for mouse, touch, and pen without conflicts
+        fileUploadArea.addEventListener('pointerdown', function(e) {
+            console.log(`[File Upload Debug] ${inputId} - Pointer down`, {
+                pointerType: e.pointerType,
                 isProcessing: isProcessing,
-                target: e.target.className,
-                currentTarget: e.currentTarget.className
+                button: e.button
             });
 
-            // Prevent re-entry if already processing
+            // Only handle primary button (left click or touch)
+            if (e.button !== 0) return;
+
+            // Prevent default to stop any additional events from firing
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Strict guard: if already processing, completely ignore
             if (isProcessing) {
                 console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing`);
-                return;
+                return false;
             }
 
+            // Set processing flag immediately
             isProcessing = true;
-            console.log(`[File Upload Debug] ${inputId} - Triggering fileInput.click()`);
+            console.log(`[File Upload Debug] ${inputId} - Opening file dialog (${e.pointerType})`);
+
+            // Trigger file input
             fileInput.click();
 
-            // Reset after a short delay (in case user cancels immediately)
-            setTimeout(() => {
-                if (isProcessing) {
-                    console.log(`[File Upload Debug] ${inputId} - Timeout reset (user likely cancelled)`);
-                    isProcessing = false;
-                }
-            }, 500);
+            // Safety timeout: reset if dialog is cancelled quickly
+            processingTimeout = setTimeout(() => {
+                console.log(`[File Upload Debug] ${inputId} - Timeout reset`);
+                isProcessing = false;
+            }, 1000);
+        });
+
+        // Block all other events that might interfere
+        ['click', 'touchstart', 'touchend', 'mousedown'].forEach(eventType => {
+            fileUploadArea.addEventListener(eventType, function(e) {
+                console.log(`[File Upload Debug] ${inputId} - ${eventType} event BLOCKED`);
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }, { capture: true });
         });
     });
 

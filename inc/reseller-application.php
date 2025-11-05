@@ -32,7 +32,7 @@ function aar_enqueue_reseller_assets() {
         'become-reseller-js',
         get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js',
         array(),
-        '2.1', // Debug version: Added logging and re-entry prevention
+        '2.3', // Pointer Events API: Unified input handling + aggressive event blocking
         true
     );
 }
