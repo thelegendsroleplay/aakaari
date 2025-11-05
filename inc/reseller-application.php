@@ -29,10 +29,10 @@ function aar_enqueue_reseller_assets() {
     );
     
     wp_enqueue_script(
-        'become-reseller-js', 
-        get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js', 
-        array(), 
-        '1.0', 
+        'become-reseller-js',
+        get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js',
+        array(),
+        '1.1', // Fixed double file upload dialog issue
         true
     );
 }
