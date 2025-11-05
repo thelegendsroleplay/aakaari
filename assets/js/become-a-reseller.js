@@ -46,7 +46,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Click on upload area triggers file input
-        fileUploadArea.addEventListener('click', function() {
+        // But NOT if the click was already on the file input itself (prevents double trigger)
+        fileUploadArea.addEventListener('click', function(e) {
+            // Don't trigger if user clicked directly on the file input
+            if (e.target === fileInput) {
+                return;
+            }
             fileInput.click();
         });
     });
