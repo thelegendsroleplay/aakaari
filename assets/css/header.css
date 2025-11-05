@@ -368,7 +368,7 @@ body {
     height: 100vh;
     height: 100dvh; /* Dynamic viewport height for mobile browsers */
     background-color: white;
-    padding: 20px;
+    padding: 20px 20px 20px 0;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -383,6 +383,7 @@ body {
     position: absolute;
     top: 20px;
     right: 20px;
+    left: auto;
     background: #f1f4f8;
     border: none;
     width: 36px;
@@ -394,6 +395,7 @@ body {
     cursor: pointer;
     transition: background 0.2s ease;
     z-index: 10;
+    margin-left: 20px;
   }
 
   .mobile-menu-close:hover {
@@ -413,6 +415,7 @@ body {
     padding: 10px 15px;
     border-radius: var(--border-radius-small);
     margin-bottom: 20px;
+    margin-left: 20px;
   }
 
   .search-bar i {
@@ -441,6 +444,7 @@ body {
     justify-content: space-between;
     padding: 15px;
     margin-bottom: 30px;
+    margin-left: 20px;
     background-color: var(--light-blue-bg);
     border-radius: var(--border-radius-small);
     cursor: pointer;
@@ -512,6 +516,7 @@ body {
   /* Menu Sections */
   .menu-section {
     margin-bottom: 20px;
+    margin-left: 20px;
   }
 
   .section-title {
@@ -519,7 +524,7 @@ body {
     font-weight: bold;
     color: var(--section-title-color);
     margin-bottom: 15px;
-    padding-left: 10px;
+    padding-left: 0;
     letter-spacing: 0.5px;
   }
 
@@ -597,6 +602,7 @@ body {
   /* Bottom Actions */
   .bottom-actions {
     margin-top: 30px;
+    margin-left: 20px;
     padding-top: 20px;
     border-top: 1px solid #f1f4f8;
   }
@@ -685,12 +691,20 @@ body {
 
   .sidebar-container {
     max-width: 100%;
-    padding: 16px;
+    padding: 16px 16px 16px 0;
   }
 
   .mobile-menu-close {
     top: 16px;
     right: 16px;
+    margin-left: 16px;
+  }
+
+  .search-bar,
+  .user-profile,
+  .menu-section,
+  .bottom-actions {
+    margin-left: 16px;
   }
 }
 
@@ -705,7 +719,18 @@ body {
   }
 
   .sidebar-container {
-    padding: 14px;
+    padding: 14px 14px 14px 0;
+  }
+
+  .search-bar,
+  .user-profile,
+  .menu-section,
+  .bottom-actions {
+    margin-left: 14px;
+  }
+
+  .mobile-menu-close {
+    margin-left: 14px;
   }
 }
 
