@@ -330,9 +330,9 @@ get_header();
         <h2>Ready to Build Your Brand?</h2>
         <p>Start selling with Aakaari as your backend partner. No minimum orders, set your own prices, keep 100% of your profit.</p>
         <div class="cta-button-wrapper">
-            <a href="<?php echo esc_url(get_permalink(get_option('reseller_page_id'))); ?>" class="btn-reseller-cta">
-                Apply to Become a Reseller
-            </a>
+            <a href="<?php echo esc_url(home_url('/become-a-reseller/')); ?>" class="btn-reseller-cta">
+       Apply to Become a Reseller
+           </a>
         </div>
     </div>
 </section>
