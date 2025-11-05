@@ -311,10 +311,9 @@ if (is_front_page()) {
                 </a>
             </div>
             <?php endif; ?>
-        </div>
 
-        <!-- Footer -->
-        <div class="mobile-menu-footer">
+            <!-- Footer -->
+            <div class="mobile-menu-footer">
             <!-- Quick Links -->
             <div class="mobile-menu-footer__links">
                 <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="mobile-menu-footer__link">
@@ -357,9 +356,10 @@ if (is_front_page()) {
 
             <!-- Version Info -->
             <div class="mobile-menu-footer__info">
-                <p>Aakaari Platform v1.0.0</p>
+                <p>Aakaari Platform v1.0.2</p>
                 <p>&copy; <?php echo date('Y'); ?> All rights reserved</p>
             </div>
-        </div>
-    </div>
-</div>
+            </div> <!-- /.mobile-menu-footer -->
+        </div> <!-- /.mobile-menu__content -->
+    </div> <!-- /.mobile-menu__container -->
+</div> <!-- /.mobile-menu -->
