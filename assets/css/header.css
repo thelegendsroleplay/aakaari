@@ -254,89 +254,9 @@
     order: -1;
   }
 
-  /* Mobile Navigation Menu */
+  /* Hide old navigation menu on mobile - using new mobile menu system */
   .aakaari-header .main-navigation {
-    position: fixed;
-    top: 60px;
-    left: -100%;
-    width: 100%;
-    height: calc(100vh - 60px);
-    background: white;
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0;
-    margin: 0;
-    z-index: 99;
-    transition: left 0.3s ease;
-    overflow-y: auto;
-    box-shadow: var(--shadow-lg);
-    gap: 0;
-  }
-
-  .aakaari-header .main-navigation.active {
-    left: 0;
-  }
-
-  .aakaari-header .nav-menu {
-    flex-direction: column;
-    gap: 0;
-    width: 100%;
-    flex: 0 0 auto;
-  }
-
-  .aakaari-header .nav-menu li {
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .aakaari-header .nav-menu a {
-    padding: 16px 20px;
-    border-bottom: none;
-    font-size: 16px;
-    font-weight: 500;
-  }
-
-  .aakaari-header .nav-menu a:hover,
-  .aakaari-header .nav-menu .current-menu-item a {
-    background-color: #EFF6FF;
-    color: var(--primary-color);
-    border-bottom: none;
-  }
-
-  /* Auth Buttons in Mobile Menu */
-  .aakaari-header .auth-buttons {
-    flex-direction: column;
-    gap: 12px;
-    padding: 20px;
-    border-top: 2px solid var(--border-color);
-    margin-top: auto;
-    width: 100%;
-  }
-
-  .aakaari-header .login-btn {
-    padding: 14px 20px;
-    justify-content: center;
-    border-radius: 6px;
-    background-color: transparent;
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    gap: 8px;
-    font-size: 15px;
-  }
-
-  .aakaari-header .login-btn span {
-    display: inline;
-  }
-
-  .aakaari-header .login-btn:hover {
-    background-color: var(--primary-color);
-    color: white;
-  }
-
-  .aakaari-header .btn-reseller-header {
-    width: 100%;
-    text-align: center;
-    padding: 14px 20px;
-    font-size: 15px;
+    display: none;
   }
 }
 
