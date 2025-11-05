@@ -238,9 +238,9 @@
             </div>
         </button>
     </div>
-    <script src="https://cdn.tailwindcss.com"></script>
 </header>
 
-<?php wp_footer(); ?>
-</body>
-</html>
+<?php
+// Include mobile menu
+get_template_part('template-parts/mobile-menu');
+?>
