@@ -3,6 +3,8 @@
  * Handles file upload, validation, and form interactions
  */
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[File Upload Debug] Script loaded and DOM ready');
+
     // Get reference to form elements
     const form = document.getElementById('resellerForm');
 
@@ -14,11 +16,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileUploadArea = document.querySelector(`.file-upload-area[data-input-id="${inputId}"]`);
         const selectedFileDiv = document.querySelector(`.selected-file[data-for="${inputId}"]`);
 
-        if (!fileInput || !fileUploadArea || !selectedFileDiv) return;
+        if (!fileInput || !fileUploadArea || !selectedFileDiv) {
+            console.log(`[File Upload Debug] Missing element for ${inputId}`);
+            return;
+        }
+
+        console.log(`[File Upload Debug] Setting up event listeners for ${inputId}`);
+
+        // Track if we're already processing a click to prevent re-entry
+        let isProcessing = false;
 
         // Handle file selection
-        fileInput.addEventListener('change', function() {
+        fileInput.addEventListener('change', function(e) {
+            console.log(`[File Upload Debug] ${inputId} - Change event fired`, {
+                filesSelected: this.files.length,
+                isProcessing: isProcessing
+            });
             updateSelectedFileInfo(this.files, selectedFileDiv, fileInput);
+            isProcessing = false; // Reset after file selection
         });
 
         // Handle drag and drop for file upload
@@ -38,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
             this.classList.remove('dragover');
+            console.log(`[File Upload Debug] ${inputId} - Drop event`);
 
             if (e.dataTransfer.files.length) {
                 fileInput.files = e.dataTransfer.files;
@@ -45,9 +61,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Click on upload area triggers file input - simple and reliable
-        fileUploadArea.addEventListener('click', function() {
+        // Click on upload area triggers file input
+        fileUploadArea.addEventListener('click', function(e) {
+            console.log(`[File Upload Debug] ${inputId} - Upload area clicked`, {
+                isProcessing: isProcessing,
+                target: e.target.className,
+                currentTarget: e.currentTarget.className
+            });
+
+            // Prevent re-entry if already processing
+            if (isProcessing) {
+                console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing`);
+                return;
+            }
+
+            isProcessing = true;
+            console.log(`[File Upload Debug] ${inputId} - Triggering fileInput.click()`);
             fileInput.click();
+
+            // Reset after a short delay (in case user cancels immediately)
+            setTimeout(() => {
+                if (isProcessing) {
+                    console.log(`[File Upload Debug] ${inputId} - Timeout reset (user likely cancelled)`);
+                    isProcessing = false;
+                }
+            }, 500);
         });
     });
 
