@@ -1036,12 +1036,12 @@
     line-height: 1.7;
     max-height: 0;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
     opacity: 0;
 }
 
 .faq-item.active .faq-answer {
-    max-height: 1000px;
+    max-height: 2000px;
     padding: 0 24px 24px;
     opacity: 1;
 }
