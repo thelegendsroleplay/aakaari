@@ -22,18 +22,14 @@
     const faqItems = document.querySelectorAll('.faq-item');
 
     if (!faqItems || faqItems.length === 0) {
-      console.log('No FAQ items found');
       return;
     }
-
-    console.log('Initializing FAQ accordion for', faqItems.length, 'items');
 
     faqItems.forEach((item, index) => {
       const question = item.querySelector('h3');
       const answer = item.querySelector('.faq-answer');
 
       if (!question || !answer) {
-        console.log('FAQ item missing question or answer', index);
         return;
       }
 
@@ -43,14 +39,9 @@
       question.setAttribute('aria-expanded', 'false');
       question.setAttribute('tabindex', '0');
 
-      // Click handler
-      question.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-
+      // Toggle function
+      const toggleFAQ = function() {
         const isActive = item.classList.contains('active');
-
-        console.log('FAQ item clicked:', index, 'isActive:', isActive);
 
         // Close all other FAQ items
         faqItems.forEach(otherItem => {
@@ -70,14 +61,30 @@
         } else {
           item.classList.add('active');
           question.setAttribute('aria-expanded', 'true');
+
+          // Smooth scroll to question if needed
+          setTimeout(() => {
+            const rect = item.getBoundingClientRect();
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+
+            if (!isVisible) {
+              item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }, 300);
         }
+      };
+
+      // Click handler on entire item
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        toggleFAQ();
       });
 
       // Keyboard support
       question.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          question.click();
+          toggleFAQ();
         }
       });
     });

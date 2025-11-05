@@ -184,20 +184,20 @@ add_action('wp_enqueue_scripts', 'enqueue_aakaari_footer_assets');
 function enqueue_how_it_works_assets() {
     // Only load on the How It Works page
     if (is_page_template('how-it-works.php') || is_page('how-it-works')) {
-        // How It Works CSS
+        // How It Works CSS - v1.0.2 with fixed numbers and redesigned grid
         wp_enqueue_style(
             'aakaari-how-it-works-styles',
             get_template_directory_uri() . '/assets/css/how-it-works.css',
             array(),
-            '1.0.1'
+            '1.0.2'
         );
 
-        // How It Works JavaScript
+        // How It Works JavaScript - v1.0.2 with fixed FAQ accordion
         wp_enqueue_script(
             'aakaari-how-it-works-script',
             get_template_directory_uri() . '/assets/js/how-it-works.js',
             array(),
-            '1.0.1',
+            '1.0.2',
             true
         );
     }
