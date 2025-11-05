@@ -51,18 +51,35 @@ add_action('after_setup_theme', 'aakaari_setup');
 function aakaari_scripts() {
     // Main theme stylesheet
     wp_enqueue_style(
-        'aakaari-style', 
-        get_stylesheet_uri(), 
-        array(), 
+        'aakaari-style',
+        get_stylesheet_uri(),
+        array(),
         wp_get_theme()->get('Version')
     );
-    
+
     // Main theme JavaScript
     wp_enqueue_script(
-        'aakaari-script', 
-        get_template_directory_uri() . '/assets/js/main.js', 
-        array('jquery'), 
-        wp_get_theme()->get('Version'), 
+        'aakaari-script',
+        get_template_directory_uri() . '/assets/js/main.js',
+        array('jquery'),
+        wp_get_theme()->get('Version'),
+        true
+    );
+
+    // Mobile Menu CSS
+    wp_enqueue_style(
+        'aakaari-mobile-menu',
+        get_template_directory_uri() . '/assets/css/mobile-menu.css',
+        array(),
+        wp_get_theme()->get('Version')
+    );
+
+    // Mobile Menu JavaScript
+    wp_enqueue_script(
+        'aakaari-mobile-menu',
+        get_template_directory_uri() . '/assets/js/mobile-menu.js',
+        array('jquery'),
+        wp_get_theme()->get('Version'),
         true
     );
 }
