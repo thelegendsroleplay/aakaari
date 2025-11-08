@@ -172,7 +172,8 @@
   margin-bottom: 1.25rem;
 }
 
-.form-group label {
+.form-group label,
+.form-group .field-label {
   display: block;
   margin-bottom: 0.375rem;
   font-size: 0.875rem;

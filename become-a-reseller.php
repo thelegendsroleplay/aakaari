@@ -752,8 +752,8 @@ $benefits = [
 
                                 <!-- Aadhaar Card Front -->
                                 <div class="form-group">
-                                    <label for="aadhaarFront">Upload Aadhaar Card (Front Side) <span class="required">*</span></label>
-                                    <div class="file-upload-area" data-input-id="aadhaarFront">
+                                    <div class="field-label">Upload Aadhaar Card (Front Side) <span class="required">*</span></div>
+                                    <label for="aadhaarFront" class="file-upload-area" data-input-id="aadhaarFront">
                                         <input type="file" id="aadhaarFront" name="aadhaarFront" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
                                         <div class="upload-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -764,7 +764,7 @@ $benefits = [
                                         </div>
                                         <p>Click to upload or drag and drop</p>
                                         <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
-                                    </div>
+                                    </label>
                                     <div class="selected-file" data-for="aadhaarFront"></div>
                                     <?php if (isset($form_errors['aadhaarFront'])): ?>
                                         <span class="form-error"><?php echo $form_errors['aadhaarFront']; ?></span>
@@ -773,8 +773,8 @@ $benefits = [
 
                                 <!-- Aadhaar Card Back -->
                                 <div class="form-group">
-                                    <label for="aadhaarBack">Upload Aadhaar Card (Back Side) <span class="required">*</span></label>
-                                    <div class="file-upload-area" data-input-id="aadhaarBack">
+                                    <div class="field-label">Upload Aadhaar Card (Back Side) <span class="required">*</span></div>
+                                    <label for="aadhaarBack" class="file-upload-area" data-input-id="aadhaarBack">
                                         <input type="file" id="aadhaarBack" name="aadhaarBack" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
                                         <div class="upload-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -785,7 +785,7 @@ $benefits = [
                                         </div>
                                         <p>Click to upload or drag and drop</p>
                                         <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
-                                    </div>
+                                    </label>
                                     <div class="selected-file" data-for="aadhaarBack"></div>
                                     <?php if (isset($form_errors['aadhaarBack'])): ?>
                                         <span class="form-error"><?php echo $form_errors['aadhaarBack']; ?></span>
@@ -794,8 +794,8 @@ $benefits = [
 
                                 <!-- PAN Card -->
                                 <div class="form-group">
-                                    <label for="panCard">Upload PAN Card <span class="required">*</span></label>
-                                    <div class="file-upload-area" data-input-id="panCard">
+                                    <div class="field-label">Upload PAN Card <span class="required">*</span></div>
+                                    <label for="panCard" class="file-upload-area" data-input-id="panCard">
                                         <input type="file" id="panCard" name="panCard" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
                                         <div class="upload-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -806,7 +806,7 @@ $benefits = [
                                         </div>
                                         <p>Click to upload or drag and drop</p>
                                         <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
-                                    </div>
+                                    </label>
                                     <div class="selected-file" data-for="panCard"></div>
                                     <?php if (isset($form_errors['panCard'])): ?>
                                         <span class="form-error"><?php echo $form_errors['panCard']; ?></span>
@@ -815,8 +815,8 @@ $benefits = [
 
                                 <!-- Bank Proof -->
                                 <div class="form-group">
-                                    <label for="bankProof">Upload Bank Proof (Cancelled Cheque or Statement) <span class="required">*</span></label>
-                                    <div class="file-upload-area" data-input-id="bankProof">
+                                    <div class="field-label">Upload Bank Proof (Cancelled Cheque or Statement) <span class="required">*</span></div>
+                                    <label for="bankProof" class="file-upload-area" data-input-id="bankProof">
                                         <input type="file" id="bankProof" name="bankProof" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
                                         <div class="upload-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -827,7 +827,7 @@ $benefits = [
                                         </div>
                                         <p>Click to upload or drag and drop</p>
                                         <p class="file-types">PDF, JPG, PNG (Max 5MB)</p>
-                                    </div>
+                                    </label>
                                     <div class="selected-file" data-for="bankProof"></div>
                                     <?php if (isset($form_errors['bankProof'])): ?>
                                         <span class="form-error"><?php echo $form_errors['bankProof']; ?></span>
@@ -836,8 +836,8 @@ $benefits = [
 
                                 <!-- Business Proof (Optional) -->
                                 <div class="form-group">
-                                    <label for="businessProof">Upload Business Registration Certificate / GST (Optional)</label>
-                                    <div class="file-upload-area" data-input-id="businessProof">
+                                    <div class="field-label">Upload Business Registration Certificate / GST (Optional)</div>
+                                    <label for="businessProof" class="file-upload-area" data-input-id="businessProof">
                                         <input type="file" id="businessProof" name="businessProof" class="file-input" accept=".pdf,.jpg,.jpeg,.png">
                                         <div class="upload-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -848,7 +848,7 @@ $benefits = [
                                         </div>
                                         <p>Click to upload or drag and drop</p>
                                         <p class="file-types">PDF, JPG, PNG (Max 5MB) - Optional</p>
-                                    </div>
+                                    </label>
                                     <div class="selected-file" data-for="businessProof"></div>
                                     <?php if (isset($form_errors['businessProof'])): ?>
                                         <span class="form-error"><?php echo $form_errors['businessProof']; ?></span>
