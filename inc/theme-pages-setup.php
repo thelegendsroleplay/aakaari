@@ -64,6 +64,12 @@ function aakaari_create_required_pages() {
             'template' => 'register.php',
             'option' => 'aakaari_register_page_id'
         ),
+        'forgot-password' => array(
+            'title' => 'Forgot Password',
+            'content' => '',
+            'template' => 'forgot-password.php',
+            'option' => 'aakaari_forgot_password_page_id'
+        ),
         'become-a-reseller' => array(
             'title' => 'Become a Reseller',
             'content' => '<!-- wp:shortcode -->[become_a_reseller]<!-- /wp:shortcode -->',
@@ -382,7 +388,7 @@ function aakaari_pages_setup_page() {
         <h2>Required Pages:</h2>
         <ul style="list-style: disc; padding-left: 20px;">
             <li><strong>WooCommerce:</strong> Shop, Cart, Checkout, My Account</li>
-            <li><strong>Authentication:</strong> Login, Register</li>
+            <li><strong>Authentication:</strong> Login, Register, Forgot Password</li>
             <li><strong>Reseller:</strong> Become a Reseller, Application Pending, Reseller Dashboard</li>
             <li><strong>Admin:</strong> Admin Dashboard</li>
             <li><strong>Other:</strong> Track Order, Contact, How It Works, Pricing</li>
@@ -406,6 +412,7 @@ function aakaari_pages_setup_page() {
                     'My Account' => 'woocommerce_myaccount_page_id',
                     'Login' => 'aakaari_login_page_id',
                     'Register' => 'aakaari_register_page_id',
+                    'Forgot Password' => 'aakaari_forgot_password_page_id',
                     'Become a Reseller' => 'aakaari_reseller_page_id',
                     'Application Pending' => 'aakaari_pending_page_id',
                     'Reseller Dashboard' => 'aakaari_dashboard_page_id',

@@ -152,7 +152,7 @@ get_header('minimal'); // Use a minimal header or create one
                         <input type="checkbox" id="remember_me" name="remember_me">
                         <label for="remember_me">Remember me</label>
                     </div>
-                    <a href="<?php echo esc_url(wp_lostpassword_url()); ?>" class="forgot-password">Forgot password?</a>
+                    <a href="<?php echo esc_url(get_permalink(get_page_by_path('forgot-password'))); ?>" class="forgot-password">Forgot password?</a>
                 </div>
                 
                 <button type="submit" class="login-button" <?php echo !empty($login_error) ? 'disabled' : ''; ?>>Login</button>
