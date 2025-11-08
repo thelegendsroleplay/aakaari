@@ -106,9 +106,9 @@ get_header('minimal'); // Use a minimal header or create one
 <div class="login-page">
     <div class="login-container">
         <div class="login-logo">
-            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php bloginfo('name'); ?>" class="login-logo-img">
+            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo.png'); ?>" alt="<?php bloginfo('name'); ?>" class="login-logo-img">
         </div>
-        
+
         <h1 class="login-title">Reseller Login</h1>
         
         <div id="login-with-password-container">
