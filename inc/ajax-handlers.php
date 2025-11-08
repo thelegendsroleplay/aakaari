@@ -236,18 +236,30 @@ add_action('wp_ajax_nopriv_send_login_otp', 'aakaari_ajax_send_login_otp');
  */
 function aakaari_ajax_verify_login_otp() {
     check_ajax_referer('aakaari_ajax_nonce', 'nonce');
-    
+
+    // Try to get user ID from session first
     $user_id = aakaari_get_verifying_user_id();
+
+    // If session doesn't have user_id, try to get user by email (fallback)
+    if (!$user_id && isset($_POST['email'])) {
+        $email = sanitize_email($_POST['email']);
+        $user = get_user_by('email', $email);
+        if ($user) {
+            $user_id = $user->ID;
+        }
+    }
+
+    // If we still don't have a user, return error
     if (!$user_id) {
-        wp_send_json_error(array('message' => 'No login process found. Please try again.'));
+        wp_send_json_error(array('message' => 'No login process found. Please request a new code and try again.'));
         exit;
     }
-    
+
     if (!isset($_POST['otp'])) {
         wp_send_json_error(array('message' => 'Please enter the login code.'));
         exit;
     }
-    
+
     $submitted_otp = sanitize_text_field($_POST['otp']);
     
     // Check for expiration
