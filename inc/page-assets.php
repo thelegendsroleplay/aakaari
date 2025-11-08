@@ -164,6 +164,16 @@ function enqueue_login_assets() {
             '1.0.0',
             true
         );
+
+        // Localize script with AJAX data needed for OTP functionality
+        $dashboard_url = function_exists('aakaari_get_dashboard_url') ? aakaari_get_dashboard_url() : home_url('/my-account/');
+
+        wp_localize_script('login-js', 'registration_ajax_object', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('aakaari_ajax_nonce'),
+            'login_url' => wc_get_page_permalink('myaccount'),
+            'dashboard_url' => $dashboard_url,
+        ));
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_login_assets');
