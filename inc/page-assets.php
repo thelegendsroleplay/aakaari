@@ -153,7 +153,7 @@ function enqueue_login_assets() {
             'login-styles',
             get_template_directory_uri() . '/assets/css/login.css',
             array(),
-            '1.0.0'
+            '1.0.1'
         );
 
         // JavaScript
@@ -161,7 +161,7 @@ function enqueue_login_assets() {
             'login-js',
             get_template_directory_uri() . '/assets/js/login.js',
             array(),
-            '1.0.0',
+            '1.0.1',
             true
         );
 
@@ -177,6 +177,22 @@ function enqueue_login_assets() {
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_login_assets');
+
+/**
+ * Enqueue Forgot Password page assets
+ */
+function enqueue_forgot_password_assets() {
+    if (is_page_template('forgot-password.php')) {
+        // Reuse login CSS for consistent styling
+        wp_enqueue_style(
+            'forgot-password-styles',
+            get_template_directory_uri() . '/assets/css/login.css',
+            array(),
+            '1.0.1'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_forgot_password_assets');
 
 /**
  * Enqueue Order pages assets (Order Received & Track Order)
