@@ -28,15 +28,32 @@ function aar_enqueue_reseller_assets() {
         '2.0' // Ultimate fix: Simplified CSS - file input hidden with display:none
     );
 
+    // Add random query parameter directly to URL for maximum cache busting
+    $script_url = get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js?nocache=' . wp_rand();
+
     wp_enqueue_script(
         'become-reseller-js',
-        get_stylesheet_directory_uri() . '/assets/js/become-a-reseller.js',
+        $script_url,
         array(),
-        '3.0.' . time(), // Timestamp-based cache busting - forces fresh load every time
+        null, // Set to null to prevent WordPress from adding its own version parameter
         true
     );
+
+    // Add cache-control headers to prevent any caching of this script
+    add_filter('script_loader_tag', 'aar_add_nocache_to_reseller_script', 10, 2);
 }
 add_action('wp_enqueue_scripts', 'aar_enqueue_reseller_assets');
+
+/**
+ * Add no-cache attributes to reseller script
+ */
+function aar_add_nocache_to_reseller_script($tag, $handle) {
+    if ('become-reseller-js' === $handle) {
+        // Add crossorigin and data attribute to force reload
+        $tag = str_replace(' src=', ' data-no-cache="true" crossorigin="anonymous" src=', $tag);
+    }
+    return $tag;
+}
 
 /**
  * Register shortcode for reseller application form
