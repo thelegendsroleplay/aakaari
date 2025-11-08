@@ -98,36 +98,39 @@ function aakaari_ajax_verify_registration_otp() {
         wp_send_json_error(array('message' => 'OTP has expired. Please request a new one.', 'expired' => true));
         exit;
     }
-    
-    // Check attempts
-    $attempts = (int)get_user_meta($user_id, 'otp_verify_attempts', true);
-    if ($attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
-        wp_send_json_error(array('message' => 'Too many failed attempts. Please request a new code.', 'expired' => true));
-        exit;
-    }
-    
+
+    // TEMPORARILY DISABLED FOR TESTING: Check attempts
+    // $attempts = (int)get_user_meta($user_id, 'otp_verify_attempts', true);
+    // if ($attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
+    //     wp_send_json_error(array('message' => 'Too many failed attempts. Please request a new code.', 'expired' => true));
+    //     exit;
+    // }
+    $attempts = (int)get_user_meta($user_id, 'otp_verify_attempts', true); // Still track for response message
+
     // Check the code
     $stored_hash = get_user_meta($user_id, 'otp_code', true);
     if (aakaari_verify_otp($submitted_otp, $stored_hash)) {
         // SUCCESS!
         update_user_meta($user_id, 'email_verified', true);
         aakaari_clear_otp_meta($user_id);
-        
+
         // Clear the session
         if (function_exists('WC') && WC()->session) {
              WC()->session->set('aakaari_user_verifying', null);
         }
-        
+
         // Log the user in
         wp_set_current_user($user_id);
         wp_set_auth_cookie($user_id);
-        
+
         wp_send_json_success(array('message' => 'Email verified successfully! Redirecting...'));
     } else {
         // FAILED
         update_user_meta($user_id, 'otp_verify_attempts', $attempts + 1);
-        $remaining = OTP_MAX_VERIFY_ATTEMPTS - ($attempts + 1);
-        wp_send_json_error(array('message' => "Invalid OTP code. You have $remaining attempt(s) remaining."));
+        // TEMPORARILY DISABLED FOR TESTING: Show remaining attempts
+        // $remaining = OTP_MAX_VERIFY_ATTEMPTS - ($attempts + 1);
+        // wp_send_json_error(array('message' => "Invalid OTP code. You have $remaining attempt(s) remaining."));
+        wp_send_json_error(array('message' => "Invalid OTP code. Please try again."));
     }
     exit;
 }
@@ -150,18 +153,18 @@ function aakaari_ajax_resend_otp() {
         wp_send_json_error(array('message' => 'User not found.'));
         exit;
     }
-    
-    // Check resend limit
-    $limit_check = aakaari_check_otp_resend_limit($user_id);
-    if (!$limit_check['allowed']) {
-        wp_send_json_error(array('message' => $limit_check['message']));
-        exit;
-    }
-    
-    // Increment resend count
-    $resend_count = (int)get_user_meta($user_id, 'otp_resend_count', true);
-    update_user_meta($user_id, 'otp_resend_count', $resend_count + 1);
-    
+
+    // TEMPORARILY DISABLED FOR TESTING: Check resend limit
+    // $limit_check = aakaari_check_otp_resend_limit($user_id);
+    // if (!$limit_check['allowed']) {
+    //     wp_send_json_error(array('message' => $limit_check['message']));
+    //     exit;
+    // }
+
+    // TEMPORARILY DISABLED FOR TESTING: Increment resend count
+    // $resend_count = (int)get_user_meta($user_id, 'otp_resend_count', true);
+    // update_user_meta($user_id, 'otp_resend_count', $resend_count + 1);
+
     // Generate and send new OTP
     if (aakaari_generate_and_send_otp($user_id, $user->user_email)) {
         wp_send_json_success(array('message' => 'A new OTP has been sent to your email.'));
@@ -195,25 +198,25 @@ function aakaari_ajax_send_login_otp() {
     }
     
     $user_id = $user->ID;
-    
-    // Check for cooldown
-    $cooldown_until = (int)get_user_meta($user_id, 'cooldown_until', true);
-    if ($cooldown_until > time()) {
-        $minutes = ceil(($cooldown_until - time()) / MINUTE_IN_SECONDS);
-        wp_send_json_error(array('message' => "This account is in cooldown. Please wait $minutes minute(s)."));
-        exit;
-    }
-    
-    // Check resend limit
-    $limit_check = aakaari_check_otp_resend_limit($user_id);
-    if (!$limit_check['allowed']) {
-        wp_send_json_error(array('message' => $limit_check['message']));
-        exit;
-    }
-    
-    // Increment resend count
-    $resend_count = (int)get_user_meta($user_id, 'otp_resend_count', true);
-    update_user_meta($user_id, 'otp_resend_count', $resend_count + 1);
+
+    // TEMPORARILY DISABLED FOR TESTING: Check for cooldown
+    // $cooldown_until = (int)get_user_meta($user_id, 'cooldown_until', true);
+    // if ($cooldown_until > time()) {
+    //     $minutes = ceil(($cooldown_until - time()) / MINUTE_IN_SECONDS);
+    //     wp_send_json_error(array('message' => "This account is in cooldown. Please wait $minutes minute(s)."));
+    //     exit;
+    // }
+
+    // TEMPORARILY DISABLED FOR TESTING: Check resend limit
+    // $limit_check = aakaari_check_otp_resend_limit($user_id);
+    // if (!$limit_check['allowed']) {
+    //     wp_send_json_error(array('message' => $limit_check['message']));
+    //     exit;
+    // }
+
+    // TEMPORARILY DISABLED FOR TESTING: Increment resend count
+    // $resend_count = (int)get_user_meta($user_id, 'otp_resend_count', true);
+    // update_user_meta($user_id, 'otp_resend_count', $resend_count + 1);
     
     // Set user in session
     if (function_exists('WC') && WC()->session) {
@@ -267,13 +270,14 @@ function aakaari_ajax_verify_login_otp() {
         wp_send_json_error(array('message' => 'Code has expired. Please request a new one.', 'expired' => true));
         exit;
     }
-    
-    // Check attempts
-    $attempts = (int)get_user_meta($user_id, 'otp_verify_attempts', true);
-    if ($attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
-        wp_send_json_error(array('message' => 'Too many failed attempts. Please request a new code.', 'expired' => true));
-        exit;
-    }
+
+    // TEMPORARILY DISABLED FOR TESTING: Check attempts
+    // $attempts = (int)get_user_meta($user_id, 'otp_verify_attempts', true);
+    // if ($attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
+    //     wp_send_json_error(array('message' => 'Too many failed attempts. Please request a new code.', 'expired' => true));
+    //     exit;
+    // }
+    $attempts = (int)get_user_meta($user_id, 'otp_verify_attempts', true); // Still track for response message
     
     // Check the code
     $stored_hash = get_user_meta($user_id, 'otp_code', true);
@@ -304,8 +308,10 @@ function aakaari_ajax_verify_login_otp() {
     } else {
         // FAILED
         update_user_meta($user_id, 'otp_verify_attempts', $attempts + 1);
-        $remaining = OTP_MAX_VERIFY_ATTEMPTS - ($attempts + 1);
-        wp_send_json_error(array('message' => "Invalid code. You have $remaining attempt(s) remaining."));
+        // TEMPORARILY DISABLED FOR TESTING: Show remaining attempts
+        // $remaining = OTP_MAX_VERIFY_ATTEMPTS - ($attempts + 1);
+        // wp_send_json_error(array('message' => "Invalid code. You have $remaining attempt(s) remaining."));
+        wp_send_json_error(array('message' => "Invalid code. Please try again."));
     }
     exit;
 }

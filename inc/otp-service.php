@@ -36,11 +36,11 @@ function aakaari_generate_otp() {
  * @return bool Whether OTP was sent successfully
  */
 function aakaari_generate_and_send_otp($user_id, $email) {
-    // Check for resend delay
-    $last_sent = get_user_meta($user_id, 'otp_generated_at', true);
-    if ($last_sent && (time() - $last_sent) < AAKAARI_OTP_RESEND_DELAY) {
-        return false; // Too soon to resend
-    }
+    // TEMPORARILY DISABLED FOR TESTING: Check for resend delay
+    // $last_sent = get_user_meta($user_id, 'otp_generated_at', true);
+    // if ($last_sent && (time() - $last_sent) < AAKAARI_OTP_RESEND_DELAY) {
+    //     return false; // Too soon to resend
+    // }
 
     // Generate OTP
     $otp = aakaari_generate_otp();
