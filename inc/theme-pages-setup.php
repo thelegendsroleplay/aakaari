@@ -70,6 +70,12 @@ function aakaari_create_required_pages() {
             'template' => 'forgot-password.php',
             'option' => 'aakaari_forgot_password_page_id'
         ),
+        'reset-password' => array(
+            'title' => 'Reset Password',
+            'content' => '',
+            'template' => 'reset-password.php',
+            'option' => 'aakaari_reset_password_page_id'
+        ),
         'become-a-reseller' => array(
             'title' => 'Become a Reseller',
             'content' => '<!-- wp:shortcode -->[become_a_reseller]<!-- /wp:shortcode -->',
