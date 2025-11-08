@@ -66,23 +66,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Use pointerdown instead of touch/click to handle all input types uniformly
-        // This works for mouse, touch, and pen without conflicts
-        fileUploadArea.addEventListener('pointerdown', function(e) {
-            console.log(`[File Upload Debug] ${inputId} - Pointer down`, {
-                pointerType: e.pointerType,
-                isProcessing: isProcessing,
-                button: e.button
+        // Simple click handler - just open the file dialog
+        fileUploadArea.addEventListener('click', function(e) {
+            console.log(`[File Upload Debug] ${inputId} - Click event`, {
+                isProcessing: isProcessing
             });
-
-            // Only handle primary button (left click or touch)
-            if (e.button !== 0) return;
 
             // Prevent default to stop any additional events from firing
             e.preventDefault();
             e.stopPropagation();
 
-            // Strict guard: if already processing, completely ignore
+            // Guard: if already processing, completely ignore
             if (isProcessing) {
                 console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing`);
                 return false;
@@ -90,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Set processing flag immediately
             isProcessing = true;
-            console.log(`[File Upload Debug] ${inputId} - Opening file dialog (${e.pointerType})`);
+            console.log(`[File Upload Debug] ${inputId} - Opening file dialog`);
 
             // Trigger file input
             fileInput.click();
@@ -100,16 +94,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`[File Upload Debug] ${inputId} - Timeout reset`);
                 isProcessing = false;
             }, 1000);
-        });
-
-        // Block all other events that might interfere
-        ['click', 'touchstart', 'touchend', 'mousedown'].forEach(eventType => {
-            fileUploadArea.addEventListener(eventType, function(e) {
-                console.log(`[File Upload Debug] ${inputId} - ${eventType} event BLOCKED`);
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }, { capture: true });
         });
     });
 
