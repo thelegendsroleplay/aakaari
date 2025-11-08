@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginOtpMsg = document.getElementById('login-otp-validation-msg');
     const loginOtpTimerEl = document.getElementById('login-otp-timer');
     let loginOtpTimerInterval;
+    let currentLoginEmail = ''; // Store email for verification
 
     function showLoginOtpMessage(message, type = 'error') {
         loginOtpMsg.textContent = message;
@@ -111,19 +112,22 @@ document.addEventListener('DOMContentLoaded', function() {
             sendLoginOtpBtn.disabled = true;
             sendLoginOtpBtn.textContent = 'Sending...';
             showLoginOtpMessage('Sending code...', 'loading');
-            
+
+            // Store email for later use
+            currentLoginEmail = loginOtpEmail.value.trim();
+
             const formData = new FormData();
             formData.append('action', 'send_login_otp');
-            formData.append('nonce', registration_ajax_object.nonce); // Using the same nonce
-            formData.append('email', loginOtpEmail.value);
-            
+            formData.append('nonce', registration_ajax_object.nonce);
+            formData.append('email', currentLoginEmail);
+
             try {
                 const response = await fetch(registration_ajax_object.ajax_url, {
                     method: 'POST',
                     body: formData
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showLoginOtpMessage(data.data.message, 'success');
                     loginOtpStep1.style.display = 'none';
@@ -149,9 +153,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // This submit handles both step 1 and step 2
             // If step 2 is visible, we verify.
             if (loginOtpStep2.style.display !== 'block') {
-                return; 
+                return;
             }
-            
+
             verifyLoginOtpBtn.disabled = true;
             verifyLoginOtpBtn.textContent = 'Verifying...';
             showLoginOtpMessage('Verifying code...', 'loading');
@@ -160,14 +164,15 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('action', 'verify_login_otp');
             formData.append('nonce', registration_ajax_object.nonce);
             formData.append('otp', loginOtpCode.value);
-            
+            formData.append('email', currentLoginEmail); // Include email for session fallback
+
             try {
                 const response = await fetch(registration_ajax_object.ajax_url, {
                     method: 'POST',
                     body: formData
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showLoginOtpMessage(data.data.message, 'success');
                     // Redirect!
@@ -196,10 +201,11 @@ document.addEventListener('DOMContentLoaded', function() {
             resendLoginOtpBtn.disabled = true;
             resendLoginOtpBtn.textContent = 'Sending...';
             showLoginOtpMessage('Sending new code...', 'loading');
-            
+
             const formData = new FormData();
-            formData.append('action', 'resend_otp'); // Uses the same resend logic as registration
+            formData.append('action', 'send_login_otp'); // Use send_login_otp instead of resend_otp
             formData.append('nonce', registration_ajax_object.nonce);
+            formData.append('email', currentLoginEmail); // Include email
 
             try {
                 const response = await fetch(registration_ajax_object.ajax_url, {
