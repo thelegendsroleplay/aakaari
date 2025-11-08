@@ -195,6 +195,22 @@ function enqueue_forgot_password_assets() {
 add_action('wp_enqueue_scripts', 'enqueue_forgot_password_assets');
 
 /**
+ * Enqueue Reset Password page assets
+ */
+function enqueue_reset_password_assets() {
+    if (is_page_template('reset-password.php')) {
+        // Reuse login CSS for consistent styling
+        wp_enqueue_style(
+            'reset-password-styles',
+            get_template_directory_uri() . '/assets/css/login.css',
+            array(),
+            '1.0.1'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'enqueue_reset_password_assets');
+
+/**
  * Enqueue Order pages assets (Order Received & Track Order)
  */
 function enqueue_order_pages_assets() {

@@ -103,10 +103,6 @@ get_header('minimal');
 
 <div class="login-page">
     <div class="login-container">
-        <div class="login-logo">
-            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php bloginfo('name'); ?>" class="login-logo-img">
-        </div>
-
         <h1 class="login-title">Reset Password</h1>
         <p class="login-subtitle">Enter your email address and we'll send you instructions to reset your password.</p>
 
