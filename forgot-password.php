@@ -39,19 +39,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aakaari_reset_nonce']
             if (is_wp_error($key)) {
                 $reset_error = $key->get_error_message();
             } else {
-                // Send password reset email
-                $reset_link = network_site_url("wp-login.php?action=rp&key=$key&login=" . rawurlencode($user_data->user_login), 'login');
+                // Send password reset email with custom branded template
+                $reset_page = get_page_by_path('reset-password');
+                $reset_link = add_query_arg(
+                    array(
+                        'key' => $key,
+                        'login' => rawurlencode($user_data->user_login)
+                    ),
+                    get_permalink($reset_page)
+                );
 
                 $subject = 'Password Reset Request - Aakaari';
-                $message = "Hello,\n\n";
-                $message .= "You requested a password reset for your Aakaari account.\n\n";
-                $message .= "Click the link below to reset your password:\n";
-                $message .= $reset_link . "\n\n";
-                $message .= "This link will expire in 24 hours.\n\n";
-                $message .= "If you didn't request this, please ignore this email.\n\n";
-                $message .= "Thank you,\nAakaari Team";
 
-                $sent = wp_mail($user_data->user_email, $subject, $message);
+                // Use custom branded HTML email template
+                if (function_exists('aakaari_send_password_reset_email')) {
+                    $sent = aakaari_send_password_reset_email($user_data->user_email, $user_data->display_name, $reset_link);
+                } else {
+                    // Fallback to simple text email if function doesn't exist
+                    $message = "Hello " . $user_data->display_name . ",\n\n";
+                    $message .= "You requested a password reset for your Aakaari account.\n\n";
+                    $message .= "Click the link below to reset your password:\n";
+                    $message .= $reset_link . "\n\n";
+                    $message .= "This link will expire in 24 hours.\n\n";
+                    $message .= "If you didn't request this, please ignore this email.\n\n";
+                    $message .= "Thank you,\nAakaari Team";
+
+                    $sent = wp_mail($user_data->user_email, $subject, $message);
+                }
 
                 if ($sent) {
                     $reset_message = 'Password reset instructions have been sent to your email address.';

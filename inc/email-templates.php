@@ -491,3 +491,89 @@ function aakaari_email_application_deleted($data) {
     return $header . $body . $footer;
 }
 
+
+/**
+ * Password Reset Email Template
+ *
+ * @param string $to_email User's email address
+ * @param string $name User's display name
+ * @param string $reset_link Password reset link
+ * @return bool Whether the email was sent successfully
+ */
+function aakaari_send_password_reset_email($to_email, $name, $reset_link) {
+    $header = aakaari_get_email_header('Password Reset - Aakaari');
+    $footer = aakaari_get_email_footer();
+
+    $body = '
+                    <!-- Header with Logo/Brand -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 40px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🔐 Password Reset Request</h1>
+                            <p style="margin: 10px 0 0 0; color: #bfdbfe; font-size: 16px;">Reset your account password</p>
+                        </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 20px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+                                Hi <strong>' . esc_html($name) . '</strong>,
+                            </p>
+
+                            <p style="margin: 0 0 20px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+                                We received a request to reset the password for your Aakaari account. If you made this request, click the button below to create a new password:
+                            </p>
+
+                            <div style="text-align: center; margin: 30px 0;">
+                                <a href="' . esc_url($reset_link) . '" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #ffffff; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+                                    Reset My Password →
+                                </a>
+                            </div>
+
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 30px 0; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; color: #92400e; font-size: 15px; font-weight: 600;">
+                                    ⏱️ Important Information:
+                                </p>
+                                <ul style="margin: 0; padding-left: 20px; color: #92400e; font-size: 14px; line-height: 1.8;">
+                                    <li>This link will expire in <strong>24 hours</strong></li>
+                                    <li>For security, you can only use this link once</li>
+                                    <li>After resetting, you will need to login with your new password</li>
+                                </ul>
+                            </div>
+
+                            <p style="margin: 0 0 20px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+                                If the button does not work, copy and paste this link into your browser:
+                            </p>
+
+                            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 13px; color: #4b5563;">
+                                ' . esc_html($reset_link) . '
+                            </div>
+
+                            <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; margin: 30px 0; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; color: #991b1b; font-size: 15px; font-weight: 600;">
+                                    🚨 Did not request this?
+                                </p>
+                                <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+                                    If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged, and your account is secure.
+                                </p>
+                            </div>
+
+                            <p style="margin: 30px 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+                                Best regards,<br>
+                                <strong style="color: #374151;">The Aakaari Team</strong>
+                            </p>
+                        </td>
+                    </tr>
+';
+
+    $html_message = $header . $body . $footer;
+
+    // Set email headers for HTML
+    $headers = array(
+        'Content-Type: text/html; charset=UTF-8',
+        'From: Aakaari <noreply@aakaari.com>'
+    );
+
+    // Send email
+    return wp_mail($to_email, 'Password Reset Request - Aakaari', $html_message, $headers);
+}
