@@ -1,9 +1,10 @@
 /**
  * Reseller Form JavaScript
  * Handles file upload, validation, and form interactions
+ * Using native <label> for file inputs - no programmatic .click() needed!
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[File Upload Debug] Script loaded and DOM ready');
+    console.log('[File Upload] Script loaded - using native label approach');
 
     // Get reference to form elements
     const form = document.getElementById('resellerForm');
@@ -17,28 +18,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedFileDiv = document.querySelector(`.selected-file[data-for="${inputId}"]`);
 
         if (!fileInput || !fileUploadArea || !selectedFileDiv) {
-            console.log(`[File Upload Debug] Missing element for ${inputId}`);
+            console.log(`[File Upload] Missing element for ${inputId}`);
             return;
         }
 
-        console.log(`[File Upload Debug] Setting up event listeners for ${inputId}`);
+        console.log(`[File Upload] Setting up ${inputId} with native label`);
 
-        // Global flag to prevent multiple simultaneous triggers
-        let isProcessing = false;
-        let processingTimeout = null;
-
-        // Handle file selection
+        // Handle file selection - triggered automatically by label click
         fileInput.addEventListener('change', function(e) {
-            console.log(`[File Upload Debug] ${inputId} - Change event fired`, {
+            console.log(`[File Upload] ${inputId} - File selected`, {
                 filesSelected: this.files.length
             });
             updateSelectedFileInfo(this.files, selectedFileDiv, fileInput);
-            // Reset processing flag when file is selected or cancelled
-            isProcessing = false;
-            if (processingTimeout) {
-                clearTimeout(processingTimeout);
-                processingTimeout = null;
-            }
         });
 
         // Handle drag and drop for file upload
@@ -58,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
             this.classList.remove('dragover');
-            console.log(`[File Upload Debug] ${inputId} - Drop event`);
+            console.log(`[File Upload] ${inputId} - File dropped`);
 
             if (e.dataTransfer.files.length) {
                 fileInput.files = e.dataTransfer.files;
@@ -66,35 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Simple click handler - just open the file dialog
-        fileUploadArea.addEventListener('click', function(e) {
-            console.log(`[File Upload Debug] ${inputId} - Click event`, {
-                isProcessing: isProcessing
-            });
-
-            // Prevent default to stop any additional events from firing
-            e.preventDefault();
-            e.stopPropagation();
-
-            // Guard: if already processing, completely ignore
-            if (isProcessing) {
-                console.log(`[File Upload Debug] ${inputId} - BLOCKED: Already processing`);
-                return false;
-            }
-
-            // Set processing flag immediately
-            isProcessing = true;
-            console.log(`[File Upload Debug] ${inputId} - Opening file dialog`);
-
-            // Trigger file input
-            fileInput.click();
-
-            // Safety timeout: reset if dialog is cancelled quickly
-            processingTimeout = setTimeout(() => {
-                console.log(`[File Upload Debug] ${inputId} - Timeout reset`);
-                isProcessing = false;
-            }, 1000);
-        });
+        // No click handler needed - the <label> handles it natively!
     });
 
     // Display selected file information
