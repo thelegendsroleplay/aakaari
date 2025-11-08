@@ -41,6 +41,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aakaari_reset_nonce']
             } else {
                 // Send password reset email with custom branded template
                 $reset_page = get_page_by_path('reset-password');
+
+                // If reset-password page doesn't exist, create it automatically
+                if (!$reset_page) {
+                    $reset_page_id = wp_insert_post(array(
+                        'post_title'   => 'Reset Password',
+                        'post_name'    => 'reset-password',
+                        'post_status'  => 'publish',
+                        'post_type'    => 'page',
+                        'post_content' => '',
+                        'page_template' => 'reset-password.php'
+                    ));
+
+                    if ($reset_page_id && !is_wp_error($reset_page_id)) {
+                        update_option('aakaari_reset_password_page_id', $reset_page_id);
+                        update_post_meta($reset_page_id, '_wp_page_template', 'reset-password.php');
+                        $reset_page = get_post($reset_page_id);
+                        // Flush rewrite rules so the new page URL works immediately
+                        flush_rewrite_rules();
+                    }
+                }
+
                 $reset_link = add_query_arg(
                     array(
                         'key' => $key,
