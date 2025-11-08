@@ -76,10 +76,6 @@ get_header('minimal');
 
 <div class="login-page">
     <div class="login-container">
-        <div class="login-logo">
-            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/img/logo-3.png'); ?>" alt="<?php bloginfo('name'); ?>" class="login-logo-img">
-        </div>
-
         <?php if ($reset_success): ?>
             <!-- Success Message -->
             <h1 class="login-title">Password Reset Successful!</h1>
